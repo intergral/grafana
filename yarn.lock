@@ -8487,13 +8487,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/dom-to-image@npm:^2":
-  version: 2.6.7
-  resolution: "@types/dom-to-image@npm:2.6.7"
-  checksum: aecdd8bb06b23026ea169fd567f66f4dc19843efc9b8fc96464a86c670eaab4b7a58408f8b6aeec42d115c001a2b2a0935b19960d980d8ae84148017f731a68e
-  languageName: node
-  linkType: hard
-
 "@types/dompurify@npm:^2":
   version: 2.4.0
   resolution: "@types/dompurify@npm:2.4.0"
@@ -14451,13 +14444,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dom-to-image@npm:^2.6.0":
-  version: 2.6.0
-  resolution: "dom-to-image@npm:2.6.0"
-  checksum: bf8d174c50b7fabc07b4d369478695f78fd5e84f68681eb3dcb951a80ff173b1e026faf7020d34fbed2595508e2c977346439635fb9c201d98963fee4763ebad
-  languageName: node
-  linkType: hard
-
 "domelementtype@npm:^2.0.1, domelementtype@npm:^2.2.0, domelementtype@npm:^2.3.0":
   version: 2.3.0
   resolution: "domelementtype@npm:2.3.0"
@@ -17399,7 +17385,6 @@ __metadata:
     "@types/d3-scale-chromatic": "npm:3.0.0"
     "@types/debounce-promise": "npm:3.1.6"
     "@types/diff": "npm:^5"
-    "@types/dom-to-image": "npm:^2"
     "@types/eslint": "npm:8.44.0"
     "@types/file-saver": "npm:2.0.5"
     "@types/glob": "npm:^8.0.0"
@@ -17494,7 +17479,6 @@ __metadata:
     date-fns: "npm:2.30.0"
     debounce-promise: "npm:3.1.2"
     diff: "npm:^5.1.0"
-    dom-to-image: "npm:^2.6.0"
     emotion: "npm:11.0.0"
     esbuild: "npm:0.18.12"
     esbuild-loader: "npm:3.0.1"
