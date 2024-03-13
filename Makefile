@@ -234,8 +234,7 @@ PLATFORM=linux/amd64
 
 build-docker-full: ## Build Docker image for development.
 	@echo "build docker container"
-	tar -ch . | \
-	docker buildx build - \
+	docker buildx build \
 	--platform $(PLATFORM) \
 	--build-arg BINGO=false \
 	--build-arg GO_BUILD_TAGS=$(GO_BUILD_TAGS) \
@@ -243,7 +242,7 @@ build-docker-full: ## Build Docker image for development.
 	--build-arg COMMIT_SHA=$$(git rev-parse HEAD) \
 	--build-arg BUILD_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
 	--tag grafana/grafana$(TAG_SUFFIX):dev \
-	$(DOCKER_BUILD_ARGS)
+	.
 
 build-docker-full-ubuntu: ## Build Docker image based on Ubuntu for development.
 	@echo "build docker container"
