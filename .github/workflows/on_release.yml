@@ -38,7 +38,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             BINGO=false
-            COMMIT_SHA=${{ GITHUB_SHA }}
+            COMMIT_SHA=${{ github.sha }}
             BUILD_BRANCH=main
           push: true
           tags: intergral/grafana:latest,intergral/grafana:${{ github.ref_name }}
