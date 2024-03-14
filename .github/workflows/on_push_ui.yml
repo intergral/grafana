@@ -1,0 +1,73 @@
+name: Build & Test UI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "yarn"
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+
+      - name: Check dependencies
+        run: |
+          yarn install --immutable --immutable-cache
+
+      - name: Test
+        run: yarn test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "yarn"
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+
+      - name: Check dependencies
+        run: |
+          yarn install --immutable --immutable-cache
+
+      - name: Build
+        run: yarn build
+
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "yarn"
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+
+      - name: Check dependencies
+        run: |
+          yarn install --immutable --immutable-cache
+
+      - name: Lint
+        run: yarn lint
