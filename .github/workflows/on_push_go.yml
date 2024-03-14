@@ -27,6 +27,9 @@ jobs:
       - name: Setup go-junit-report
         run: go install github.com/jstemmer/go-junit-report/v2@latest
 
+      - name: Build
+        run: make gen-go
+
       - name: Test
         run: make test-go
 
@@ -59,5 +62,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Build
+        run: make gen-go
 
       - run: make lint-go
