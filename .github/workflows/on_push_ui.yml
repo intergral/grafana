@@ -27,7 +27,7 @@ jobs:
 
       - name: Check dependencies
         run: |
-          yarn install --immutable --immutable-cache
+          yarn install --immutable
 
       - name: Test
         run: yarn test
@@ -46,7 +46,7 @@ jobs:
 
       - name: Check dependencies
         run: |
-          yarn install --immutable --immutable-cache
+          yarn install --immutable
 
       - name: Build
         run: yarn build
@@ -65,7 +65,7 @@ jobs:
 
       - name: Check dependencies
         run: |
-          yarn install --immutable --immutable-cache
+          yarn install --immutable
 
       - name: Lint
         run: yarn lint
