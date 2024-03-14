@@ -77,16 +77,16 @@ ENV BUILD_BRANCH=${BUILD_BRANCH}
 
 RUN make build-go GO_BUILD_TAGS=${GO_BUILD_TAGS} WIRE_TAGS=${WIRE_TAGS}
 
-FROM ${BASE_IMAGE} as tgz-builder
-
-WORKDIR /tmp/grafana
-
-ARG GRAFANA_TGZ="grafana-latest.linux-x64-musl.tar.gz"
-
-COPY ${GRAFANA_TGZ} /tmp/grafana.tar.gz
-
-# add -v to make tar print every file it extracts
-RUN tar x -z -f /tmp/grafana.tar.gz --strip-components=1
+#FROM ${BASE_IMAGE} as tgz-builder
+#
+#WORKDIR /tmp/grafana
+#
+#ARG GRAFANA_TGZ="grafana-latest.linux-x64-musl.tar.gz"
+#
+#COPY ${GRAFANA_TGZ} /tmp/grafana.tar.gz
+#
+## add -v to make tar print every file it extracts
+#RUN tar x -z -f /tmp/grafana.tar.gz --strip-components=1
 
 # helpers for COPY --from
 FROM ${GO_SRC} as go-src
