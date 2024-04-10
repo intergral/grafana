@@ -42,7 +42,7 @@ git push -u orign updaate_v10_4
 ```bash
 git pull origin main --no-rebase
 ```
-![ide_merge.png](ide_merge.png)
+![ide_merge.png](ide_merge_screenshot.png)
 
 It will be necessary to manually resolve the conflicts.
 
