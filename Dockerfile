@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_IMAGE=alpine:3.18.3
+ARG BASE_IMAGE=alpine:3.18.5
 ARG JS_IMAGE=node:20-alpine3.18
 ARG JS_PLATFORM=linux/amd64
-ARG GO_IMAGE=golang:1.21.3-alpine3.18
+ARG GO_IMAGE=golang:1.21.8-alpine3.18
 
 ARG GO_SRC=go-builder
 ARG JS_SRC=js-builder
@@ -20,9 +20,11 @@ COPY packages packages
 COPY plugins-bundled plugins-bundled
 COPY public public
 
+RUN apk add --no-cache make build-base python3
+
 RUN yarn install --immutable
 
-COPY tsconfig.json .eslintrc .editorconfig .browserslistrc .prettierrc.js babel.config.json ./
+COPY tsconfig.json .eslintrc .editorconfig .browserslistrc .prettierrc.js ./
 COPY public public
 COPY scripts scripts
 COPY emails emails
@@ -75,16 +77,16 @@ ENV BUILD_BRANCH=${BUILD_BRANCH}
 
 RUN make build-go GO_BUILD_TAGS=${GO_BUILD_TAGS} WIRE_TAGS=${WIRE_TAGS}
 
-FROM ${BASE_IMAGE} as tgz-builder
-
-WORKDIR /tmp/grafana
-
-ARG GRAFANA_TGZ="grafana-latest.linux-x64-musl.tar.gz"
-
-COPY ${GRAFANA_TGZ} /tmp/grafana.tar.gz
-
-# add -v to make tar print every file it extracts
-RUN tar x -z -f /tmp/grafana.tar.gz --strip-components=1
+#FROM ${BASE_IMAGE} as tgz-builder
+#
+#WORKDIR /tmp/grafana
+#
+#ARG GRAFANA_TGZ="grafana-latest.linux-x64-musl.tar.gz"
+#
+#COPY ${GRAFANA_TGZ} /tmp/grafana.tar.gz
+#
+## add -v to make tar print every file it extracts
+#RUN tar x -z -f /tmp/grafana.tar.gz --strip-components=1
 
 # helpers for COPY --from
 FROM ${GO_SRC} as go-src
