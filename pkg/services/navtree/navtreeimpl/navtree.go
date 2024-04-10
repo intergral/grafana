@@ -2,10 +2,11 @@ package navtreeimpl
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/grafana/grafana/pkg/models/roletype"
 	"github.com/grafana/grafana/pkg/services/datasources"
 	"github.com/grafana/grafana/pkg/services/org"
-	"sort"
 
 	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/infra/kvstore"
