@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { ButtonProps, Button } from '@grafana/ui';
 
 type DataLinkButtonProps = {
