@@ -2,6 +2,9 @@ package navtreeimpl
 
 import (
 	"fmt"
+	"github.com/grafana/grafana/pkg/models/roletype"
+	"github.com/grafana/grafana/pkg/services/datasources"
+	"github.com/grafana/grafana/pkg/services/org"
 	"sort"
 
 	"github.com/grafana/grafana/pkg/api/dtos"
@@ -125,7 +128,7 @@ func (s *ServiceImpl) GetNavTree(c *contextmodel.ReqContext, prefs *pref.Prefere
 	}
 
 	if setting.ProfileEnabled && c.IsSignedIn {
-		//treeRoot.AddSection(s.getProfileNode(c))
+		treeRoot.AddSection(s.getProfileNode(c))
 	}
 
 	_, uaIsDisabledForOrg := s.cfg.UnifiedAlerting.DisabledOrgs[c.SignedInUser.GetOrgID()]
@@ -133,16 +136,16 @@ func (s *ServiceImpl) GetNavTree(c *contextmodel.ReqContext, prefs *pref.Prefere
 
 	if setting.AlertingEnabled != nil && *setting.AlertingEnabled {
 		if legacyAlertSection := s.buildLegacyAlertNavLinks(c); legacyAlertSection != nil {
-			//treeRoot.AddSection(legacyAlertSection)
+			treeRoot.AddSection(legacyAlertSection)
 		}
 	} else if uaVisibleForOrg {
 		if alertingSection := s.buildAlertNavLinks(c); alertingSection != nil {
-			//treeRoot.AddSection(alertingSection)
+			treeRoot.AddSection(alertingSection)
 		}
 	}
 
 	if connectionsSection := s.buildDataConnectionsNavLink(c); connectionsSection != nil {
-		//treeRoot.AddSection(connectionsSection)
+		treeRoot.AddSection(connectionsSection)
 	}
 
 	orgAdminNode, err := s.getAdminNode(c)
@@ -398,13 +401,124 @@ func (s *ServiceImpl) buildDashboardNavLinks(c *contextmodel.ReqContext) []*navt
 }
 
 func (s *ServiceImpl) buildLegacyAlertNavLinks(c *contextmodel.ReqContext) *navtree.NavLink {
-	return nil
+	var alertChildNavs []*navtree.NavLink
+	alertChildNavs = append(alertChildNavs, &navtree.NavLink{
+		Text: "Alert rules", Id: "alert-list", Url: s.cfg.AppSubURL + "/alerting/list", Icon: "list-ul",
+	})
+
+	if c.SignedInUser.HasRole(roletype.RoleEditor) {
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{
+			Text: "Notification channels", Id: "channels", Url: s.cfg.AppSubURL + "/alerting/notifications",
+			Icon: "comment-alt-share",
+		})
+	}
+
+	var alertNav = navtree.NavLink{
+		Text:       "Alerting",
+		SubTitle:   "Learn about problems in your systems moments after they occur",
+		Id:         "alerting-legacy",
+		Icon:       "bell",
+		Children:   alertChildNavs,
+		SortWeight: navtree.WeightAlerting,
+		Url:        s.cfg.AppSubURL + "/alerting",
+	}
+
+	return &alertNav
 }
 
 func (s *ServiceImpl) buildAlertNavLinks(c *contextmodel.ReqContext) *navtree.NavLink {
+	hasAccess := ac.HasAccess(s.accessControl, c)
+	var alertChildNavs []*navtree.NavLink
+
+	if hasAccess(ac.EvalAny(ac.EvalPermission(ac.ActionAlertingRuleRead), ac.EvalPermission(ac.ActionAlertingRuleExternalRead))) {
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{
+			Text: "Alert rules", SubTitle: "Rules that determine whether an alert will fire", Id: "alert-list", Url: s.cfg.AppSubURL + "/alerting/list", Icon: "list-ul",
+		})
+	}
+
+	if hasAccess(ac.EvalAny(ac.EvalPermission(ac.ActionAlertingNotificationsRead), ac.EvalPermission(ac.ActionAlertingNotificationsExternalRead))) {
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{
+			Text: "Contact points", SubTitle: "Choose how to notify your  contact points when an alert instance fires", Id: "receivers", Url: s.cfg.AppSubURL + "/alerting/notifications",
+			Icon: "comment-alt-share",
+		})
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{Text: "Notification policies", SubTitle: "Determine how alerts are routed to contact points", Id: "am-routes", Url: s.cfg.AppSubURL + "/alerting/routes", Icon: "sitemap"})
+	}
+
+	if hasAccess(ac.EvalAny(ac.EvalPermission(ac.ActionAlertingInstanceRead), ac.EvalPermission(ac.ActionAlertingInstancesExternalRead))) {
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{Text: "Silences", SubTitle: "Stop notifications from one or more alerting rules", Id: "silences", Url: s.cfg.AppSubURL + "/alerting/silences", Icon: "bell-slash"})
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{Text: "Alert groups", SubTitle: "See grouped alerts from an Alertmanager instance", Id: "groups", Url: s.cfg.AppSubURL + "/alerting/groups", Icon: "layer-group"})
+	}
+
+	if c.SignedInUser.GetOrgRole() == org.RoleAdmin {
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{
+			Text: "Admin", Id: "alerting-admin", Url: s.cfg.AppSubURL + "/alerting/admin",
+			Icon: "cog",
+		})
+	}
+
+	if hasAccess(ac.EvalAny(ac.EvalPermission(ac.ActionAlertingRuleCreate), ac.EvalPermission(ac.ActionAlertingRuleExternalWrite))) {
+		alertChildNavs = append(alertChildNavs, &navtree.NavLink{
+			Text: "Create alert rule", SubTitle: "Create an alert rule", Id: "alert",
+			Icon: "plus", Url: s.cfg.AppSubURL + "/alerting/new", HideFromTabs: true, IsCreateAction: true,
+		})
+	}
+
+	if len(alertChildNavs) > 0 {
+		var alertNav = navtree.NavLink{
+			Text:       "Alerting",
+			SubTitle:   "Learn about problems in your systems moments after they occur",
+			Id:         navtree.NavIDAlerting,
+			Icon:       "bell",
+			Children:   alertChildNavs,
+			SortWeight: navtree.WeightAlerting,
+			Url:        s.cfg.AppSubURL + "/alerting",
+		}
+
+		return &alertNav
+	}
 	return nil
 }
 
 func (s *ServiceImpl) buildDataConnectionsNavLink(c *contextmodel.ReqContext) *navtree.NavLink {
+	hasAccess := ac.HasAccess(s.accessControl, c)
+
+	var children []*navtree.NavLink
+	var navLink *navtree.NavLink
+
+	baseUrl := s.cfg.AppSubURL + "/connections"
+
+	if hasAccess(datasources.ConfigurationPageAccess) {
+		// Add new connection
+		children = append(children, &navtree.NavLink{
+			Id:       "connections-add-new-connection",
+			Text:     "Add new connection",
+			SubTitle: "Browse and create new connections",
+			Url:      baseUrl + "/add-new-connection",
+			Children: []*navtree.NavLink{},
+		})
+
+		// Data sources
+		children = append(children, &navtree.NavLink{
+			Id:       "connections-datasources",
+			Text:     "Data sources",
+			SubTitle: "View and manage your connected data source connections",
+			Url:      baseUrl + "/datasources",
+			Children: []*navtree.NavLink{},
+		})
+	}
+
+	if len(children) > 0 {
+		// Connections (main)
+		navLink = &navtree.NavLink{
+			Text:       "Connections",
+			Icon:       "adjust-circle",
+			Id:         "connections",
+			Url:        baseUrl,
+			Children:   children,
+			SortWeight: navtree.WeightDataConnections,
+		}
+
+		return navLink
+	}
 	return nil
 }
