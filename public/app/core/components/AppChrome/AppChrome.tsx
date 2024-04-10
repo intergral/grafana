@@ -18,12 +18,12 @@ import { SectionNav } from './SectionNav/SectionNav';
 import { TopSearchBar } from './TopBar/TopSearchBar';
 import { TOP_BAR_LEVEL_HEIGHT } from './types';
 
-export interface Props extends PropsWithChildren<{}> {}
+export interface Props extends PropsWithChildren<{hideSearchBar?: boolean}> {}
 
-export function AppChrome({ children }: Props) {
+export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
-  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || true;
+  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || (hideSearchBar ?? true);
   const theme = useTheme2();
   const styles = useStyles2(getStyles);
   useOpspilotMetadata();

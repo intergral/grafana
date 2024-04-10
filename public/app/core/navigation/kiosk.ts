@@ -5,7 +5,7 @@ import config from '../config';
 
 // TODO Remove after topnav feature toggle is permanent and old NavBar is removed
 export function getKioskMode(queryParams: UrlQueryMap): KioskMode | null {
-  if (config.KioskMode === 'off') {
+  if (config.kioskMode === 'off') {
     switch (queryParams.kiosk) {
       case 'tv':
         return KioskMode.TV;
@@ -20,7 +20,7 @@ export function getKioskMode(queryParams: UrlQueryMap): KioskMode | null {
         return null;
     }
   } else {
-    switch (config.KioskMode) {
+    switch (config.kioskMode) {
       //  legacy support
       case 'full':
         return KioskMode.Full;

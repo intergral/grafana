@@ -67,7 +67,7 @@ const setup = (children: ReactNode) => {
   const renderResult = render(
     <KBarProvider>
       <TestProvider grafanaContext={context}>
-        <AppChrome>
+        <AppChrome hideSearchBar={false}>
           <div data-testid="page-children">{children}</div>
         </AppChrome>
       </TestProvider>
