@@ -70,6 +70,10 @@ func (c *Grafana) AuthenticateProxy(ctx context.Context, r *authn.Request, usern
 		identity.Login = v
 	}
 
+	if v, ok := additional[proxyFieldOrgName]; ok {
+		identity.OrgName = v
+	}
+
 	if v, ok := additional[proxyFieldRole]; ok {
 		orgRoles, isGrafanaAdmin, _ := getRoles(c.cfg, func() (org.RoleType, *bool, error) {
 			return org.RoleType(v), nil, nil
