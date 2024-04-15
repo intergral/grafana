@@ -1,4 +1,4 @@
-name: release
+name: docker
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   docker:
-    name: Release
+    name: Docker
     runs-on: ubuntu-latest-m
     steps:
       - name: Checkout
