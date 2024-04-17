@@ -72,6 +72,16 @@ To run the UI run `yarn run dev`. This will run the UI in dev mode listening for
 As this project is large running both can be bothersome. So if you are not working on the UI try to just run the
 build: `yarn run build`.
 
+#### Testing Auth Proxy
+
+To run grafana as it will be deployed for FR run with ngrok:
+
+This will provide a URL you can use to 'login' to grafana running on `localhost:3000` and will appear as it would on FR.
+
+```bash
+ngrok http 3000 --request-header-add="X-WEBAUTH-USER: <FR_USERNAME>" --request-header-add="X-WEBAUTH-EMAIL: <FR_EMAIL>" --request-header-add="X-WEBAUTH-ORG: <FR_TENANT_ID>"
+```
+
 ## License
 
 Grafana is distributed under [AGPL-3.0-only](LICENSE). For Apache-2.0 exceptions,
