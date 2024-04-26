@@ -13,6 +13,9 @@ jobs:
   docker:
     name: Docker
     runs-on: 8CoreUbuntu
+    environment:
+      name: Docker Hub
+      url: https://hub.docker.com/r/intergral/grafana
     steps:
       - name: Checkout
         uses: actions/checkout@v4
