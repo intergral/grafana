@@ -225,6 +225,13 @@ golangci-lint: $(GOLANGCI_LINT)
 		--config .golangci.toml \
 		$(GO_FILES)
 
+lint-fix: $(GOLANGCI_LINT)
+	@echo "lint via golangci-lint"
+	$(GOLANGCI_LINT) run \
+		--config .golangci.toml \
+		--fix \
+		$(GO_FILES)
+
 lint-go: golangci-lint ## Run all code checks for backend. You can use GO_FILES to specify exact files to check
 
 # with disabled SC1071 we are ignored some TCL,Expect `/usr/bin/env expect` scripts

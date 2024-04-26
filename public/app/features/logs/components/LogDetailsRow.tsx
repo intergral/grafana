@@ -15,6 +15,7 @@ import {
 } from '@grafana/data';
 import { reportInteraction } from '@grafana/runtime';
 import { ClipboardButton, DataLinkButton, IconButton, Themeable2, withTheme2 } from '@grafana/ui';
+import { OpspilotDataLinkButton } from 'app/intergral/OpspilotDataLinkButton';
 
 import { logRowToSingleRowDataFrame } from '../logsModel';
 
@@ -323,7 +324,7 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
               <div className={cx((singleVal || isMultiParsedValueWithNoContent) && styles.adjoiningLinkButton)}>
                 {links?.map((link, i) => (
                   <span key={`${link.title}-${i}`}>
-                    <DataLinkButton link={link} />
+                    {link.title === "OpsPilot AI" ? <OpspilotDataLinkButton link={link} /> : <DataLinkButton link={link} />}  
                   </span>
                 ))}
               </div>

@@ -41,7 +41,7 @@ const mockSearchResult: QueryResponse = {
   view: new DataFrameView<DashboardQueryResult>(searchData),
 };
 
-const setup = (children: ReactNode) => {
+const setup = (children: ReactNode, hideSearch?: boolean) => {
   config.bootData.navTree = [
     {
       id: HOME_NAV_ID,
@@ -67,7 +67,7 @@ const setup = (children: ReactNode) => {
   const renderResult = render(
     <KBarProvider>
       <TestProvider grafanaContext={context}>
-        <AppChrome>
+        <AppChrome hideSearchBar={hideSearch}>
           <div data-testid="page-children">{children}</div>
         </AppChrome>
       </TestProvider>
@@ -117,7 +117,7 @@ describe('AppChrome', () => {
   });
 
   it('should focus the skip link on initial tab before carrying on with normal tab order', async () => {
-    setup(<Page navId="child1">Children</Page>);
+    setup(<Page navId="child1">Children</Page>, false);
     await userEvent.keyboard('{tab}');
     const skipLink = await screen.findByRole('link', { name: 'Skip to main content' });
     expect(skipLink).toHaveFocus();
