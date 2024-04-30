@@ -612,7 +612,7 @@ func checkTeamHTTPHeaderPermissions(hs *HTTPServer, c *contextmodel.ReqContext, 
 }
 
 func (hs *HTTPServer) updateDataSourceByID(c *contextmodel.ReqContext, ds *datasources.DataSource, cmd datasources.UpdateDataSourceCommand) response.Response {
-	if ds.ReadOnly {
+	if ds.ReadOnly && !c.IsGrafanaAdmin {
 		return response.Error(403, "Cannot update read-only data source", nil)
 	}
 
