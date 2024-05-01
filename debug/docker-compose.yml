@@ -1,0 +1,34 @@
+services:
+  traefik:
+    image: "traefik:v2.11"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--providers.file.filename=/var/traefik.yaml"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "./traefik.yaml:/var/traefik.yaml"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  authproxy:
+#    image: "registry.gitlab.com/intergral/fusionreactor/cloud/grafana/grafana-auth-proxy:latest"
+    image: ko.local/grafana-auth-proxy:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authproxy.rule=Host(`grafana.localhost`) && PathPrefix(`/grafana/login`)"
+      - "traefik.http.routers.authproxy.entrypoints=web"
+    environment:
+      COOKIE_NAME: fr-test-cookie
+      COOKIE_DOMAIN: grafana.localhost
+      FR_TOKEN_GENERATE: https://api.fusionreactor.io
+      FR_TOKEN_URL: https://sls.fusionreactor.io
+      FR_GRAFANA_URL: http://172.17.0.1:3000
+      GRAFANA_UI_URL: http://grafana.localhost
+    ports:
+      - "3333:3333"

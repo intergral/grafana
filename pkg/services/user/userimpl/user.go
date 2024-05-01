@@ -3,6 +3,7 @@ package userimpl
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -116,7 +117,15 @@ func (s *Service) Create(ctx context.Context, cmd *user.CreateUserCommand) (*use
 	}
 	orgID, err := s.orgService.GetIDForNewUser(ctx, cmdOrg)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, org.ErrOrgNameTaken) {
+			byName, err := s.orgService.GetByName(ctx, &org.GetOrgByNameQuery{Name: cmd.OrgName})
+			if err != nil {
+				return nil, err
+			}
+			orgID = byName.ID
+		} else {
+			return nil, err
+		}
 	}
 	if cmd.Email == "" {
 		cmd.Email = cmd.Login
@@ -172,7 +181,7 @@ func (s *Service) Create(ctx context.Context, cmd *user.CreateUserCommand) (*use
 		orgUser := org.OrgUser{
 			OrgID:   orgID,
 			UserID:  usr.ID,
-			Role:    org.RoleAdmin,
+			Role:    org.RoleEditor,
 			Created: time.Now(),
 			Updated: time.Now(),
 		}

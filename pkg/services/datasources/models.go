@@ -164,7 +164,7 @@ type AddDataSourceCommand struct {
 
 	OrgID                   int64             `json:"-"`
 	UserID                  int64             `json:"-"`
-	ReadOnly                bool              `json:"-"`
+	ReadOnly                bool              `json:"readOnly"`
 	EncryptedSecureJsonData map[string][]byte `json:"-"`
 	UpdateSecretFn          UpdateSecretFn    `json:"-"`
 }
@@ -188,7 +188,7 @@ type UpdateDataSourceCommand struct {
 
 	OrgID                   int64             `json:"-"`
 	ID                      int64             `json:"-"`
-	ReadOnly                bool              `json:"-"`
+	ReadOnly                bool              `json:"readOnly"`
 	EncryptedSecureJsonData map[string][]byte `json:"-"`
 	UpdateSecretFn          UpdateSecretFn    `json:"-"`
 	IgnoreOldSecureJsonData bool              `json:"-"`
