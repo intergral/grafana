@@ -102,5 +102,5 @@ export default (navBarTree: NavModelItem[]): CommandPaletteAction[] => {
   const extensionActions = getExtensionActions();
   const navBarActions = navTreeToActions(navBarTree);
 
-  return [...globalActions, ...extensionActions, ...navBarActions];
+  return [...navBarActions];
 };

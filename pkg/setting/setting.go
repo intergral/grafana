@@ -509,6 +509,9 @@ type Cfg struct {
 	// Explore UI
 	ExploreEnabled bool
 
+	//kiosk mode
+	KioskMode string
+
 	// Help UI
 	HelpEnabled bool
 
@@ -1150,6 +1153,9 @@ func (cfg *Cfg) parseINIFile(iniFile *ini.File) error {
 
 	explore := iniFile.Section("explore")
 	cfg.ExploreEnabled = explore.Key("enabled").MustBool(true)
+
+	kiosk := iniFile.Section("kiosk")
+	KioskMode = valueAsString(kiosk, "mode", "off")
 
 	help := iniFile.Section("help")
 	cfg.HelpEnabled = help.Key("enabled").MustBool(true)

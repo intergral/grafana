@@ -172,6 +172,7 @@ export interface GrafanaConfig {
   defaultDatasource: string;
   authProxyEnabled: boolean;
   exploreEnabled: boolean;
+  kioskMode: string;
   queryHistoryEnabled: boolean;
   helpEnabled: boolean;
   profileEnabled: boolean;

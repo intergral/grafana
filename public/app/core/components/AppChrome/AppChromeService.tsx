@@ -198,6 +198,8 @@ export class AppChromeService {
         newKioskMode = KioskMode.TV;
         break;
       case '1':
+      case 'embed':
+        this.update({kioskMode: KioskMode.Embed });
       case true:
         newKioskMode = KioskMode.Full;
     }
@@ -211,6 +213,8 @@ export class AppChromeService {
     switch (mode) {
       case KioskMode.TV:
         return 'tv';
+      case KioskMode.Embed:
+        return 'embed';
       case KioskMode.Full:
         return true;
       default:
