@@ -3,7 +3,6 @@ package navtreeimpl
 import (
 	"sort"
 
-	"github.com/grafana/grafana/pkg/models/roletype"
 	"github.com/grafana/grafana/pkg/services/datasources"
 	"github.com/grafana/grafana/pkg/services/org"
 
