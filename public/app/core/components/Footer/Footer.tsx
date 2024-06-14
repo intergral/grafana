@@ -2,7 +2,7 @@ import React from 'react';
 
 import { LinkTarget } from '@grafana/data';
 import { config } from '@grafana/runtime';
-import { Icon, IconName } from '@grafana/ui';
+import { IconName } from '@grafana/ui';
 import { t } from 'app/core/internationalization';
 
 export interface FooterLink {
@@ -71,7 +71,7 @@ export function getVersionLinks(hideEdition?: boolean): FooterLink[] {
   links.push({
     target: '_blank',
     id: 'version',
-    text: `v${buildInfo.version} (${buildInfo.commit})`,
+    text: buildInfo.versionString,
     url: hasReleaseNotes ? `https://github.com/grafana/grafana/blob/main/CHANGELOG.md` : undefined,
   });
 
@@ -104,18 +104,18 @@ export const Footer = React.memo(({ customLinks, hideEdition }: Props) => {
 
 Footer.displayName = 'Footer';
 
-function FooterItem({ item }: { item: FooterLink }) {
-  const content = item.url ? (
-    <a href={item.url} target={item.target} rel="noopener noreferrer" id={item.id}>
-      {item.text}
-    </a>
-  ) : (
-    item.text
-  );
-
-  return (
-    <>
-      {item.icon && <Icon name={item.icon} />} {content}
-    </>
-  );
-}
+// function FooterItem({ item }: { item: FooterLink }) {
+//   const content = item.url ? (
+//     <a href={item.url} target={item.target} rel="noopener noreferrer" id={item.id}>
+//       {item.text}
+//     </a>
+//   ) : (
+//     item.text
+//   );
+//
+//   return (
+//     <>
+//       {item.icon && <Icon name={item.icon} />} {content}
+//     </>
+//   );
+// }

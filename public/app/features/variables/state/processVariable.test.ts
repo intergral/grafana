@@ -131,7 +131,7 @@ describe('processVariable', () => {
 
           expect(dispatchedActions[0]).toEqual(toKeyedAction(key, variableStateFetching(toVariablePayload(custom))));
           expect(dispatchedActions[1]).toEqual(
-            toKeyedAction(key, createCustomOptionsFromQuery(toVariablePayload(custom)))
+            toKeyedAction(key, createCustomOptionsFromQuery(toVariablePayload(custom, 'A,B,C')))
           );
           expect(dispatchedActions[2].type).toEqual('templating/keyed/shared/setCurrentVariableValue');
           expect(dispatchedActions[3]).toEqual(toKeyedAction(key, variableStateCompleted(toVariablePayload(custom))));
@@ -152,6 +152,21 @@ describe('processVariable', () => {
           .whenAsyncActionIsDispatched(processVariable(toKeyedVariableIdentifier(custom), queryParams), true);
 
         await tester.thenDispatchedActionsShouldEqual(
+          toKeyedAction(key, variableStateFetching(toVariablePayload({ type: 'custom', id: 'custom' }))),
+          toKeyedAction(
+            key,
+            createCustomOptionsFromQuery(toVariablePayload({ type: 'custom', id: 'custom' }, 'A,B,C'))
+          ),
+          toKeyedAction(
+            key,
+            setCurrentVariableValue(
+              toVariablePayload(
+                { type: 'custom', id: 'custom' },
+                { option: { text: 'A', value: 'A', selected: false } }
+              )
+            )
+          ),
+          toKeyedAction(key, variableStateCompleted(toVariablePayload(custom))),
           toKeyedAction(
             key,
             setCurrentVariableValue(
@@ -160,8 +175,7 @@ describe('processVariable', () => {
                 { option: { text: 'B', value: 'B', selected: false } }
               )
             )
-          ),
-          toKeyedAction(key, variableStateCompleted(toVariablePayload(custom)))
+          )
         );
       });
     });

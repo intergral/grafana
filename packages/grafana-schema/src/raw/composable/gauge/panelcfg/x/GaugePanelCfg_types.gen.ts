@@ -4,14 +4,13 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     LatestMajorsOrXJenny
-//     PluginEachMajorJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
 
 import * as common from '@grafana/schema';
 
-export const pluginVersion = "10.2.3";
+export const pluginVersion = "11.0.0";
 
 export interface Options extends common.SingleStatBaseOptions {
   minVizHeight: number;
@@ -22,8 +21,8 @@ export interface Options extends common.SingleStatBaseOptions {
 }
 
 export const defaultOptions: Partial<Options> = {
-  minVizHeight: 200,
-  minVizWidth: 200,
+  minVizHeight: 75,
+  minVizWidth: 75,
   showThresholdLabels: false,
   showThresholdMarkers: true,
   sizing: common.BarGaugeSizing.Auto,

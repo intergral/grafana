@@ -1,9 +1,9 @@
 ---
 aliases:
-  - ../unified-alerting/alerting-rules/edit-cortex-loki-namespace-group/
-    - ../unified-alerting/alerting-rules/edit-mimir-loki-namespace-group/
+  - ../../unified-alerting/alerting-rules/edit-cortex-loki-namespace-group/ # /docs/grafana/<GRAFANA_VERSION>/alerting/unified-alerting/alerting-rules/edit-cortex-loki-namespace-group/
+  - ../../unified-alerting/alerting-rules/edit-mimir-loki-namespace-group/ # /docs/grafana/<GRAFANA_VERSION>/alerting/unified-alerting/alerting-rules/edit-mimir-loki-namespace-group/
 canonical: https://grafana.com/docs/grafana/latest/alerting/fundamentals/alert-rules/organising-alerts/
-description: Namespaces, folders, and groups
+description: Learn about organizing alerts using namespaces, folders, and groups
 keywords:
   - grafana
   - alerting
@@ -14,7 +14,7 @@ labels:
     - enterprise
     - oss
 title: Namespaces, folders, and groups
-weight: 105
+weight: 107
 ---
 
 ## Namespaces, folders, and groups

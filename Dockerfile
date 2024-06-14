@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_IMAGE=alpine:3.18.3
-ARG JS_IMAGE=node:20-alpine3.18
+ARG BASE_IMAGE=alpine:3.19.1
+ARG JS_IMAGE=node:20-alpine
 ARG JS_PLATFORM=linux/amd64
-ARG GO_IMAGE=golang:1.21.3-alpine3.18
+ARG GO_IMAGE=golang:1.21.10-alpine
 
 ARG GO_SRC=go-builder
 ARG JS_SRC=js-builder
@@ -14,16 +14,18 @@ ENV NODE_OPTIONS=--max_old_space_size=8000
 
 WORKDIR /tmp/grafana
 
-COPY package.json yarn.lock .yarnrc.yml ./
+COPY package.json project.json nx.json yarn.lock .yarnrc.yml ./
 COPY .yarn .yarn
 COPY packages packages
 COPY plugins-bundled plugins-bundled
 COPY public public
+COPY LICENSE ./
+
+RUN apk add --no-cache make build-base python3
 
 RUN yarn install --immutable
 
-COPY tsconfig.json .eslintrc .editorconfig .browserslistrc .prettierrc.js babel.config.json ./
-COPY public public
+COPY tsconfig.json .eslintrc .editorconfig .browserslistrc .prettierrc.js ./
 COPY scripts scripts
 COPY emails emails
 
@@ -40,7 +42,7 @@ ARG BINGO="true"
 
 # Install build dependencies
 RUN if grep -i -q alpine /etc/issue; then \
-      apk add --no-cache gcc g++ make git; \
+      apk add --no-cache gcc g++ make git binutils-gold; \
     fi
 
 WORKDIR /tmp/grafana
@@ -50,6 +52,10 @@ COPY .bingo .bingo
 
 # Include vendored dependencies
 COPY pkg/util/xorm/go.* pkg/util/xorm/
+COPY pkg/apiserver/go.* pkg/apiserver/
+COPY pkg/apimachinery/go.* pkg/apimachinery/
+COPY pkg/promlib/go.* pkg/promlib/
+COPY pkg/build/wire/go.* pkg/build/wire/
 
 RUN go mod download
 RUN if [[ "$BINGO" = "true" ]]; then \

@@ -13,7 +13,15 @@ import (
 	"github.com/grafana/grafana/pkg/util/errutil"
 )
 
-var ErrInternal = errutil.Internal("accesscontrol.internal")
+const (
+	CacheHit  = "hit"
+	CacheMiss = "miss"
+)
+
+var (
+	ErrInternal        = errutil.Internal("accesscontrol.internal")
+	CacheUsageStatuses = []string{CacheHit, CacheMiss}
+)
 
 // RoleRegistration stores a role and its assignments to built-in roles
 // (Viewer, Editor, Admin, Grafana Admin)
@@ -62,6 +70,7 @@ func (r Role) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// swagger:ignore
 type RoleDTO struct {
 	Version     int64        `json:"version"`
 	UID         string       `xorm:"uid" json:"uid"`
@@ -133,6 +142,12 @@ func (r *RoleDTO) IsBasic() bool {
 
 func (r *RoleDTO) IsExternalService() bool {
 	return strings.HasPrefix(r.Name, ExternalServiceRolePrefix) || strings.HasPrefix(r.UID, ExternalServiceRoleUIDPrefix)
+}
+
+// swagger:model RoleDTO
+type RoleDTOStatic struct {
+	RoleDTO
+	Global bool `json:"global" xorm:"-"`
 }
 
 func (r RoleDTO) MarshalJSON() ([]byte, error) {
@@ -315,6 +330,7 @@ func (cmd *SaveExternalServiceRoleCommand) Validate() error {
 
 const (
 	GlobalOrgID      = 0
+	NoOrgID          = int64(-1)
 	GeneralFolderUID = "general"
 	RoleGrafanaAdmin = "Grafana Admin"
 
@@ -325,9 +341,8 @@ const (
 	ActionAPIKeyDelete = "apikeys:delete"
 
 	// Users actions
-	ActionUsersRead        = "users:read"
-	ActionUsersWrite       = "users:write"
-	ActionUsersImpersonate = "users:impersonate"
+	ActionUsersRead  = "users:read"
+	ActionUsersWrite = "users:write"
 
 	// We can ignore gosec G101 since this does not contain any credentials.
 	// nolint:gosec
@@ -429,6 +444,15 @@ const (
 	ActionAlertingNotificationsRead  = "alert.notifications:read"
 	ActionAlertingNotificationsWrite = "alert.notifications:write"
 
+	// Alerting notifications time interval actions
+	ActionAlertingNotificationsTimeIntervalsRead  = "alert.notifications.time-intervals:read"
+	ActionAlertingNotificationsTimeIntervalsWrite = "alert.notifications.time-intervals:write"
+
+	// Alerting receiver actions
+	ActionAlertingReceiversList        = "alert.notifications.receivers:list"
+	ActionAlertingReceiversRead        = "alert.notifications.receivers:read"
+	ActionAlertingReceiversReadSecrets = "alert.notifications.receivers.secrets:read"
+
 	// External alerting rule actions. We can only narrow it down to writes or reads, as we don't control the atomicity in the external system.
 	ActionAlertingRuleExternalWrite = "alert.rules.external:write"
 	ActionAlertingRuleExternalRead  = "alert.rules.external:read"
@@ -442,9 +466,16 @@ const (
 	ActionAlertingNotificationsExternalRead  = "alert.notifications.external:read"
 
 	// Alerting provisioning actions
-	ActionAlertingProvisioningRead        = "alert.provisioning:read"
-	ActionAlertingProvisioningReadSecrets = "alert.provisioning.secrets:read"
-	ActionAlertingProvisioningWrite       = "alert.provisioning:write"
+	ActionAlertingProvisioningRead               = "alert.provisioning:read"
+	ActionAlertingProvisioningReadSecrets        = "alert.provisioning.secrets:read"
+	ActionAlertingProvisioningWrite              = "alert.provisioning:write"
+	ActionAlertingRulesProvisioningRead          = "alert.rules.provisioning:read"
+	ActionAlertingRulesProvisioningWrite         = "alert.rules.provisioning:write"
+	ActionAlertingNotificationsProvisioningRead  = "alert.notifications.provisioning:read"
+	ActionAlertingNotificationsProvisioningWrite = "alert.notifications.provisioning:write"
+
+	// ActionAlertingProvisioningSetStatus Gives access to set provisioning status to alerting resources. Cannot be used alone. Only in conjunction with other permissions.
+	ActionAlertingProvisioningSetStatus = "alert.provisioning.provenance:write"
 
 	// Feature Management actions
 	ActionFeatureManagementRead  = "featuremgmt.read"
@@ -500,6 +531,7 @@ var TeamsAccessEvaluator = EvalAny(
 		EvalAny(
 			EvalPermission(ActionTeamsWrite),
 			EvalPermission(ActionTeamsPermissionsWrite),
+			EvalPermission(ActionTeamsPermissionsRead),
 		),
 	),
 )
@@ -538,3 +570,8 @@ var OrgsCreateAccessEvaluator = EvalAll(
 
 // ApiKeyAccessEvaluator is used to protect the "Configuration > API keys" page access
 var ApiKeyAccessEvaluator = EvalPermission(ActionAPIKeyRead)
+
+type QueryWithOrg struct {
+	OrgId  *int64 `json:"orgId"`
+	Global bool   `json:"global"`
+}
