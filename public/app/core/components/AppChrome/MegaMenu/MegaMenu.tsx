@@ -46,49 +46,56 @@ export const MegaMenu = React.memo(
       });
     };
 
-    return (
-      <div data-testid={selectors.components.NavMenu.Menu} ref={ref} {...restProps}>
-        <div className={styles.mobileHeader}>
-          <Icon name="bars" size="xl" />
-          <IconButton
-            tooltip={t('navigation.megamenu.close', 'Close menu')}
-            name="times"
-            onClick={onClose}
-            size="xl"
-            variant="secondary"
-          />
-        </div>
-        <nav className={styles.content}>
-          <CustomScrollbar showScrollIndicators hideHorizontalTrack>
-            <ul className={styles.itemList} aria-label={t('navigation.megamenu.list-label', 'Navigation')}>
-              {navItems.map((link, index) => (
-                <Stack key={link.text} direction={index === 0 ? 'row-reverse' : 'row'} alignItems="center">
-                  {index === 0 && (
-                    <IconButton
-                      id="dock-menu-button"
-                      className={styles.dockMenuButton}
-                      tooltip={
-                        state.megaMenuDocked
-                          ? t('navigation.megamenu.undock', 'Undock menu')
-                          : t('navigation.megamenu.dock', 'Dock menu')
-                      }
-                      name="web-section-alt"
-                      onClick={handleDockedMenu}
-                      variant="secondary"
+    const startState = false
+
+    if (startState){
+      return (
+        <div data-testid={selectors.components.NavMenu.Menu} ref={ref} {...restProps}>
+          <div className={styles.mobileHeader}>
+            <Icon name="bars" size="xl" />
+            <IconButton
+              tooltip={t('navigation.megamenu.close', 'Close menu')}
+              name="times"
+              onClick={onClose}
+              size="xl"
+              variant="secondary"
+            />
+          </div>
+          <nav className={styles.content}>
+            <CustomScrollbar showScrollIndicators hideHorizontalTrack>
+              <ul className={styles.itemList} aria-label={t('navigation.megamenu.list-label', 'Navigation')}>
+                {navItems.map((link, index) => (
+                  <Stack key={link.text} direction={index === 0 ? 'row-reverse' : 'row'} alignItems="center">
+                    {index === 0 && (
+                      <IconButton
+                        id="dock-menu-button"
+                        className={styles.dockMenuButton}
+                        tooltip={
+                          state.megaMenuDocked
+                            ? t('navigation.megamenu.undock', 'Undock menu')
+                            : t('navigation.megamenu.dock', 'Dock menu')
+                        }
+                        name="web-section-alt"
+                        onClick={handleDockedMenu}
+                        variant="secondary"
+                      />
+                    )}
+                    <MegaMenuItem
+                      link={link}
+                      onClick={state.megaMenuDocked ? undefined : onClose}
+                      activeItem={activeItem}
                     />
-                  )}
-                  <MegaMenuItem
-                    link={link}
-                    onClick={state.megaMenuDocked ? undefined : onClose}
-                    activeItem={activeItem}
-                  />
-                </Stack>
-              ))}
-            </ul>
-          </CustomScrollbar>
-        </nav>
-      </div>
-    );
+                  </Stack>
+                ))}
+              </ul>
+            </CustomScrollbar>
+          </nav>
+        </div>
+      );
+    } else {
+      return null;
+    }
+
   })
 );
 
