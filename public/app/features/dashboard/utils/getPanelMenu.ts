@@ -269,7 +269,7 @@ export function getPanelMenu(
     }
   }
 
-  if (isCreateAlertMenuOptionAvailable) {
+  if (isCreateAlertMenuOptionAvailable && false) {
     subMenu.push({
       text: t('panel.header-menu.new-alert-rule', `New alert rule`),
       onClick: onCreateAlert,
@@ -312,7 +312,7 @@ export function getPanelMenu(
   // When editing hide most actions
   if (panel.isEditing) {
     subMenu.length = 0;
-    if (isCreateAlertMenuOptionAvailable) {
+    if (isCreateAlertMenuOptionAvailable && false) {
       subMenu.push({
         text: t('panel.header-menu.new-alert-rule', `New alert rule`),
         onClick: onCreateAlert,

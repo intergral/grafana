@@ -5,14 +5,14 @@ import {
   PluginExtensionPanelContext,
   PluginExtensionPoints,
   getTimeZone,
-  urlUtil,
+
 } from '@grafana/data';
 import { config, getPluginLinkExtensions, locationService } from '@grafana/runtime';
 import { LocalValueVariable, SceneGridRow, VizPanel, VizPanelMenu, sceneGraph } from '@grafana/scenes';
 import { DataQuery, OptionsWithLegend } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
 import { t } from 'app/core/internationalization';
-import { scenesPanelToRuleFormValues } from 'app/features/alerting/unified/utils/rule-form';
+// import { scenesPanelToRuleFormValues } from 'app/features/alerting/unified/utils/rule-form';
 import { shareDashboardType } from 'app/features/dashboard/components/ShareModal/utils';
 import { InspectTab } from 'app/features/inspector/types';
 import { getScenePanelLinksSupplier } from 'app/features/panel/panellinks/linkSuppliers';
@@ -139,10 +139,10 @@ export function panelMenuBehavior(menu: VizPanelMenu, isRepeat = false) {
       }
     }
 
-    moreSubMenu.push({
-      text: t('panel.header-menu.new-alert-rule', `New alert rule`),
-      onClick: (e) => onCreateAlert(panel),
-    });
+    // moreSubMenu.push({
+    //   text: t('panel.header-menu.new-alert-rule', `New alert rule`),
+    //   onClick: (e) => onCreateAlert(panel),
+    // });
 
     if (hasLegendOptions(panel.state.options) && !isEditingPanel) {
       moreSubMenu.push({
@@ -404,19 +404,19 @@ export function onRemovePanel(dashboard: DashboardScene, panel: VizPanel) {
   );
 }
 
-const onCreateAlert = async (panel: VizPanel) => {
-  DashboardInteractions.panelMenuItemClicked('create-alert');
-
-  const formValues = await scenesPanelToRuleFormValues(panel);
-  const ruleFormUrl = urlUtil.renderUrl('/alerting/new', {
-    defaults: JSON.stringify(formValues),
-    returnTo: location.pathname + location.search,
-  });
-
-  locationService.push(ruleFormUrl);
-
-  DashboardInteractions.panelMenuItemClicked('create-alert');
-};
+// const onCreateAlert = async (panel: VizPanel) => {
+//   DashboardInteractions.panelMenuItemClicked('create-alert');
+//
+//   const formValues = await scenesPanelToRuleFormValues(panel);
+//   const ruleFormUrl = urlUtil.renderUrl('/alerting/new', {
+//     defaults: JSON.stringify(formValues),
+//     returnTo: location.pathname + location.search,
+//   });
+//
+//   locationService.push(ruleFormUrl);
+//
+//   DashboardInteractions.panelMenuItemClicked('create-alert');
+// };
 
 export function toggleVizPanelLegend(vizPanel: VizPanel): void {
   const options = vizPanel.state.options;
