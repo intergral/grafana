@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 
 import { GrafanaTheme2, CoreApp, DataFrame } from '@grafana/data';
 import { reportInteraction } from '@grafana/runtime';
-import { Icon, useTheme2 } from '@grafana/ui';
+import { useTheme2 } from '@grafana/ui';
 
 import { config } from '../../../../../../core/config';
 import { downloadTraceAsJson } from '../../../../../inspector/utils/download';
@@ -12,21 +12,22 @@ import ActionButton from './ActionButton';
 
 export const getStyles = (theme: GrafanaTheme2) => {
   return {
-    TracePageActions: css`
-      label: TracePageActions;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    `,
-    feedback: css`
-      margin: 6px;
-      color: ${theme.colors.text.secondary};
-      font-size: ${theme.typography.bodySmall.fontSize};
-      &:hover {
-        color: ${theme.colors.text.link};
-      }
-    `,
+    TracePageActions: css({
+      label: 'TracePageActions',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '4px',
+      marginBottom: '10px',
+    }),
+    feedback: css({
+      margin: '6px 6px 6px 0',
+      color: theme.colors.text.secondary,
+      fontSize: theme.typography.bodySmall.fontSize,
+      '&:hover': {
+        color: theme.colors.text.link,
+      },
+    }),
   };
 };
 

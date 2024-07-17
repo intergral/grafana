@@ -1,10 +1,12 @@
 import { NavModelItem } from '@grafana/data';
 import { enrichHelpItem } from 'app/core/components/AppChrome/MegaMenu/utils';
 import { t } from 'app/core/internationalization';
-import { changeTheme } from 'app/core/services/theme';
+// import { changeTheme } from 'app/core/services/theme';
 
 import { CommandPaletteAction } from '../types';
-import { ACTIONS_PRIORITY, DEFAULT_PRIORITY, PREFERENCES_PRIORITY } from '../values';
+import { ACTIONS_PRIORITY, DEFAULT_PRIORITY } from '../values';
+
+// import getExtensionActions from './extensionActions';
 
 // TODO: Clean this once ID is mandatory on nav items
 function idForNavItem(navItem: NavModelItem) {
@@ -20,11 +22,23 @@ function navTreeToActions(navTree: NavModelItem[], parents: NavModelItem[] = [])
       navItem = enrichHelpItem({ ...navItem });
       delete navItem.url;
     }
-    const { url, target, text, isCreateAction, children, onClick } = navItem;
+    const { url, target, text, isCreateAction, children, onClick, keywords } = navItem;
     const hasChildren = Boolean(children?.length);
 
     if (!(url || onClick || hasChildren)) {
       continue;
+    }
+
+    let urlOrCallback: CommandPaletteAction['url'] = url;
+    if (
+      url &&
+      (navItem.id === 'connections-add-new-connection' ||
+        navItem.id === 'standalone-plugin-page-/connections/add-new-connection')
+    ) {
+      urlOrCallback = (searchQuery: string) => {
+        const matchingKeyword = keywords?.find((keyword) => keyword.toLowerCase().includes(searchQuery.toLowerCase()));
+        return matchingKeyword ? `${url}?search=${matchingKeyword}` : url;
+      };
     }
 
     const section = isCreateAction
@@ -37,12 +51,13 @@ function navTreeToActions(navTree: NavModelItem[], parents: NavModelItem[] = [])
     const action: CommandPaletteAction = {
       id: idForNavItem(navItem),
       name: text,
-      section: section,
-      url,
+      section,
+      url: urlOrCallback,
       target,
       parent: parents.length > 0 && !isCreateAction ? idForNavItem(parents[parents.length - 1]) : undefined,
       perform: onClick,
-      priority: priority,
+      keywords: keywords?.join(' '),
+      priority,
       subtitle: isCreateAction ? undefined : subtitle,
     };
 
@@ -58,32 +73,33 @@ function navTreeToActions(navTree: NavModelItem[], parents: NavModelItem[] = [])
 }
 
 export default (navBarTree: NavModelItem[]): CommandPaletteAction[] => {
-  const globalActions: CommandPaletteAction[] = [
-    {
-      id: 'preferences/theme',
-      name: t('command-palette.action.change-theme', 'Change theme...'),
-      keywords: 'interface color dark light',
-      section: t('command-palette.section.preferences', 'Preferences'),
-      priority: PREFERENCES_PRIORITY,
-    },
-    {
-      id: 'preferences/dark-theme',
-      name: t('command-palette.action.dark-theme', 'Dark'),
-      keywords: 'dark theme',
-      perform: () => changeTheme('dark'),
-      parent: 'preferences/theme',
-      priority: PREFERENCES_PRIORITY,
-    },
-    {
-      id: 'preferences/light-theme',
-      name: t('command-palette.action.light-theme', 'Light'),
-      keywords: 'light theme',
-      perform: () => changeTheme('light'),
-      parent: 'preferences/theme',
-      priority: PREFERENCES_PRIORITY,
-    },
-  ];
+  // const globalActions: CommandPaletteAction[] = [
+  //   {
+  //     id: 'preferences/theme',
+  //     name: t('command-palette.action.change-theme', 'Change theme...'),
+  //     keywords: 'interface color dark light',
+  //     section: t('command-palette.section.preferences', 'Preferences'),
+  //     priority: PREFERENCES_PRIORITY,
+  //   },
+  //   {
+  //     id: 'preferences/dark-theme',
+  //     name: t('command-palette.action.dark-theme', 'Dark'),
+  //     keywords: 'dark theme',
+  //     perform: () => changeTheme('dark'),
+  //     parent: 'preferences/theme',
+  //     priority: PREFERENCES_PRIORITY,
+  //   },
+  //   {
+  //     id: 'preferences/light-theme',
+  //     name: t('command-palette.action.light-theme', 'Light'),
+  //     keywords: 'light theme',
+  //     perform: () => changeTheme('light'),
+  //     parent: 'preferences/theme',
+  //     priority: PREFERENCES_PRIORITY,
+  //   },
+  // ];
 
+  // const extensionActions = getExtensionActions();
   const navBarActions = navTreeToActions(navBarTree);
 
   return [...navBarActions];
