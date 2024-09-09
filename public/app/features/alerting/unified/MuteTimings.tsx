@@ -1,75 +1,53 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Route, Redirect, Switch, useRouteMatch } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom';
 
 import { NavModelItem } from '@grafana/data';
-import { Alert } from '@grafana/ui';
-import { useQueryParams } from 'app/core/hooks/useQueryParams';
-import { MuteTimeInterval } from 'app/plugins/datasource/alertmanager/types';
+import { useGetMuteTiming } from 'app/features/alerting/unified/components/mute-timings/useMuteTimings';
+import { useURLSearchParams } from 'app/features/alerting/unified/hooks/useURLSearchParams';
 
 import { AlertmanagerPageWrapper } from './components/AlertingPageWrapper';
 import MuteTimingForm from './components/mute-timings/MuteTimingForm';
-import { useAlertmanagerConfig } from './hooks/useAlertmanagerConfig';
 import { useAlertmanager } from './state/AlertmanagerContext';
 
-const MuteTimings = () => {
-  const [queryParams] = useQueryParams();
+const EditTimingRoute = () => {
+  const [queryParams] = useURLSearchParams();
   const { selectedAlertmanager } = useAlertmanager();
-  const { currentData, isLoading, error } = useAlertmanagerConfig(selectedAlertmanager, {
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
+  const name = queryParams.get('muteName')!;
+  const {
+    isLoading,
+    data: timeInterval,
+    isError,
+  } = useGetMuteTiming({
+    alertmanager: selectedAlertmanager!,
+    name,
   });
-  const config = currentData?.alertmanager_config;
 
-  const getMuteTimingByName = useCallback(
-    (id: string): MuteTimeInterval | undefined => {
-      const timing = config?.mute_time_intervals?.find(({ name }: MuteTimeInterval) => name === id);
-
-      if (timing) {
-        const provenance = config?.muteTimeProvenances?.[timing.name];
-
-        return {
-          ...timing,
-          provenance,
-        };
-      }
-
-      return timing;
-    },
-    [config]
-  );
+  if (!name) {
+    return <Redirect to="/alerting/routes" />;
+  }
 
   return (
-    <>
-      {error && !isLoading && !currentData && (
-        <Alert severity="error" title={`Error loading Alertmanager config for ${selectedAlertmanager}`}>
-          {error.message || 'Unknown error.'}
-        </Alert>
-      )}
-      {currentData && !error && (
-        <Switch>
-          <Route exact path="/alerting/routes/mute-timing/new">
-            <MuteTimingForm loading={isLoading} />
-          </Route>
-          <Route exact path="/alerting/routes/mute-timing/edit">
-            {() => {
-              if (queryParams['muteName']) {
-                const muteTiming = getMuteTimingByName(String(queryParams['muteName']));
-                const provenance = muteTiming?.provenance;
+    <MuteTimingForm
+      editMode
+      loading={isLoading}
+      showError={isError}
+      muteTiming={timeInterval}
+      provisioned={timeInterval?.provisioned}
+    />
+  );
+};
 
-                return (
-                  <MuteTimingForm
-                    loading={isLoading}
-                    muteTiming={muteTiming}
-                    showError={!muteTiming && !isLoading}
-                    provenance={provenance}
-                  />
-                );
-              }
-              return <Redirect to="/alerting/routes" />;
-            }}
-          </Route>
-        </Switch>
-      )}
+const MuteTimings = () => {
+  return (
+    <>
+      <Switch>
+        <Route exact path="/alerting/routes/mute-timing/new">
+          <MuteTimingForm />
+        </Route>
+        <Route exact path="/alerting/routes/mute-timing/edit">
+          <EditTimingRoute />
+        </Route>
+      </Switch>
     </>
   );
 };
@@ -78,7 +56,7 @@ const MuteTimingsPage = () => {
   const pageNav = useMuteTimingNavData();
 
   return (
-    <AlertmanagerPageWrapper pageId="am-routes" pageNav={pageNav} accessType="notification">
+    <AlertmanagerPageWrapper navId="am-routes" pageNav={pageNav} accessType="notification">
       <MuteTimings />
     </AlertmanagerPageWrapper>
   );

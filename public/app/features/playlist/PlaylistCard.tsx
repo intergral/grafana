@@ -1,9 +1,9 @@
 import { css } from '@emotion/css';
-import React from 'react';
 import Skeleton from 'react-loading-skeleton';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { Button, Card, LinkButton, ModalsController, Stack, useStyles2 } from '@grafana/ui';
+import { attachSkeleton, SkeletonComponent } from '@grafana/ui/src/unstable';
 import { t, Trans } from 'app/core/internationalization';
 import { contextSrv } from 'app/core/services/context_srv';
 import { DashNavButton } from 'app/features/dashboard/components/DashNav/DashNavButton';
@@ -17,7 +17,7 @@ interface Props {
   playlist: Playlist;
 }
 
-export const PlaylistCard = ({ playlist, setStartPlaylist, setPlaylistToDelete }: Props) => {
+const PlaylistCardComponent = ({ playlist, setStartPlaylist, setPlaylistToDelete }: Props) => {
   return (
     <Card>
       <Card.Heading>
@@ -62,10 +62,10 @@ export const PlaylistCard = ({ playlist, setStartPlaylist, setPlaylistToDelete }
   );
 };
 
-const PlaylistCardSkeleton = () => {
+const PlaylistCardSkeleton: SkeletonComponent = ({ rootProps }) => {
   const skeletonStyles = useStyles2(getSkeletonStyles);
   return (
-    <Card>
+    <Card {...rootProps}>
       <Card.Heading>
         <Skeleton width={140} />
       </Card.Heading>
@@ -84,7 +84,7 @@ const PlaylistCardSkeleton = () => {
   );
 };
 
-PlaylistCard.Skeleton = PlaylistCardSkeleton;
+export const PlaylistCard = attachSkeleton(PlaylistCardComponent, PlaylistCardSkeleton);
 
 function getSkeletonStyles(theme: GrafanaTheme2) {
   return {

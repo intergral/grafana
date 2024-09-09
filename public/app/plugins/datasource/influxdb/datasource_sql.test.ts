@@ -1,17 +1,12 @@
 import { lastValueFrom } from 'rxjs';
 
+import { SQLQuery } from '@grafana/sql';
 import config from 'app/core/config';
 
-import { SQLQuery } from '../../../features/plugins/sql';
-
+import { getMockDSInstanceSettings, mockBackendService, mockTemplateSrv } from './__mocks__/datasource';
+import { mockInfluxQueryRequest } from './__mocks__/request';
+import { mockInfluxSQLFetchResponse } from './__mocks__/response';
 import InfluxDatasource from './datasource';
-import {
-  getMockDSInstanceSettings,
-  mockBackendService,
-  mockInfluxQueryRequest,
-  mockInfluxSQLFetchResponse,
-  mockTemplateSrv,
-} from './mocks';
 import { InfluxVersion } from './types';
 
 config.featureToggles.influxdbBackendMigration = true;
@@ -19,7 +14,7 @@ mockBackendService(mockInfluxSQLFetchResponse);
 
 describe('InfluxDB SQL Support', () => {
   const replaceMock = jest.fn();
-  const templateSrv = mockTemplateSrv(jest.fn(), replaceMock);
+  const templateSrv = mockTemplateSrv(replaceMock);
 
   let sqlQuery: SQLQuery;
 

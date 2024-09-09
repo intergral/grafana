@@ -1,5 +1,6 @@
 import { reportInteraction } from '@grafana/runtime';
-import { InspectTab } from 'app/features/inspector/types';
+
+let isScenesContextSet = false;
 
 export const DashboardInteractions = {
   // Dashboard interactions:
@@ -7,29 +8,6 @@ export const DashboardInteractions = {
     reportDashboardInteraction('init_dashboard_completed', { ...properties });
   },
 
-  // Panel interactions:
-  panelMenuShown: (properties?: Record<string, unknown>) => {
-    reportDashboardInteraction('panelheader_menu', { ...properties, item: 'menu' });
-  },
-  panelMenuItemClicked: (
-    item:
-      | 'view'
-      | 'edit'
-      | 'share'
-      | 'createLibraryPanel'
-      | 'unlinkLibraryPanel'
-      | 'duplicate'
-      | 'copy'
-      | 'remove'
-      | 'explore'
-      | 'toggleLegend'
-      | 'create-alert'
-  ) => {
-    reportDashboardInteraction('panelheader_menu', { item });
-  },
-  panelMenuInspectClicked(tab: InspectTab) {
-    reportDashboardInteraction('panelheader_menu', { item: 'inspect', tab });
-  },
   panelLinkClicked: (properties?: Record<string, unknown>) => {
     reportDashboardInteraction('panelheader_datalink_clicked', properties);
   },
@@ -39,12 +17,23 @@ export const DashboardInteractions = {
   panelCancelQueryClicked: (properties?: Record<string, unknown>) => {
     reportDashboardInteraction('panelheader_cancelquery_clicked', properties);
   },
-  panelDescriptionShown: (properties?: Record<string, unknown>) => {
-    reportDashboardInteraction('panelheader_description_displayed', properties);
+
+  // Dashboard interactions from toolbar
+  toolbarFavoritesClick: () => {
+    reportDashboardInteraction('toolbar_actions_clicked', { item: 'favorites' });
+  },
+  toolbarSettingsClick: () => {
+    reportDashboardInteraction('toolbar_actions_clicked', { item: 'settings' });
+  },
+  toolbarShareClick: () => {
+    reportDashboardInteraction('toolbar_actions_clicked', { item: 'share' });
+  },
+  toolbarAddClick: () => {
+    reportDashboardInteraction('toolbar_actions_clicked', { item: 'add' });
   },
 
   // Sharing interactions:
-  sharingTabChanged: (properties?: Record<string, unknown>) => {
+  sharingCategoryClicked: (properties?: Record<string, unknown>) => {
     reportDashboardInteraction('sharing_category_clicked', properties);
   },
   shareLinkCopied: (properties?: Record<string, unknown>) => {
@@ -111,37 +100,20 @@ export const DashboardInteractions = {
   toolbarAddButtonClicked: (properties?: Record<string, unknown>) => {
     reportDashboardInteraction('toolbar_add_clicked', properties);
   },
-  toolbarFavoritesClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'favorites' });
-  },
-  toolbarSettingsClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'settings' });
-  },
-  toolbarRefreshClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'refresh' });
-  },
-  toolbarTimePickerClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'time_picker' });
-  },
-  toolbarZoomClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'zoom_out_time_range' });
-  },
+  setScenesContext: () => {
+    isScenesContextSet = true;
 
-  toolbarShareClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'share' });
-  },
-  toolbarSaveClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'save' });
-  },
-
-  toolbarAddClick: () => {
-    reportDashboardInteraction('toolbar_actions_clicked', { item: 'add' });
+    return () => {
+      isScenesContextSet = false;
+    };
   },
 };
 
 const reportDashboardInteraction: typeof reportInteraction = (name, properties) => {
+  const meta = isScenesContextSet ? { scenesView: true } : {};
+
   if (properties) {
-    reportInteraction(`dashboards_${name}`, properties);
+    reportInteraction(`dashboards_${name}`, { ...properties, ...meta });
   } else {
     reportInteraction(`dashboards_${name}`);
   }

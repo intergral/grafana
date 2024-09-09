@@ -14,10 +14,10 @@ import (
 
 	"github.com/grafana/grafana/pkg/plugins"
 	"github.com/grafana/grafana/pkg/plugins/backendplugin"
+	"github.com/grafana/grafana/pkg/plugins/instrumentationutils"
 	"github.com/grafana/grafana/pkg/plugins/manager/client/clienttest"
 	"github.com/grafana/grafana/pkg/plugins/manager/fakes"
 	"github.com/grafana/grafana/pkg/plugins/pluginrequestmeta"
-	"github.com/grafana/grafana/pkg/services/featuremgmt"
 )
 
 const (
@@ -33,12 +33,12 @@ func TestInstrumentationMiddleware(t *testing.T) {
 	pCtx := backend.PluginContext{PluginID: pluginID}
 	t.Run("should instrument requests", func(t *testing.T) {
 		for _, tc := range []struct {
-			expEndpoint                 string
+			expEndpoint                 backend.Endpoint
 			fn                          func(cdt *clienttest.ClientDecoratorTest) error
 			shouldInstrumentRequestSize bool
 		}{
 			{
-				expEndpoint: endpointCheckHealth,
+				expEndpoint: backend.EndpointCheckHealth,
 				fn: func(cdt *clienttest.ClientDecoratorTest) error {
 					_, err := cdt.Decorator.CheckHealth(context.Background(), &backend.CheckHealthRequest{PluginContext: pCtx})
 					return err
@@ -46,14 +46,14 @@ func TestInstrumentationMiddleware(t *testing.T) {
 				shouldInstrumentRequestSize: false,
 			},
 			{
-				expEndpoint: endpointCallResource,
+				expEndpoint: backend.EndpointCallResource,
 				fn: func(cdt *clienttest.ClientDecoratorTest) error {
 					return cdt.Decorator.CallResource(context.Background(), &backend.CallResourceRequest{PluginContext: pCtx}, nopCallResourceSender)
 				},
 				shouldInstrumentRequestSize: true,
 			},
 			{
-				expEndpoint: endpointQueryData,
+				expEndpoint: backend.EndpointQueryData,
 				fn: func(cdt *clienttest.ClientDecoratorTest) error {
 					_, err := cdt.Decorator.QueryData(context.Background(), &backend.QueryDataRequest{PluginContext: pCtx})
 					return err
@@ -61,7 +61,7 @@ func TestInstrumentationMiddleware(t *testing.T) {
 				shouldInstrumentRequestSize: true,
 			},
 			{
-				expEndpoint: endpointCollectMetrics,
+				expEndpoint: backend.EndpointCollectMetrics,
 				fn: func(cdt *clienttest.ClientDecoratorTest) error {
 					_, err := cdt.Decorator.CollectMetrics(context.Background(), &backend.CollectMetricsRequest{PluginContext: pCtx})
 					return err
@@ -69,14 +69,14 @@ func TestInstrumentationMiddleware(t *testing.T) {
 				shouldInstrumentRequestSize: false,
 			},
 		} {
-			t.Run(tc.expEndpoint, func(t *testing.T) {
+			t.Run(string(tc.expEndpoint), func(t *testing.T) {
 				promRegistry := prometheus.NewRegistry()
 				pluginsRegistry := fakes.NewFakePluginRegistry()
 				require.NoError(t, pluginsRegistry.Add(context.Background(), &plugins.Plugin{
 					JSONData: plugins.JSONData{ID: pluginID, Backend: true},
 				}))
 
-				mw := newMetricsMiddleware(promRegistry, pluginsRegistry, featuremgmt.WithFeatures())
+				mw := newMetricsMiddleware(promRegistry, pluginsRegistry)
 				cdt := clienttest.NewClientDecoratorTest(t, clienttest.WithMiddlewares(
 					plugins.ClientMiddlewareFunc(func(next plugins.Client) plugins.Client {
 						mw.next = next
@@ -90,12 +90,12 @@ func TestInstrumentationMiddleware(t *testing.T) {
 				require.Equal(t, 1, testutil.CollectAndCount(promRegistry, metricRequestDurationMs))
 				require.Equal(t, 1, testutil.CollectAndCount(promRegistry, metricRequestDurationS))
 
-				counter := mw.pluginMetrics.pluginRequestCounter.WithLabelValues(pluginID, tc.expEndpoint, requestStatusOK.String(), string(backendplugin.TargetUnknown))
+				counter := mw.pluginMetrics.pluginRequestCounter.WithLabelValues(pluginID, string(tc.expEndpoint), instrumentationutils.RequestStatusOK.String(), string(backendplugin.TargetUnknown), string(pluginrequestmeta.DefaultStatusSource))
 				require.Equal(t, 1.0, testutil.ToFloat64(counter))
 				for _, m := range []string{metricRequestDurationMs, metricRequestDurationS} {
 					require.NoError(t, checkHistogram(promRegistry, m, map[string]string{
 						"plugin_id": pluginID,
-						"endpoint":  tc.expEndpoint,
+						"endpoint":  string(tc.expEndpoint),
 						"target":    string(backendplugin.TargetUnknown),
 					}))
 				}
@@ -103,7 +103,7 @@ func TestInstrumentationMiddleware(t *testing.T) {
 					require.Equal(t, 1, testutil.CollectAndCount(promRegistry, metricRequestSize), "request size should have been instrumented")
 					require.NoError(t, checkHistogram(promRegistry, metricRequestSize, map[string]string{
 						"plugin_id": pluginID,
-						"endpoint":  tc.expEndpoint,
+						"endpoint":  string(tc.expEndpoint),
 						"target":    string(backendplugin.TargetUnknown),
 						"source":    "grafana-backend",
 					}), "request size should have been instrumented")
@@ -115,16 +115,10 @@ func TestInstrumentationMiddleware(t *testing.T) {
 
 func TestInstrumentationMiddlewareStatusSource(t *testing.T) {
 	const labelStatusSource = "status_source"
-	queryDataOKCounterLabels := prometheus.Labels{
-		"plugin_id": pluginID,
-		"endpoint":  endpointQueryData,
-		"status":    requestStatusOK.String(),
-		"target":    string(backendplugin.TargetUnknown),
-	}
 	queryDataErrorCounterLabels := prometheus.Labels{
 		"plugin_id": pluginID,
-		"endpoint":  endpointQueryData,
-		"status":    requestStatusError.String(),
+		"endpoint":  string(backend.EndpointQueryData),
+		"status":    instrumentationutils.RequestStatusError.String(),
 		"target":    string(backendplugin.TargetUnknown),
 	}
 	downstreamErrorResponse := backend.DataResponse{
@@ -159,8 +153,7 @@ func TestInstrumentationMiddlewareStatusSource(t *testing.T) {
 	require.NoError(t, pluginsRegistry.Add(context.Background(), &plugins.Plugin{
 		JSONData: plugins.JSONData{ID: pluginID, Backend: true},
 	}))
-	features := featuremgmt.WithFeatures(featuremgmt.FlagPluginsInstrumentationStatusSource)
-	metricsMw := newMetricsMiddleware(promRegistry, pluginsRegistry, features)
+	metricsMw := newMetricsMiddleware(promRegistry, pluginsRegistry)
 	cdt := clienttest.NewClientDecoratorTest(t, clienttest.WithMiddlewares(
 		NewPluginRequestMetaMiddleware(),
 		plugins.ClientMiddlewareFunc(func(next plugins.Client) plugins.Client {
@@ -171,53 +164,21 @@ func TestInstrumentationMiddlewareStatusSource(t *testing.T) {
 	))
 
 	t.Run("Metrics", func(t *testing.T) {
-		t.Run("Should ignore ErrorSource if feature flag is disabled", func(t *testing.T) {
-			// Use different middleware without feature flag
-			metricsMw := newMetricsMiddleware(prometheus.NewRegistry(), pluginsRegistry, featuremgmt.WithFeatures())
-			cdt := clienttest.NewClientDecoratorTest(t, clienttest.WithMiddlewares(
-				plugins.ClientMiddlewareFunc(func(next plugins.Client) plugins.Client {
-					metricsMw.next = next
-					return metricsMw
-				}),
-			))
+		metricsMw.pluginMetrics.pluginRequestCounter.Reset()
 
-			cdt.TestClient.QueryDataFunc = func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-				return &backend.QueryDataResponse{Responses: map[string]backend.DataResponse{"A": downstreamErrorResponse}}, nil
-			}
-			_, err := cdt.Decorator.QueryData(context.Background(), &backend.QueryDataRequest{PluginContext: pCtx})
-			require.NoError(t, err)
-			counter, err := metricsMw.pluginMetrics.pluginRequestCounter.GetMetricWith(newLabels(queryDataErrorCounterLabels, nil))
-			require.NoError(t, err)
-			require.Equal(t, 1.0, testutil.ToFloat64(counter))
-
-			// error_source should not be defined at all
-			_, err = metricsMw.pluginMetrics.pluginRequestCounter.GetMetricWith(newLabels(
-				queryDataOKCounterLabels,
-				prometheus.Labels{
-					labelStatusSource: string(backend.ErrorSourceDownstream),
-				}),
-			)
-			require.Error(t, err)
-			require.ErrorContains(t, err, "inconsistent label cardinality")
-		})
-
-		t.Run("Should add error_source label if feature flag is enabled", func(t *testing.T) {
-			metricsMw.pluginMetrics.pluginRequestCounter.Reset()
-
-			cdt.TestClient.QueryDataFunc = func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-				return &backend.QueryDataResponse{Responses: map[string]backend.DataResponse{"A": downstreamErrorResponse}}, nil
-			}
-			_, err := cdt.Decorator.QueryData(context.Background(), &backend.QueryDataRequest{PluginContext: pCtx})
-			require.NoError(t, err)
-			counter, err := metricsMw.pluginMetrics.pluginRequestCounter.GetMetricWith(newLabels(
-				queryDataErrorCounterLabels,
-				prometheus.Labels{
-					labelStatusSource: string(backend.ErrorSourceDownstream),
-				}),
-			)
-			require.NoError(t, err)
-			require.Equal(t, 1.0, testutil.ToFloat64(counter))
-		})
+		cdt.TestClient.QueryDataFunc = func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+			return &backend.QueryDataResponse{Responses: map[string]backend.DataResponse{"A": downstreamErrorResponse}}, nil
+		}
+		_, err := cdt.Decorator.QueryData(context.Background(), &backend.QueryDataRequest{PluginContext: pCtx})
+		require.NoError(t, err)
+		counter, err := metricsMw.pluginMetrics.pluginRequestCounter.GetMetricWith(newLabels(
+			queryDataErrorCounterLabels,
+			prometheus.Labels{
+				labelStatusSource: string(backend.ErrorSourceDownstream),
+			}),
+		)
+		require.NoError(t, err)
+		require.Equal(t, 1.0, testutil.ToFloat64(counter))
 	})
 
 	t.Run("Priority", func(t *testing.T) {

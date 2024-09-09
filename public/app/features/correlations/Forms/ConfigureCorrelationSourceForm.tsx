@@ -1,5 +1,4 @@
 import { css } from '@emotion/css';
-import React from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
@@ -12,6 +11,7 @@ import { getVariableUsageInfo } from '../../explore/utils/links';
 
 import { TransformationsEditor } from './TransformationsEditor';
 import { useCorrelationsFormContext } from './correlationsFormContext';
+import { FormDTO } from './types';
 import { getInputId } from './utils';
 
 const getStyles = (theme: GrafanaTheme2) => ({
@@ -25,7 +25,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
 });
 
 export const ConfigureCorrelationSourceForm = () => {
-  const { control, formState, register, getValues } = useFormContext();
+  const { control, formState, register, getValues } = useFormContext<FormDTO>();
   const styles = useStyles2(getStyles);
   const withDsUID = (fn: Function) => (ds: DataSourceInstanceSettings) => fn(ds.uid);
 
@@ -49,7 +49,7 @@ export const ConfigureCorrelationSourceForm = () => {
     );
   }
 
-  const dataSourceName = getDatasourceSrv().getInstanceSettings(correlation?.targetUID)?.name;
+  const dataSourceName = getDatasourceSrv().getInstanceSettings(getValues('targetUID'))?.name;
   return (
     <>
       <FieldSet

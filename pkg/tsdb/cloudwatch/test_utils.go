@@ -2,6 +2,7 @@ package cloudwatch
 
 import (
 	"context"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -16,7 +17,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
 	"github.com/grafana/grafana-aws-sdk/pkg/awsds"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana/pkg/setting"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/experimental/featuretoggles"
+	"github.com/grafana/grafana/pkg/tsdb/cloudwatch/models"
+	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -115,20 +120,6 @@ func (c *fakeCWAnnotationsClient) DescribeAlarms(params *cloudwatch.DescribeAlar
 	return c.describeAlarmsOutput, nil
 }
 
-type mockEC2Client struct {
-	mock.Mock
-}
-
-func (c *mockEC2Client) DescribeRegionsWithContext(ctx aws.Context, in *ec2.DescribeRegionsInput, option ...request.Option) (*ec2.DescribeRegionsOutput, error) {
-	args := c.Called(in)
-	return args.Get(0).(*ec2.DescribeRegionsOutput), args.Error(1)
-}
-
-func (c *mockEC2Client) DescribeInstancesPagesWithContext(ctx aws.Context, in *ec2.DescribeInstancesInput, fn func(*ec2.DescribeInstancesOutput, bool) bool, opts ...request.Option) error {
-	args := c.Called(in, fn)
-	return args.Error(0)
-}
-
 // Please use mockEC2Client above, we are slowly migrating towards using testify's mocks only
 type oldEC2Client struct {
 	ec2iface.EC2API
@@ -212,29 +203,42 @@ func (c fakeCheckHealthClient) GetLogGroupFieldsWithContext(ctx context.Context,
 	return nil, nil
 }
 
-func newTestConfig() *setting.Cfg {
-	return &setting.Cfg{AWSAllowedAuthProviders: []string{"default"}, AWSAssumeRoleEnabled: true, AWSListMetricsPageLimit: 1000}
+func testInstanceManager(pageLimit int) instancemgmt.InstanceManager {
+	return datasource.NewInstanceManager((func(ctx context.Context, s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+		return DataSource{Settings: models.CloudWatchSettings{
+			AWSDatasourceSettings: awsds.AWSDatasourceSettings{
+				Region: "us-east-1",
+			},
+			GrafanaSettings: awsds.AuthSettings{ListMetricsPageLimit: pageLimit},
+		},
+			sessions:      &fakeSessionCache{},
+			tagValueCache: cache.New(0, 0)}, nil
+	}))
+}
+
+func defaultTestInstanceManager() instancemgmt.InstanceManager {
+	return testInstanceManager(1000)
 }
 
 type mockSessionCache struct {
 	mock.Mock
 }
 
-func (c *mockSessionCache) GetSession(config awsds.SessionConfig) (*session.Session, error) {
+func (c *mockSessionCache) GetSessionWithAuthSettings(config awsds.GetSessionConfig, auth awsds.AuthSettings) (*session.Session, error) {
 	args := c.Called(config)
 	return args.Get(0).(*session.Session), args.Error(1)
 }
 
 type fakeSessionCache struct {
-	getSession    func(c awsds.SessionConfig) (*session.Session, error)
-	calledRegions []string
+	getSessionWithAuthSettings func(c awsds.GetSessionConfig, a awsds.AuthSettings) (*session.Session, error)
+	calledRegions              []string
 }
 
-func (s *fakeSessionCache) GetSession(c awsds.SessionConfig) (*session.Session, error) {
+func (s *fakeSessionCache) GetSessionWithAuthSettings(c awsds.GetSessionConfig, a awsds.AuthSettings) (*session.Session, error) {
 	s.calledRegions = append(s.calledRegions, c.Settings.Region)
 
-	if s.getSession != nil {
-		return s.getSession(c)
+	if s.getSessionWithAuthSettings != nil {
+		return s.getSessionWithAuthSettings(c, a)
 	}
 	return &session.Session{
 		Config: &aws.Config{},
@@ -269,4 +273,10 @@ func (e fakeAWSError) Code() string {
 
 func (e fakeAWSError) Message() string {
 	return e.message
+}
+
+func contextWithFeaturesEnabled(enabled ...string) context.Context {
+	featureString := strings.Join(enabled, ",")
+	cfg := backend.NewGrafanaCfg(map[string]string{featuretoggles.EnabledFeatures: featureString})
+	return backend.WithGrafanaConfig(context.Background(), cfg)
 }

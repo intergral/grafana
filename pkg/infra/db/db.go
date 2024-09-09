@@ -10,6 +10,8 @@ import (
 	"github.com/grafana/grafana/pkg/services/sqlstore"
 	"github.com/grafana/grafana/pkg/services/sqlstore/migrator"
 	"github.com/grafana/grafana/pkg/services/sqlstore/session"
+	"github.com/grafana/grafana/pkg/services/sqlstore/sqlutil"
+	"github.com/grafana/grafana/pkg/setting"
 )
 
 type DB interface {
@@ -22,9 +24,6 @@ type DB interface {
 	// through [context.Context] or if that's not present, as non-transactional database
 	// operations.
 	WithDbSession(ctx context.Context, callback sqlstore.DBTransactionFunc) error
-	// WithNewDbSession behaves like [DB.WithDbSession] without picking up a transaction
-	// from the context.
-	WithNewDbSession(ctx context.Context, callback sqlstore.DBTransactionFunc) error
 	// GetDialect returns an object that contains information about the peculiarities of
 	// the particular database type available to the runtime.
 	GetDialect() migrator.Dialect
@@ -51,9 +50,27 @@ type DB interface {
 type Session = sqlstore.DBSession
 type InitTestDBOpt = sqlstore.InitTestDBOpt
 
-var InitTestDB = sqlstore.InitTestDB
-var InitTestDBwithCfg = sqlstore.InitTestDBWithCfg
+var SetupTestDB = sqlstore.SetupTestDB
+var CleanupTestDB = sqlstore.CleanupTestDB
 var ProvideService = sqlstore.ProvideService
+
+func InitTestDB(t sqlutil.ITestDB, opts ...InitTestDBOpt) *sqlstore.SQLStore {
+	db, _ := InitTestDBWithCfg(t, opts...)
+	return db
+}
+
+func InitTestReplDBWithCfg(t sqlutil.ITestDB, opts ...InitTestDBOpt) (*sqlstore.ReplStore, *setting.Cfg) {
+	return sqlstore.InitTestReplDB(t, opts...)
+}
+
+func InitTestReplDB(t sqlutil.ITestDB, opts ...InitTestDBOpt) *sqlstore.ReplStore {
+	db, _ := InitTestReplDBWithCfg(t, opts...)
+	return db
+}
+
+func InitTestDBWithCfg(t sqlutil.ITestDB, opts ...InitTestDBOpt) (*sqlstore.SQLStore, *setting.Cfg) {
+	return sqlstore.InitTestDB(t, opts...)
+}
 
 func IsTestDbSQLite() bool {
 	if db, present := os.LookupEnv("GRAFANA_TEST_DB"); !present || db == "sqlite" {

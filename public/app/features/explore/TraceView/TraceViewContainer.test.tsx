@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { Provider } from 'react-redux';
 
 import { configureStore } from '../../../store/configureStore';
@@ -33,14 +32,9 @@ function renderTraceViewContainer(frames = [frameOld]) {
 
 describe('TraceViewContainer', () => {
   let user: ReturnType<typeof userEvent.setup>;
+
   beforeEach(() => {
-    jest.useFakeTimers();
-    // Need to use delay: null here to work with fakeTimers
-    // see https://github.com/testing-library/user-event/issues/833
-    user = userEvent.setup({ delay: null });
-  });
-  afterEach(() => {
-    jest.useRealTimers();
+    user = userEvent.setup();
   });
 
   it('toggles children visibility', async () => {

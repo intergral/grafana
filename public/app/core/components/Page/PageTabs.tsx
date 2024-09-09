@@ -1,5 +1,4 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
 import { NavModelItem, GrafanaTheme2 } from '@grafana/data';
 import { useStyles2, TabsBar, Tab, toIconName } from '@grafana/ui';
@@ -26,6 +25,7 @@ export function PageTabs({ navItem }: Props) {
                 counter={child.tabCounter}
                 href={child.url}
                 suffix={child.tabSuffix}
+                onChangeTab={child.onClick}
               />
             )
           );

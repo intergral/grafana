@@ -1,10 +1,11 @@
+import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
 import { omit } from 'lodash';
-import React, { PureComponent, useState } from 'react';
-import { DragDropContext, Droppable, DropResult } from 'react-beautiful-dnd';
+import { PureComponent, useState } from 'react';
 
 import {
   DataQuery,
   DataSourceInstanceSettings,
+  getDataSourceRef,
   LoadingState,
   PanelData,
   rangeUtil,
@@ -144,8 +145,8 @@ export class QueryRows extends PureComponent<Props> {
   };
 
   render() {
-    const { queries, expressions } = this.props;
-    const thresholdByRefId = getThresholdsForQueries([...queries, ...expressions]);
+    const { queries, expressions, condition } = this.props;
+    const thresholdByRefId = getThresholdsForQueries([...queries, ...expressions], condition);
 
     return (
       <DragDropContext onDragEnd={this.onDragEnd}>
@@ -226,10 +227,7 @@ function copyModel(item: AlertQuery, settings: DataSourceInstanceSettings): Omit
     ...item,
     model: {
       ...omit(item.model, 'datasource'),
-      datasource: {
-        type: settings.type,
-        uid: settings.uid,
-      },
+      datasource: getDataSourceRef(settings),
     },
     datasourceUid: settings.uid,
   };
@@ -244,10 +242,7 @@ function newModel(item: AlertQuery, settings: DataSourceInstanceSettings): Omit<
     model: {
       refId: item.refId,
       hide: false,
-      datasource: {
-        type: settings.type,
-        uid: settings.uid,
-      },
+      datasource: getDataSourceRef(settings),
     },
   };
 }

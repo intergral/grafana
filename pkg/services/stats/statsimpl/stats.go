@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/grafana/grafana/pkg/infra/db"
-	"github.com/grafana/grafana/pkg/services/dashboards/dashboardaccess"
 	"github.com/grafana/grafana/pkg/services/libraryelements/model"
 	"github.com/grafana/grafana/pkg/services/org"
+	"github.com/grafana/grafana/pkg/services/sqlstore"
 	"github.com/grafana/grafana/pkg/services/sqlstore/migrator"
 	"github.com/grafana/grafana/pkg/services/stats"
 	"github.com/grafana/grafana/pkg/setting"
@@ -18,12 +18,12 @@ import (
 const activeUserTimeLimit = time.Hour * 24 * 30
 const dailyActiveUserTimeLimit = time.Hour * 24
 
-func ProvideService(cfg *setting.Cfg, db db.DB) stats.Service {
+func ProvideService(cfg *setting.Cfg, db *sqlstore.ReplStore) stats.Service {
 	return &sqlStatsService{cfg: cfg, db: db}
 }
 
 type sqlStatsService struct {
-	db  db.DB
+	db  *sqlstore.ReplStore
 	cfg *setting.Cfg
 }
 
@@ -63,8 +63,8 @@ func notServiceAccount(dialect migrator.Dialect) string {
 }
 
 func (ss *sqlStatsService) GetSystemStats(ctx context.Context, query *stats.GetSystemStatsQuery) (result *stats.SystemStats, err error) {
-	dialect := ss.db.GetDialect()
-	err = ss.db.WithDbSession(ctx, func(dbSession *db.Session) error {
+	dialect := ss.db.ReadReplica().GetDialect()
+	err = ss.db.ReadReplica().WithDbSession(ctx, func(dbSession *db.Session) error {
 		sb := &db.SQLBuilder{}
 		sb.Write("SELECT ")
 		sb.Write(`(SELECT COUNT(*) FROM ` + dialect.Quote("user") + ` WHERE ` + notServiceAccount(dialect) + `) AS users,`)
@@ -92,27 +92,6 @@ func (ss *sqlStatsService) GetSystemStats(ctx context.Context, query *stats.GetS
 		sb.Write(`(SELECT SUM(LENGTH(data)) FROM `+dialect.Quote("dashboard")+` WHERE is_folder = ?) AS dashboard_bytes_total,`, dialect.BooleanStr(false))
 		sb.Write(`(SELECT MAX(LENGTH(data)) FROM `+dialect.Quote("dashboard")+` WHERE is_folder = ?) AS dashboard_bytes_max,`, dialect.BooleanStr(false))
 		sb.Write(`(SELECT COUNT(id) FROM `+dialect.Quote("dashboard")+` WHERE is_folder = ?) AS folders,`, dialect.BooleanStr(true))
-
-		sb.Write(`(
-		SELECT COUNT(acl.id)
-		FROM `+dialect.Quote("dashboard_acl")+` AS acl
-			INNER JOIN `+dialect.Quote("dashboard")+` AS d
-			ON d.id = acl.dashboard_id
-		WHERE d.is_folder = ?
-	) AS dashboard_permissions,`, dialect.BooleanStr(false))
-
-		sb.Write(`(
-		SELECT COUNT(acl.id)
-		FROM `+dialect.Quote("dashboard_acl")+` AS acl
-			INNER JOIN `+dialect.Quote("dashboard")+` AS d
-			ON d.id = acl.dashboard_id
-		WHERE d.is_folder = ?
-	) AS folder_permissions,`, dialect.BooleanStr(true))
-
-		sb.Write(viewersPermissionsCounterSQL(ss.db, "dashboards_viewers_can_edit", false, dashboardaccess.PERMISSION_EDIT))
-		sb.Write(viewersPermissionsCounterSQL(ss.db, "dashboards_viewers_can_admin", false, dashboardaccess.PERMISSION_ADMIN))
-		sb.Write(viewersPermissionsCounterSQL(ss.db, "folders_viewers_can_edit", true, dashboardaccess.PERMISSION_EDIT))
-		sb.Write(viewersPermissionsCounterSQL(ss.db, "folders_viewers_can_admin", true, dashboardaccess.PERMISSION_ADMIN))
 
 		sb.Write(`(SELECT COUNT(id) FROM ` + dialect.Quote("dashboard_provisioning") + `) AS provisioned_dashboards,`)
 		sb.Write(`(SELECT COUNT(id) FROM ` + dialect.Quote("dashboard_snapshot") + `) AS snapshots,`)
@@ -169,22 +148,9 @@ func (ss *sqlStatsService) roleCounterSQL(ctx context.Context) string {
 	return sqlQuery
 }
 
-func viewersPermissionsCounterSQL(db db.DB, statName string, isFolder bool, permission dashboardaccess.PermissionType) string {
-	dialect := db.GetDialect()
-	return `(
-		SELECT COUNT(*)
-		FROM ` + dialect.Quote("dashboard_acl") + ` AS acl
-			INNER JOIN ` + dialect.Quote("dashboard") + ` AS d
-			ON d.id = acl.dashboard_id
-		WHERE acl.role = '` + string(org.RoleViewer) + `'
-			AND d.is_folder = ` + dialect.BooleanStr(isFolder) + `
-			AND acl.permission = ` + strconv.FormatInt(int64(permission), 10) + `
-	) AS ` + statName + `, `
-}
-
 func (ss *sqlStatsService) GetAdminStats(ctx context.Context, query *stats.GetAdminStatsQuery) (result *stats.AdminStats, err error) {
-	err = ss.db.WithDbSession(ctx, func(dbSession *db.Session) error {
-		dialect := ss.db.GetDialect()
+	err = ss.db.ReadReplica().WithDbSession(ctx, func(dbSession *db.Session) error {
+		dialect := ss.db.ReadReplica().GetDialect()
 		now := time.Now()
 		activeEndDate := now.Add(-activeUserTimeLimit)
 		dailyActiveEndDate := now.Add(-dailyActiveUserTimeLimit)

@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 
 import { DataTransformerConfig, standardTransformersRegistry } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -93,7 +92,7 @@ describe('TransformationsEditor', () => {
 
         expect(screen.queryByTestId(debuggerSelector)).toBeNull();
 
-        const debugButton = screen.getByLabelText(selectors.components.QueryEditorRow.actionButton('Debug'));
+        const debugButton = screen.getByTestId(selectors.components.QueryEditorRow.actionButton('Debug'));
         await userEvent.click(debugButton);
 
         expect(screen.getByTestId(debuggerSelector)).toBeInTheDocument();

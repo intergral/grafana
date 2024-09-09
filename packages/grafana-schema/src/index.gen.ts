@@ -104,9 +104,6 @@ export {
   defaultRowPanel
 } from './veneer/dashboard.types';
 
-// Raw generated types from Folder kind.
-export type { Folder } from './raw/folder/x/folder_types.gen';
-
 // Raw generated types from LibraryPanel kind.
 export type {
   LibraryElementDTOMetaUser,
@@ -128,8 +125,12 @@ export type { LibraryPanel } from './veneer/librarypanel.types';
 export type {
   Preferences,
   QueryHistoryPreference,
-  CookiePreferences
+  CookiePreferences,
+  NavbarPreference
 } from './raw/preferences/x/preferences_types.gen';
+
+// Raw generated enums and default consts from preferences kind.
+export { defaultNavbarPreference } from './raw/preferences/x/preferences_types.gen';
 
 // Raw generated types from PublicDashboard kind.
 export type { PublicDashboard } from './raw/publicdashboard/x/publicdashboard_types.gen';
@@ -144,6 +145,3 @@ export type {
   BuiltinRoleRef,
   RoleBindingSubject
 } from './raw/rolebinding/x/rolebinding_types.gen';
-
-// Raw generated types from Team kind.
-export type { Team } from './raw/team/x/team_types.gen';

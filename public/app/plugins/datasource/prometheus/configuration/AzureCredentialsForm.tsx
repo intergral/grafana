@@ -1,5 +1,5 @@
 import { cx } from '@emotion/css';
-import React, { ChangeEvent, useEffect, useMemo, useReducer, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useReducer, useState } from 'react';
 
 import { SelectableValue } from '@grafana/data';
 import { config } from '@grafana/runtime';
@@ -95,8 +95,8 @@ export const AzureCredentialsForm = (props: Props) => {
     const defaultAuthType = managedIdentityEnabled
       ? 'msi'
       : workloadIdentityEnabled
-      ? 'workloadidentity'
-      : 'clientsecret';
+        ? 'workloadidentity'
+        : 'clientsecret';
     const updated: AzureCredentials = {
       ...credentials,
       authType: selected.value || defaultAuthType,

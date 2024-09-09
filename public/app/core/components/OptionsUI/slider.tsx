@@ -1,7 +1,7 @@
 import { css, cx } from '@emotion/css';
 import { Global } from '@emotion/react';
 import Slider from 'rc-slider';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { StandardEditorProps, GrafanaTheme2, SliderFieldConfigSettings } from '@grafana/data';
 import { useTheme2 } from '@grafana/ui';
@@ -94,7 +94,7 @@ export const SliderValueEditor = ({ value, onChange, item }: Props) => {
     <div className={cx(styles.container, styles.slider)}>
       {/** Slider tooltip's parent component is body and therefore we need Global component to do css overrides for it. */}
       <Global styles={styles.slider} />
-      <label className={cx(styles.sliderInput, ...sliderInputClassNames)}>
+      <div className={cx(styles.sliderInput, ...sliderInputClassNames)}>
         <Slider
           min={min}
           max={max}
@@ -111,7 +111,7 @@ export const SliderValueEditor = ({ value, onChange, item }: Props) => {
         <span className={stylesSlider.numberInputWrapper} ref={inputRef}>
           <NumberInput value={sliderValue} onChange={onSliderInputChange} max={max} min={min} step={step} />
         </span>
-      </label>
+      </div>
     </div>
   );
 };

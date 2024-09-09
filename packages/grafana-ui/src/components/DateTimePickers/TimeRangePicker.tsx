@@ -2,7 +2,7 @@ import { css, cx } from '@emotion/css';
 import { useDialog } from '@react-aria/dialog';
 import { FocusScope } from '@react-aria/focus';
 import { useOverlay } from '@react-aria/overlays';
-import React, { memo, createRef, useState, useEffect } from 'react';
+import { memo, createRef, useState, useEffect } from 'react';
 
 import {
   rangeUtil,
@@ -23,6 +23,7 @@ import { ToolbarButton } from '../ToolbarButton';
 import { Tooltip } from '../Tooltip/Tooltip';
 
 import { TimePickerContent } from './TimeRangePicker/TimePickerContent';
+import { WeekStart } from './WeekStartPicker';
 import { quickOptions } from './options';
 
 /** @public */
@@ -39,11 +40,14 @@ export interface TimeRangePickerProps {
   onMoveBackward: () => void;
   onMoveForward: () => void;
   onZoom: () => void;
+  onError?: (error?: string) => void;
   history?: TimeRange[];
   hideQuickRanges?: boolean;
   widthOverride?: number;
   isOnCanvas?: boolean;
   onToolbarTimePickerClick?: () => void;
+  /** Which day of the week the calendar should start on. Possible values: "saturday", "sunday" or "monday" */
+  weekStart?: WeekStart;
 }
 
 export interface State {
@@ -58,6 +62,7 @@ export function TimeRangePicker(props: TimeRangePickerProps) {
     onMoveBackward,
     onMoveForward,
     onZoom,
+    onError,
     timeZone,
     fiscalYearStartMonth,
     timeSyncButton,
@@ -69,6 +74,7 @@ export function TimeRangePicker(props: TimeRangePickerProps) {
     widthOverride,
     isOnCanvas,
     onToolbarTimePickerClick,
+    weekStart,
   } = props;
 
   const onChange = (timeRange: TimeRange) => {
@@ -111,6 +117,9 @@ export function TimeRangePicker(props: TimeRangePickerProps) {
 
   const variant = isSynced ? 'active' : isOnCanvas ? 'canvas' : 'default';
 
+  const isFromAfterTo = value?.to?.isBefore(value.from);
+  const timePickerIcon = isFromAfterTo ? 'exclamation-triangle' : 'clock-nine';
+
   const currentTimeRange = formattedRange(value, timeZone);
 
   return (
@@ -138,7 +147,7 @@ export function TimeRangePicker(props: TimeRangePickerProps) {
           })}
           aria-controls="TimePickerContent"
           onClick={onToolbarButtonSwitch}
-          icon="clock-nine"
+          icon={timePickerIcon}
           isOpen={isOpen}
           variant={variant}
         >
@@ -148,7 +157,7 @@ export function TimeRangePicker(props: TimeRangePickerProps) {
       {isOpen && (
         <div data-testid={selectors.components.TimePicker.overlayContent}>
           <div role="presentation" className={cx(modalBackdrop, styles.backdrop)} {...underlayProps} />
-          <FocusScope contain autoFocus>
+          <FocusScope contain autoFocus restoreFocus>
             <section className={styles.content} ref={overlayRef} {...overlayProps} {...dialogProps}>
               <TimePickerContent
                 timeZone={timeZone}
@@ -162,6 +171,8 @@ export function TimeRangePicker(props: TimeRangePickerProps) {
                 onChangeTimeZone={onChangeTimeZone}
                 onChangeFiscalYearStartMonth={onChangeFiscalYearStartMonth}
                 hideQuickRanges={hideQuickRanges}
+                onError={onError}
+                weekStart={weekStart}
               />
             </section>
           </FocusScope>
@@ -229,7 +240,7 @@ export const TimePickerButtonLabel = memo<LabelProps>(({ hideText, value, timeZo
   }
 
   return (
-    <span className={styles.container}>
+    <span className={styles.container} aria-live="polite" aria-atomic="true">
       <span>{formattedRange(value, timeZone)}</span>
       <span className={styles.utc}>{rangeUtil.describeTimeRangeAbbreviation(value, timeZone)}</span>
     </span>

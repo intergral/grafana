@@ -2,7 +2,6 @@ import { of } from 'rxjs';
 
 import { CustomVariableModel, DataFrame, DataSourceInstanceSettings } from '@grafana/data';
 import { BackendDataSourceResponse, toDataQueryResponse } from '@grafana/runtime';
-import { TemplateSrv } from 'app/features/templating/template_srv';
 
 import { CloudWatchLogsQueryRunner } from '../query-runner/CloudWatchLogsQueryRunner';
 import { CloudWatchJsonData, CloudWatchLogsQueryStatus, CloudWatchLogsRequest } from '../types';
@@ -14,24 +13,16 @@ export function setupMockedLogsQueryRunner({
     results: {},
   },
   variables,
-  mockGetVariableName = true,
   settings = CloudWatchSettings,
 }: {
   data?: BackendDataSourceResponse;
   variables?: CustomVariableModel[];
-  mockGetVariableName?: boolean;
   settings?: DataSourceInstanceSettings<CloudWatchJsonData>;
 } = {}) {
-  let templateService = new TemplateSrv();
-  if (variables) {
-    templateService = setupMockedTemplateService(variables);
-    if (mockGetVariableName) {
-      templateService.getVariableName = (name: string) => name;
-    }
-  }
+  let templateService = setupMockedTemplateService(variables);
 
   const queryMock = jest.fn().mockReturnValue(of(toDataQueryResponse({ data })));
-  const runner = new CloudWatchLogsQueryRunner(settings, templateService, queryMock);
+  const runner = new CloudWatchLogsQueryRunner(settings, templateService);
 
   return { runner, queryMock, templateService };
 }

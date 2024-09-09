@@ -7,18 +7,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/grafana/pkg/api/routing"
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/infra/localcache"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/plugins"
-	"github.com/grafana/grafana/pkg/plugins/config"
-	"github.com/grafana/grafana/pkg/plugins/manager/fakes"
 	"github.com/grafana/grafana/pkg/services/accesscontrol/acimpl"
+	"github.com/grafana/grafana/pkg/services/authz/zanzana"
 	"github.com/grafana/grafana/pkg/services/contexthandler/ctxkey"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/services/datasources"
@@ -26,29 +26,38 @@ import (
 	"github.com/grafana/grafana/pkg/services/datasources/guardian"
 	datasourceService "github.com/grafana/grafana/pkg/services/datasources/service"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
+	"github.com/grafana/grafana/pkg/services/licensing/licensingtest"
+	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginconfig"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/plugincontext"
 	pluginSettings "github.com/grafana/grafana/pkg/services/pluginsintegration/pluginsettings/service"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginstore"
 	"github.com/grafana/grafana/pkg/services/publicdashboards"
+	publicdashboardModels "github.com/grafana/grafana/pkg/services/publicdashboards/models"
 	"github.com/grafana/grafana/pkg/services/query"
 	fakeSecrets "github.com/grafana/grafana/pkg/services/secrets/fakes"
 	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/setting"
+	"github.com/grafana/grafana/pkg/tests/testsuite"
 	"github.com/grafana/grafana/pkg/web"
 )
+
+func TestMain(m *testing.M) {
+	testsuite.Run(m)
+}
 
 func setupTestServer(
 	t *testing.T,
 	cfg *setting.Cfg,
-	features *featuremgmt.FeatureManager,
 	service publicdashboards.Service,
-	db db.DB,
 	user *user.SignedInUser,
+	ffEnabled bool,
 ) *web.Mux {
+	t.Helper()
+
 	// build router to register routes
 	rr := routing.NewRouteRegister()
 
-	ac := acimpl.ProvideAccessControl(cfg)
+	ac := acimpl.ProvideAccessControl(featuremgmt.WithFeatures(), zanzana.NewNoopClient())
 
 	// build mux
 	m := web.New()
@@ -56,9 +65,20 @@ func setupTestServer(
 	// set initial context
 	m.Use(contextProvider(&testContext{user}))
 
-	// build api, this will mount the routes at the same time if
-	// featuremgmt.FlagPublicDashboard is enabled
-	ProvideApi(service, rr, ac, features, &Middleware{})
+	features := featuremgmt.WithFeatures()
+	if ffEnabled {
+		features = featuremgmt.WithFeatures(featuremgmt.FlagPublicDashboards)
+	}
+
+	if cfg == nil {
+		cfg = setting.NewCfg()
+		cfg.PublicDashboardsEnabled = true
+	}
+
+	// build api, this will mount the routes at the same time if the feature is enabled
+	license := licensingtest.NewFakeLicensing()
+	license.On("FeatureEnabled", publicdashboardModels.FeaturePublicDashboardsEmailSharing).Return(false)
+	ProvideApi(service, rr, ac, features, &Middleware{}, cfg, license)
 
 	// connect routes to mux
 	rr.Register(m.Router)
@@ -130,8 +150,8 @@ func buildQueryDataService(t *testing.T, cs datasources.CacheService, fpc *fakeP
 					},
 				},
 			},
-		}, ds, pluginSettings.ProvideService(store, fakeSecrets.NewFakeSecretsService()), fakes.NewFakeLicensingService(),
-		&config.Cfg{})
+		}, &fakeDatasources.FakeCacheService{}, ds,
+		pluginSettings.ProvideService(store, fakeSecrets.NewFakeSecretsService()), pluginconfig.NewFakePluginRequestConfigProvider())
 
 	return query.ProvideService(
 		setting.NewCfg(),

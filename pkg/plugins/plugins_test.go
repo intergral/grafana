@@ -49,7 +49,8 @@ func Test_ReadPluginJSON(t *testing.T) {
 						{Path: "img/screenshot1.png", Name: "img1"},
 						{Path: "img/screenshot2.png", Name: "img2"},
 					},
-					Updated: "2015-02-10",
+					Updated:  "2015-02-10",
+					Keywords: []string{"test"},
 				},
 				Dependencies: Dependencies{
 					GrafanaVersion: "3.x.x",
@@ -59,10 +60,10 @@ func Test_ReadPluginJSON(t *testing.T) {
 					},
 				},
 				Includes: []*Includes{
-					{Name: "Nginx Connections", Path: "dashboards/connections.json", Type: "dashboard", Role: org.RoleViewer},
-					{Name: "Nginx Memory", Path: "dashboards/memory.json", Type: "dashboard", Role: org.RoleViewer},
-					{Name: "Nginx Panel", Type: "panel", Role: org.RoleViewer},
-					{Name: "Nginx Datasource", Type: "datasource", Role: org.RoleViewer},
+					{Name: "Nginx Connections", Path: "dashboards/connections.json", Type: "dashboard", Role: org.RoleViewer, Action: ActionAppAccess},
+					{Name: "Nginx Memory", Path: "dashboards/memory.json", Type: "dashboard", Role: org.RoleViewer, Action: ActionAppAccess},
+					{Name: "Nginx Panel", Type: "panel", Role: org.RoleViewer, Action: ActionAppAccess},
+					{Name: "Nginx Datasource", Type: "datasource", Role: org.RoleViewer, Action: ActionAppAccess},
 				},
 				Backend: false,
 			},
@@ -107,7 +108,7 @@ func Test_ReadPluginJSON(t *testing.T) {
 			pluginJSON: func(t *testing.T) io.ReadCloser {
 				pJSON := `{
 					"id": "grafana-pyroscope-datasource",
-					"type": "datasource",					
+					"type": "datasource",
 					"aliasIDs": ["phlare"]
 				}`
 				return io.NopCloser(strings.NewReader(pJSON))

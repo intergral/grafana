@@ -1,11 +1,11 @@
 import { uniqueId } from 'lodash';
-import React, { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { GroupBase, OptionsOrGroups } from 'react-select';
 
 import { InternalTimeZones, SelectableValue } from '@grafana/data';
 import { InlineField, Input, Select, TimeZonePicker } from '@grafana/ui';
-import { calendarIntervals } from 'app/plugins/datasource/elasticsearch/QueryBuilder';
 
+import { calendarIntervals } from '../../../../QueryBuilder';
 import { useDispatch } from '../../../../hooks/useStatelessReducer';
 import { DateHistogram } from '../../../../types';
 import { useCreatableSelectPersistedBehaviour } from '../../../hooks/useCreatableSelectPersistedBehaviour';

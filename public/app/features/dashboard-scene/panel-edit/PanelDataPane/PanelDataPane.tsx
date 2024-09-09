@@ -1,31 +1,38 @@
-import React from 'react';
+import { css } from '@emotion/css';
+import { Unsubscribable } from 'rxjs';
 
+import { GrafanaTheme2 } from '@grafana/data';
+import { selectors } from '@grafana/e2e-selectors';
 import {
   SceneComponentProps,
   SceneObjectBase,
-  SceneObjectRef,
   SceneObjectState,
   SceneObjectUrlSyncConfig,
   SceneObjectUrlValues,
-  VizPanel,
 } from '@grafana/scenes';
-import { Tab, TabContent, TabsBar } from '@grafana/ui';
-import { shouldShowAlertingTab } from 'app/features/dashboard/components/PanelEditor/state/selectors';
+import { Container, CustomScrollbar, TabContent, TabsBar, useStyles2 } from '@grafana/ui';
+import { config, getConfig } from 'app/core/config';
+import { contextSrv } from 'app/core/core';
+import { getRulesPermissions } from 'app/features/alerting/unified/utils/access-control';
+import { GRAFANA_RULES_SOURCE_NAME } from 'app/features/alerting/unified/utils/datasource';
+
+import { VizPanelManager } from '../VizPanelManager';
 
 import { PanelDataAlertingTab } from './PanelDataAlertingTab';
 import { PanelDataQueriesTab } from './PanelDataQueriesTab';
 import { PanelDataTransformationsTab } from './PanelDataTransformationsTab';
-import { PanelDataPaneTab } from './types';
+import { PanelDataPaneTab, TabId } from './types';
 
 export interface PanelDataPaneState extends SceneObjectState {
-  panelRef: SceneObjectRef<VizPanel>;
   tabs?: PanelDataPaneTab[];
-  tab?: string;
+  tab?: TabId;
 }
 
 export class PanelDataPane extends SceneObjectBase<PanelDataPaneState> {
   static Component = PanelDataPaneRendered;
   protected _urlSync = new SceneObjectUrlSyncConfig(this, { keys: ['tab'] });
+  private panelSubscription: Unsubscribable | undefined;
+  public panelManager: VizPanelManager;
 
   getUrlState() {
     return {
@@ -38,53 +45,61 @@ export class PanelDataPane extends SceneObjectBase<PanelDataPaneState> {
       return;
     }
     if (typeof values.tab === 'string') {
-      this.setState({ tab: values.tab });
+      this.setState({ tab: values.tab as TabId });
     }
   }
 
-  constructor(state: Omit<PanelDataPaneState, 'tab'> & { tab?: string }) {
+  constructor(panelMgr: VizPanelManager) {
     super({
-      tab: 'queries',
-      ...state,
+      tab: TabId.Queries,
+      tabs: [],
     });
 
-    const { panelRef } = this.state;
-    const panel = panelRef.resolve();
+    this.panelManager = panelMgr;
+    this.addActivationHandler(() => this.onActivate());
+  }
 
-    if (panel) {
-      // The subscription below is needed because the plugin may not be loaded when this pane is mounted.
-      // This can happen i.e. when the user opens the panel editor directly via an URL.
-      this._subs.add(
-        panel.subscribeToState((n, p) => {
-          if (n.pluginVersion || p.pluginId !== n.pluginId) {
-            this.buildTabs();
-          }
-        })
-      );
-    }
+  private onActivate() {
+    this.buildTabs();
 
-    this.addActivationHandler(() => this.buildTabs());
+    this._subs.add(
+      // Setup subscription for the case when panel type changed
+      this.panelManager.subscribeToState((n, p) => {
+        if (n.pluginId !== p.pluginId) {
+          this.buildTabs();
+        }
+      })
+    );
+
+    return () => {
+      if (this.panelSubscription) {
+        this.panelSubscription.unsubscribe();
+        this.panelSubscription = undefined;
+      }
+    };
   }
 
   private buildTabs() {
-    const { panelRef } = this.state;
+    const panelManager = this.panelManager;
+    const panel = panelManager.state.panel;
+    const pluginId = panelManager.state.pluginId;
+
+    const runner = this.panelManager.queryRunner;
     const tabs: PanelDataPaneTab[] = [];
 
-    if (panelRef) {
-      const plugin = panelRef.resolve().getPlugin();
-      if (!plugin) {
-        this.setState({ tabs });
-        return;
-      }
-      if (plugin.meta.skipDataQuery) {
+    if (panel) {
+      if (config.panels[pluginId]?.skipDataQuery) {
         this.setState({ tabs });
         return;
       } else {
-        tabs.push(new PanelDataQueriesTab({}));
-        tabs.push(new PanelDataTransformationsTab({}));
+        if (runner) {
+          tabs.push(new PanelDataQueriesTab(this.panelManager));
+        }
 
-        if (shouldShowAlertingTab(plugin)) {
-          tabs.push(new PanelDataAlertingTab({}));
+        tabs.push(new PanelDataTransformationsTab(this.panelManager));
+
+        if (shouldShowAlertingTab(panelManager.state.pluginId)) {
+          tabs.push(new PanelDataAlertingTab(this.panelManager));
         }
       }
     }
@@ -99,30 +114,74 @@ export class PanelDataPane extends SceneObjectBase<PanelDataPaneState> {
 
 function PanelDataPaneRendered({ model }: SceneComponentProps<PanelDataPane>) {
   const { tab, tabs } = model.useState();
+  const styles = useStyles2(getStyles);
 
-  if (!tabs) {
+  if (!tabs || !tabs.length) {
     return;
   }
 
   const currentTab = tabs.find((t) => t.tabId === tab);
 
   return (
-    <div>
-      <TabsBar hideBorder={true}>
+    <div className={styles.dataPane} data-testid={selectors.components.PanelEditor.DataPane.content}>
+      <TabsBar hideBorder={true} className={styles.tabsBar}>
         {tabs.map((t, index) => {
           return (
-            <Tab
+            <t.TabComponent
               key={`${t.getTabLabel()}-${index}`}
-              label={t.getTabLabel()}
-              icon={t.icon}
-              //   suffix={}
               active={t.tabId === tab}
               onChangeTab={() => model.onChangeTab(t)}
-            />
+            ></t.TabComponent>
           );
         })}
       </TabsBar>
-      <TabContent>{currentTab && <currentTab.Component model={currentTab} />}</TabContent>
+      <CustomScrollbar className={styles.scroll}>
+        <TabContent className={styles.tabContent}>
+          <Container>{currentTab && <currentTab.Component model={currentTab} />}</Container>
+        </TabContent>
+      </CustomScrollbar>
     </div>
   );
+}
+
+export function shouldShowAlertingTab(pluginId: string) {
+  const { unifiedAlertingEnabled = false } = getConfig();
+  const hasRuleReadPermissions = contextSrv.hasPermission(getRulesPermissions(GRAFANA_RULES_SOURCE_NAME).read);
+  const isAlertingAvailable = unifiedAlertingEnabled && hasRuleReadPermissions;
+  if (!isAlertingAvailable) {
+    return false;
+  }
+
+  const isGraph = pluginId === 'graph';
+  const isTimeseries = pluginId === 'timeseries';
+
+  return isGraph || isTimeseries;
+}
+
+function getStyles(theme: GrafanaTheme2) {
+  return {
+    dataPane: css({
+      display: 'flex',
+      flexDirection: 'column',
+      flexGrow: 1,
+      minHeight: 0,
+      height: '100%',
+      width: '100%',
+    }),
+    tabContent: css({
+      padding: theme.spacing(2),
+      border: `1px solid ${theme.colors.border.weak}`,
+      borderLeft: 'none',
+      borderBottom: 'none',
+      borderTopRightRadius: theme.shape.radius.default,
+      flexGrow: 1,
+    }),
+    tabsBar: css({
+      flexShrink: 0,
+      paddingLeft: theme.spacing(2),
+    }),
+    scroll: css({
+      background: theme.colors.background.primary,
+    }),
+  };
 }

@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
 import { Subscription } from 'rxjs';
 
 import { LoadingState, PanelData } from '@grafana/data';
@@ -9,7 +9,7 @@ import { Button, ClipboardButton, JSONFormatter, LoadingPlaceholder, Stack } fro
 import { Trans } from 'app/core/internationalization';
 import { backendSrv } from 'app/core/services/backend_srv';
 
-import { getPanelInspectorStyles } from './styles';
+import { getPanelInspectorStyles2 } from './styles';
 
 interface ExecutedQueryInfo {
   refId: string;
@@ -19,6 +19,7 @@ interface ExecutedQueryInfo {
 }
 
 interface Props {
+  instanceId?: string; // Must match the prefix of the requestId of the query being inspected. For updating only one instance of the inspector in case of multiple instances, ie Explore split view
   data: PanelData;
   onRefreshQuery: () => void;
 }
@@ -49,7 +50,15 @@ export class QueryInspector extends PureComponent<Props, State> {
   componentDidMount() {
     this.subs.add(
       backendSrv.getInspectorStream().subscribe({
-        next: (response) => this.onDataSourceResponse(response),
+        next: (response) => {
+          let update = true;
+          if (this.props.instanceId && response?.requestId) {
+            update = response.requestId.startsWith(this.props.instanceId);
+          }
+          if (update) {
+            return this.onDataSourceResponse(response.response);
+          }
+        },
       })
     );
   }
@@ -212,14 +221,14 @@ export class QueryInspector extends PureComponent<Props, State> {
     const { allNodesExpanded, executedQueries, response } = this.state;
     const { onRefreshQuery, data } = this.props;
     const openNodes = this.getNrOfOpenNodes();
-    const styles = getPanelInspectorStyles();
+    const styles = getPanelInspectorStyles2(config.theme2);
     const haveData = Object.keys(response).length > 0;
     const isLoading = data.state === LoadingState.Loading;
 
     return (
       <div className={styles.wrap}>
         <div aria-label={selectors.components.PanelInspector.Query.content}>
-          <h3 className="section-heading">Query inspector</h3>
+          <h3 className={styles.heading}>Query inspector</h3>
           <p className="small muted">
             <Trans i18nKey="inspector.query.description">
               Query inspector allows you to view raw request and response. To collect this data Grafana needs to issue a

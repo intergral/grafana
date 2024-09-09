@@ -1,11 +1,12 @@
-// Libraries
 import { css, cx } from '@emotion/css';
-import React, { useLayoutEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 import { GrafanaTheme2, PageLayoutType } from '@grafana/data';
 import { config } from '@grafana/runtime';
-import { CustomScrollbar, useStyles2 } from '@grafana/ui';
+import { useStyles2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
+
+import NativeScrollbar from '../NativeScrollbar';
 
 import { PageContents } from './PageContents';
 import { PageHeader } from './PageHeader';
@@ -53,7 +54,13 @@ export const Page: PageType = ({
   return (
     <div className={cx(styles.wrapper, className)} {...otherProps}>
       {layout === PageLayoutType.Standard && (
-        <CustomScrollbar autoHeightMin={'100%'} scrollTop={scrollTop} scrollRefCallback={scrollRef}>
+        <NativeScrollbar
+          // This id is used by the image renderer to scroll through the dashboard
+          divId="page-scrollbar"
+          autoHeightMin={'100%'}
+          scrollTop={scrollTop}
+          scrollRefCallback={scrollRef}
+        >
           <div className={styles.pageInner}>
             {pageHeaderNav && (
               <PageHeader
@@ -68,13 +75,21 @@ export const Page: PageType = ({
             {pageNav && pageNav.children && <PageTabs navItem={pageNav} />}
             <div className={styles.pageContent}>{children}</div>
           </div>
-        </CustomScrollbar>
+        </NativeScrollbar>
       )}
+
       {layout === PageLayoutType.Canvas && (
-        <CustomScrollbar autoHeightMin={'100%'} scrollTop={scrollTop} scrollRefCallback={scrollRef}>
+        <NativeScrollbar
+          // This id is used by the image renderer to scroll through the dashboard
+          divId="page-scrollbar"
+          autoHeightMin={'100%'}
+          scrollTop={scrollTop}
+          scrollRefCallback={scrollRef}
+        >
           <div className={styles.canvasContent}>{children}</div>
-        </CustomScrollbar>
+        </NativeScrollbar>
       )}
+
       {layout === PageLayoutType.Custom && children}
     </div>
   );
@@ -84,46 +99,45 @@ Page.Contents = PageContents;
 
 const getStyles = (theme: GrafanaTheme2) => {
   return {
-    wrapper: css({
-      label: 'page-wrapper',
-      height: '100%',
-      display: 'flex',
-      flex: '1 1 0',
-      flexDirection: 'column',
-      minHeight: 0,
-    }),
+    wrapper: css(
+      config.featureToggles.bodyScrolling
+        ? {
+            label: 'page-wrapper',
+            display: 'flex',
+            flex: '1 1 0',
+            flexDirection: 'column',
+            position: 'relative',
+          }
+        : {
+            label: 'page-wrapper',
+            height: '100%',
+            display: 'flex',
+            flex: '1 1 0',
+            flexDirection: 'column',
+            minHeight: 0,
+          }
+    ),
     pageContent: css({
       label: 'page-content',
       flexGrow: 1,
     }),
-    pageInner: css(
-      {
-        label: 'page-inner',
-        padding: theme.spacing(2),
-        borderBottom: 'none',
-        background: theme.colors.background.primary,
-        display: 'flex',
-        flexDirection: 'column',
-        flexGrow: 1,
-        margin: theme.spacing(0, 0, 0, 0),
+    primaryBg: css({
+      background: theme.colors.background.primary,
+    }),
+    pageInner: css({
+      label: 'page-inner',
+      padding: theme.spacing(2),
+      borderBottom: 'none',
+      background: theme.colors.background.primary,
+      display: 'flex',
+      flexDirection: 'column',
+      flexGrow: 1,
+      margin: theme.spacing(0, 0, 0, 0),
+
+      [theme.breakpoints.up('md')]: {
+        padding: theme.spacing(4),
       },
-      config.featureToggles.dockedMegaMenu
-        ? {
-            [theme.breakpoints.up('md')]: {
-              padding: theme.spacing(4),
-            },
-          }
-        : {
-            borderRadius: theme.shape.radius.default,
-            border: `1px solid ${theme.colors.border.weak}`,
-
-            [theme.breakpoints.up('md')]: {
-              margin: theme.spacing(2, 2, 0, 1),
-              padding: theme.spacing(3),
-            },
-          }
-    ),
-
+    }),
     canvasContent: css({
       label: 'canvas-content',
       display: 'flex',

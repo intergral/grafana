@@ -1,5 +1,8 @@
-import React from 'react';
+import { Fragment } from 'react';
 import Skeleton from 'react-loading-skeleton';
+
+import { Text } from '@grafana/ui';
+import { SkeletonComponent, attachSkeleton } from '@grafana/ui/src/unstable';
 
 import { Settings } from './AdminSettings';
 
@@ -7,14 +10,18 @@ interface Props {
   settings: Settings;
 }
 
-export const AdminSettingsTable = ({ settings }: Props) => {
+const AdminSettingsTableComponent = ({ settings }: Props) => {
   return (
     <table className="filter-table">
       <tbody>
         {Object.entries(settings).map(([sectionName, sectionSettings], i) => (
-          <React.Fragment key={`section-${i}`}>
+          <Fragment key={`section-${i}`}>
             <tr>
-              <td className="admin-settings-section">{sectionName}</td>
+              <td>
+                <Text color="info" weight="bold">
+                  {sectionName}
+                </Text>
+              </td>
               <td />
             </tr>
             {Object.entries(sectionSettings).map(([settingName, settingValue], j) => (
@@ -23,7 +30,7 @@ export const AdminSettingsTable = ({ settings }: Props) => {
                 <td style={{ whiteSpace: 'break-spaces' }}>{settingValue}</td>
               </tr>
             ))}
-          </React.Fragment>
+          </Fragment>
         ))}
       </tbody>
     </table>
@@ -33,15 +40,15 @@ export const AdminSettingsTable = ({ settings }: Props) => {
 // note: don't want to put this in render function else it will get regenerated
 const randomValues = new Array(50).fill(null).map(() => Math.random());
 
-const AdminSettingsTableSkeleton = () => {
+const AdminSettingsTableSkeleton: SkeletonComponent = ({ rootProps }) => {
   return (
-    <table className="filter-table">
+    <table className="filter-table" {...rootProps}>
       <tbody>
         {randomValues.map((randomValue, index) => {
           const isSection = index === 0 || randomValue > 0.9;
 
           return (
-            <React.Fragment key={index}>
+            <Fragment key={index}>
               {isSection && (
                 <tr>
                   <td className="admin-settings-section">
@@ -58,7 +65,7 @@ const AdminSettingsTableSkeleton = () => {
                   <Skeleton width={getRandomInRange(80, 320, randomValue)} />
                 </td>
               </tr>
-            </React.Fragment>
+            </Fragment>
           );
         })}
       </tbody>
@@ -70,4 +77,4 @@ function getRandomInRange(min: number, max: number, randomSeed: number) {
   return randomSeed * (max - min) + min;
 }
 
-AdminSettingsTable.Skeleton = AdminSettingsTableSkeleton;
+export const AdminSettingsTable = attachSkeleton(AdminSettingsTableComponent, AdminSettingsTableSkeleton);

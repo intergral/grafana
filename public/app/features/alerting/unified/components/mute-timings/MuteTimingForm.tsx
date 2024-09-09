@@ -1,31 +1,37 @@
 import { css } from '@emotion/css';
-import React, { useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import { GrafanaTheme2 } from '@grafana/data';
+import { locationService } from '@grafana/runtime';
 import { Alert, Button, Field, FieldSet, Input, LinkButton, LoadingPlaceholder, useStyles2 } from '@grafana/ui';
-import { AlertManagerCortexConfig, MuteTimeInterval } from 'app/plugins/datasource/alertmanager/types';
-import { useDispatch } from 'app/types';
+import { Trans } from 'app/core/internationalization';
+import {
+  MuteTiming,
+  useCreateMuteTiming,
+  useUpdateMuteTiming,
+  useValidateMuteTiming,
+} from 'app/features/alerting/unified/components/mute-timings/useMuteTimings';
+import { shouldUseK8sApi } from 'app/features/alerting/unified/utils/k8s/utils';
 
-import { useAlertmanagerConfig } from '../../hooks/useAlertmanagerConfig';
 import { useAlertmanager } from '../../state/AlertmanagerContext';
-import { updateAlertManagerConfigAction } from '../../state/actions';
 import { MuteTimingFields } from '../../types/mute-timing-form';
-import { renameMuteTimings } from '../../utils/alertmanager';
 import { makeAMLink } from '../../utils/misc';
-import { createMuteTiming, defaultTimeInterval } from '../../utils/mute-timings';
+import { createMuteTiming, defaultTimeInterval, isTimeIntervalDisabled } from '../../utils/mute-timings';
 import { ProvisionedResource, ProvisioningAlert } from '../Provisioning';
 
 import { MuteTimingTimeInterval } from './MuteTimingTimeInterval';
 
 interface Props {
-  muteTiming?: MuteTimeInterval;
+  muteTiming?: MuteTiming;
   showError?: boolean;
-  provenance?: string;
   loading?: boolean;
+  /** Is the current mute timing provisioned? If so, will disable editing via UI */
+  provisioned?: boolean;
+  /** Are we editing an existing time interval? */
+  editMode?: boolean;
 }
 
-const useDefaultValues = (muteTiming?: MuteTimeInterval): MuteTimingFields => {
+const useDefaultValues = (muteTiming?: MuteTiming): MuteTimingFields => {
   const defaultValues = {
     name: '',
     time_intervals: [defaultTimeInterval],
@@ -36,12 +42,13 @@ const useDefaultValues = (muteTiming?: MuteTimeInterval): MuteTimingFields => {
   }
 
   const intervals = muteTiming.time_intervals.map((interval) => ({
-    times: interval.times ?? defaultTimeInterval.times,
-    weekdays: interval.weekdays?.join(', ') ?? defaultTimeInterval.weekdays,
-    days_of_month: interval.days_of_month?.join(', ') ?? defaultTimeInterval.days_of_month,
-    months: interval.months?.join(', ') ?? defaultTimeInterval.months,
-    years: interval.years?.join(', ') ?? defaultTimeInterval.years,
+    times: interval.times,
+    weekdays: interval.weekdays?.join(', '),
+    days_of_month: interval.days_of_month?.join(', '),
+    months: interval.months?.join(', '),
+    years: interval.years?.join(', '),
     location: interval.location ?? defaultTimeInterval.location,
+    disable: isTimeIntervalDisabled(interval),
   }));
 
   return {
@@ -50,119 +57,106 @@ const useDefaultValues = (muteTiming?: MuteTimeInterval): MuteTimingFields => {
   };
 };
 
-const MuteTimingForm = ({ muteTiming, showError, loading, provenance }: Props) => {
-  const dispatch = useDispatch();
+const MuteTimingForm = ({ muteTiming, showError, loading, provisioned, editMode }: Props) => {
   const { selectedAlertmanager } = useAlertmanager();
+  const hookArgs = { alertmanager: selectedAlertmanager! };
+  const createTimeInterval = useCreateMuteTiming(hookArgs);
+  const updateTimeInterval = useUpdateMuteTiming(hookArgs);
+  const validateMuteTiming = useValidateMuteTiming(hookArgs);
+  /**
+   * The k8s API approach does not support renaming an entity at this time,
+   * as it requires renaming all other references of this entity.
+   *
+   * For now, the cleanest solution is to disabled renaming the field in this scenario
+   */
+  const disableNameField = editMode && shouldUseK8sApi(selectedAlertmanager!);
   const styles = useStyles2(getStyles);
-
-  const [updating, setUpdating] = useState(false);
-
-  const { currentData: result } = useAlertmanagerConfig(selectedAlertmanager);
-  const config = result?.alertmanager_config;
-
   const defaultValues = useDefaultValues(muteTiming);
-  const formApi = useForm({ defaultValues });
 
-  const onSubmit = (values: MuteTimingFields) => {
-    if (!result) {
-      return;
-    }
+  const formApi = useForm({ defaultValues, values: defaultValues });
+  const updating = formApi.formState.isSubmitting;
 
-    const newMuteTiming = createMuteTiming(values);
+  const returnLink = makeAMLink('/alerting/routes/', selectedAlertmanager!, { tab: 'mute_timings' });
 
-    const muteTimings = muteTiming
-      ? config?.mute_time_intervals?.filter(({ name }) => name !== muteTiming.name)
-      : config?.mute_time_intervals;
+  const onSubmit = async (values: MuteTimingFields) => {
+    const timeInterval = createMuteTiming(values);
 
-    const newConfig: AlertManagerCortexConfig = {
-      ...result,
-      alertmanager_config: {
-        ...config,
-        route:
-          muteTiming && newMuteTiming.name !== muteTiming.name
-            ? renameMuteTimings(newMuteTiming.name, muteTiming.name, config?.route ?? {})
-            : config?.route,
-        mute_time_intervals: [...(muteTimings || []), newMuteTiming],
-      },
+    const updateOrCreate = async () => {
+      if (editMode) {
+        return updateTimeInterval({ timeInterval, originalName: muteTiming?.metadata?.name || muteTiming!.name });
+      }
+      return createTimeInterval({ timeInterval });
     };
 
-    const saveAction = dispatch(
-      updateAlertManagerConfigAction({
-        newConfig,
-        oldConfig: result,
-        alertManagerSourceName: selectedAlertmanager!,
-        successMessage: 'Mute timing saved',
-        redirectPath: '/alerting/routes/',
-        redirectSearch: 'tab=mute_timings',
-      })
-    );
-
-    setUpdating(true);
-
-    saveAction.unwrap().finally(() => {
-      setUpdating(false);
+    return updateOrCreate().then(() => {
+      locationService.push(returnLink);
     });
   };
 
+  if (loading) {
+    return <LoadingPlaceholder text="Loading mute timing" />;
+  }
+
+  if (showError) {
+    return <Alert title="No matching mute timing found" />;
+  }
+
   return (
     <>
-      {provenance && <ProvisioningAlert resource={ProvisionedResource.MuteTiming} />}
-      {loading && <LoadingPlaceholder text="Loading mute timing" />}
-      {showError && <Alert title="No matching mute timing found" />}
-      {result && !loading && !showError && (
-        <FormProvider {...formApi}>
-          <form onSubmit={formApi.handleSubmit(onSubmit)} data-testid="mute-timing-form">
-            <FieldSet label={'Create mute timing'} disabled={Boolean(provenance) || updating}>
-              <Field
-                required
-                label="Name"
-                description="A unique name for the mute timing"
-                invalid={!!formApi.formState.errors?.name}
-                error={formApi.formState.errors.name?.message}
-              >
-                <Input
-                  {...formApi.register('name', {
-                    required: true,
-                    validate: (value) => {
-                      if (!muteTiming) {
-                        const existingMuteTiming = config?.mute_time_intervals?.find(({ name }) => value === name);
-                        return existingMuteTiming ? `Mute timing already exists for "${value}"` : true;
-                      }
-                      return;
-                    },
-                  })}
-                  className={styles.input}
-                  data-testid={'mute-timing-name'}
-                />
-              </Field>
-              <MuteTimingTimeInterval />
-              <Button type="submit" className={styles.submitButton} disabled={updating}>
-                Save mute timing
-              </Button>
-              <LinkButton
-                type="button"
-                variant="secondary"
-                fill="outline"
-                href={makeAMLink('/alerting/routes/', selectedAlertmanager, { tab: 'mute_timings' })}
-                disabled={updating}
-              >
-                Cancel
-              </LinkButton>
-            </FieldSet>
-          </form>
-        </FormProvider>
-      )}
+      {provisioned && <ProvisioningAlert resource={ProvisionedResource.MuteTiming} />}
+      <FormProvider {...formApi}>
+        <form onSubmit={formApi.handleSubmit(onSubmit)} data-testid="mute-timing-form">
+          <FieldSet label={'Create mute timing'} disabled={provisioned || updating}>
+            <Field
+              required
+              label="Name"
+              description="A unique name for the mute timing"
+              invalid={!!formApi.formState.errors?.name}
+              error={formApi.formState.errors.name?.message}
+              disabled={disableNameField}
+            >
+              <Input
+                {...formApi.register('name', {
+                  required: true,
+                  validate: async (value) => {
+                    const skipValidation = editMode && value === muteTiming?.name;
+                    return validateMuteTiming(value, skipValidation);
+                  },
+                })}
+                className={styles.input}
+                data-testid={'mute-timing-name'}
+              />
+            </Field>
+            <MuteTimingTimeInterval />
+            <Button
+              type="submit"
+              className={styles.submitButton}
+              disabled={updating}
+              icon={updating ? 'spinner' : undefined}
+            >
+              {updating ? (
+                <Trans i18nKey="alerting.mute-timings.saving">Saving mute timing</Trans>
+              ) : (
+                <Trans i18nKey="alerting.mute-timings.save">Save mute timing</Trans>
+              )}
+            </Button>
+            <LinkButton type="button" variant="secondary" fill="outline" href={returnLink} disabled={updating}>
+              <Trans i18nKey="alerting.common.cancel">Cancel</Trans>
+            </LinkButton>
+          </FieldSet>
+        </form>
+      </FormProvider>
     </>
   );
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  input: css`
-    width: 400px;
-  `,
-  submitButton: css`
-    margin-right: ${theme.spacing(1)};
-  `,
+  input: css({
+    width: '400px',
+  }),
+  submitButton: css({
+    marginRight: theme.spacing(1),
+  }),
 });
 
 export default MuteTimingForm;

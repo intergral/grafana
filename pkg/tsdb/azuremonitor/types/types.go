@@ -9,15 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/grafana-azure-sdk-go/azcredentials"
+	"github.com/grafana/grafana-azure-sdk-go/v2/azcredentials"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana/pkg/tsdb/azuremonitor/kinds/dataquery"
-)
-
-const (
-	TimeSeries = "time_series"
-	Table      = "table"
-	Trace      = "trace"
 )
 
 var (
@@ -44,10 +39,10 @@ type AzureMonitorCustomizedCloudSettings struct {
 type DatasourceService struct {
 	URL        string
 	HTTPClient *http.Client
+	Logger     log.Logger
 }
 
 type DatasourceInfo struct {
-	Cloud       string
 	Credentials azcredentials.AzureCredentials
 	Settings    AzureMonitorSettings
 	Routes      map[string]AzRoute
@@ -134,8 +129,8 @@ type AzureMonitorDimensionFilterBackend struct {
 }
 
 func ConstructFiltersString(a dataquery.AzureMetricDimension) string {
-	var filterStrings []string
-	for _, filter := range a.Filters {
+	filterStrings := make([]string, len(a.Filters))
+	for i, filter := range a.Filters {
 		dimension := ""
 		operator := ""
 		if a.Dimension != nil {
@@ -144,11 +139,14 @@ func ConstructFiltersString(a dataquery.AzureMetricDimension) string {
 		if a.Operator != nil {
 			operator = *a.Operator
 		}
-		filterStrings = append(filterStrings, fmt.Sprintf("%v %v '%v'", dimension, operator, filter))
+
+		filterStrings[i] = fmt.Sprintf("%v %v '%v'", dimension, operator, filter)
 	}
+
 	if a.Operator != nil && *a.Operator == "eq" {
 		return strings.Join(filterStrings, " or ")
 	}
+
 	return strings.Join(filterStrings, " and ")
 }
 

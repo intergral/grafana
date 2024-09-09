@@ -2,7 +2,14 @@ import { uniq } from 'lodash';
 
 import { TraceqlSearchScope } from '../dataquery.gen';
 
-import { generateQueryFromFilters, getUnscopedTags, getFilteredTags, getAllTags, getTagsByScope } from './utils';
+import {
+  generateQueryFromFilters,
+  getUnscopedTags,
+  getFilteredTags,
+  getAllTags,
+  getTagsByScope,
+  generateQueryFromAdHocFilters,
+} from './utils';
 
 describe('generateQueryFromFilters generates the correct query for', () => {
   it('an empty array', () => {
@@ -19,6 +26,32 @@ describe('generateQueryFromFilters generates the correct query for', () => {
 
   it('a field with value and tag but without operator', () => {
     expect(generateQueryFromFilters([{ id: 'foo', tag: 'footag', value: 'foovalue' }])).toBe('{}');
+  });
+
+  describe('generates correct query for duration when duration type', () => {
+    it('not set', () => {
+      expect(
+        generateQueryFromFilters([
+          { id: 'min-duration', operator: '>', valueType: 'duration', tag: 'duration', value: '100ms' },
+        ])
+      ).toBe('{duration>100ms}');
+    });
+    it('set to span', () => {
+      expect(
+        generateQueryFromFilters([
+          { id: 'min-duration', operator: '>', valueType: 'duration', tag: 'duration', value: '100ms' },
+          { id: 'duration-type', value: 'span' },
+        ])
+      ).toBe('{duration>100ms}');
+    });
+    it('set to trace', () => {
+      expect(
+        generateQueryFromFilters([
+          { id: 'min-duration', operator: '>', valueType: 'duration', tag: 'duration', value: '100ms' },
+          { id: 'duration-type', value: 'trace' },
+        ])
+      ).toBe('{traceDuration>100ms}');
+    });
   });
 
   it('a field with tag, operator and tag', () => {
@@ -100,6 +133,31 @@ describe('generateQueryFromFilters generates the correct query for', () => {
         },
       ])
     ).toBe('{resource.footag>=1234}');
+  });
+});
+
+describe('generateQueryFromAdHocFilters generates the correct query for', () => {
+  it('an empty array', () => {
+    expect(generateQueryFromAdHocFilters([])).toBe('{}');
+  });
+
+  it('a filter with values', () => {
+    expect(generateQueryFromAdHocFilters([{ key: 'footag', operator: '=', value: 'foovalue' }])).toBe(
+      '{footag="foovalue"}'
+    );
+  });
+
+  it('two filters with values', () => {
+    expect(
+      generateQueryFromAdHocFilters([
+        { key: 'footag', operator: '=', value: 'foovalue' },
+        { key: 'bartag', operator: '=', value: 'barvalue' },
+      ])
+    ).toBe('{footag="foovalue" && bartag="barvalue"}');
+  });
+
+  it('a filter with intrinsic values', () => {
+    expect(generateQueryFromAdHocFilters([{ key: 'kind', operator: '=', value: 'server' }])).toBe('{kind=server}');
   });
 });
 

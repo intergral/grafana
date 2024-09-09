@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { Provider } from 'react-redux';
-import { Router } from 'react-router-dom';
+import { match, Router } from 'react-router-dom';
 import { useEffectOnce } from 'react-use';
-import { AutoSizerProps } from 'react-virtualized-auto-sizer';
+import { Props as AutoSizerProps } from 'react-virtualized-auto-sizer';
 import { getGrafanaContextMock } from 'test/mocks/getGrafanaContextMock';
 
 import { selectors as e2eSelectors } from '@grafana/e2e-selectors/src';
@@ -37,7 +36,13 @@ jest.mock('app/features/dashboard/dashgrid/LazyLoader', () => {
 jest.mock('react-virtualized-auto-sizer', () => {
   //   //   // The size of the children need to be small enough to be outside the view.
   //   //   // So it does not trigger the query to be run by the PanelQueryRunner.
-  return ({ children }: AutoSizerProps) => children({ height: 1, width: 1 });
+  return ({ children }: AutoSizerProps) =>
+    children({
+      height: 1,
+      scaledHeight: 1,
+      scaledWidth: 1,
+      width: 1,
+    });
 });
 
 jest.mock('app/features/dashboard/state/initDashboard', () => ({
@@ -238,6 +243,16 @@ describe('PublicDashboardPage', () => {
       setup(undefined, newState);
       await waitFor(() => {
         expect(screen.queryByTestId(selectors.Panels.Panel.HoverWidget.container)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('When public dashboard changes', () => {
+    it('Should init again', async () => {
+      const { rerender } = setup();
+      rerender({ match: { params: { accessToken: 'another-new-access-token' } } as unknown as match });
+      await waitFor(() => {
+        expect(initDashboard).toHaveBeenCalledTimes(2);
       });
     });
   });

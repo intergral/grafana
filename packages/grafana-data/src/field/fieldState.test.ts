@@ -1,5 +1,5 @@
-import { toDataFrame } from '../dataframe';
-import { DataFrame, TIME_SERIES_VALUE_FIELD_NAME, FieldType, TIME_SERIES_TIME_FIELD_NAME } from '../types';
+import { toDataFrame } from '../dataframe/processDataFrame';
+import { DataFrame, TIME_SERIES_TIME_FIELD_NAME, FieldType, TIME_SERIES_VALUE_FIELD_NAME } from '../types/dataFrame';
 
 import { getFieldDisplayName, getFrameDisplayName } from './fieldState';
 
@@ -14,11 +14,6 @@ function checkScenario(scenario: TitleScenario): string {
   const field = frame.fields[scenario.fieldIndex ?? 0];
   return getFieldDisplayName(field, frame, scenario.frames);
 }
-
-jest.mock('lodash', () => ({
-  ...jest.requireActual('lodash'),
-  isEqual: jest.fn().mockImplementation((obj1, obj2) => obj1 === obj2),
-}));
 
 describe('getFieldDisplayName', () => {
   it('Should add suffix for comparison frames', () => {

@@ -15,7 +15,7 @@ weight: 400
 
 This topic guides you through installing Grafana via the official Docker images. Specifically, it covers running Grafana via the Docker command line interface (CLI) and docker-compose.
 
-{{< youtube id="FlDfcMbSLXs" >}}
+{{< youtube id="FlDfcMbSLXs" start="703">}}
 
 Grafana Docker images come in two editions:
 
@@ -117,10 +117,10 @@ docker run -d -p 3000:3000 --name=grafana \
 Grafana supports specifying custom configuration settings using [environment variables]({{< relref "../../../setup-grafana/configure-grafana#override-configuration-with-environment-variables" >}}).
 
 ```bash
-# enabling public dashboard feature
+# enable debug logs
 
 docker run -d -p 3000:3000 --name=grafana \
-  -e "GF_FEATURE_TOGGLES_ENABLE=publicDashboards" \
+  -e "GF_LOG_LEVEL=debug" \
   grafana/grafana-enterprise
 ```
 
@@ -221,7 +221,6 @@ To run the latest stable version of Grafana using Docker Compose, complete the f
    For example:
 
    ```bash
-   version: "3.8"
    services:
      grafana:
        image: grafana/grafana-enterprise
@@ -279,7 +278,6 @@ To use Docker volumes for persistent storage, complete the following steps:
 1. Add the following code into the `docker-compose.yaml` file.
 
    ```yaml
-   version: '3.8'
    services:
      grafana:
        image: grafana/grafana-enterprise
@@ -324,7 +322,6 @@ To use bind mounts, complete the following steps:
 1. Now, add the following code into the `docker-compose.yaml` file.
 
    ```yaml
-   version: '3.8'
    services:
      grafana:
        image: grafana/grafana-enterprise
@@ -351,7 +348,6 @@ To use bind mounts, complete the following steps:
 The following example runs the latest stable version of Grafana, listening on port 3000, with the container named `grafana`, persistent storage in the `grafana-storage` docker volume, the server root URL set, and the official [clock panel](/grafana/plugins/grafana-clock-panel/) plugin installed.
 
 ```bash
-version: "3.8"
 services:
   grafana:
     image: grafana/grafana-enterprise

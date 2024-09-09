@@ -11,11 +11,12 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/login/social"
-	"github.com/grafana/grafana/pkg/models/roletype"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/ssosettings"
 	ssoModels "github.com/grafana/grafana/pkg/services/ssosettings/models"
+	"github.com/grafana/grafana/pkg/services/ssosettings/validation"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -29,8 +30,6 @@ var _ ssosettings.Reloadable = (*SocialGitlab)(nil)
 
 type SocialGitlab struct {
 	*SocialBase
-	apiUrl          string
-	skipOrgRoleSync bool
 }
 
 type apiData struct {
@@ -49,19 +48,13 @@ type userData struct {
 	Name   string   `json:"name"`
 	Groups []string `json:"groups_direct"`
 
-	EmailVerified  bool              `json:"email_verified"`
-	Role           roletype.RoleType `json:"-"`
-	IsGrafanaAdmin *bool             `json:"-"`
+	EmailVerified bool `json:"email_verified"`
+	raw           []byte
 }
 
-func NewGitLabProvider(info *social.OAuthInfo, cfg *setting.Cfg, ssoSettings ssosettings.Service, features *featuremgmt.FeatureManager) *SocialGitlab {
-	config := createOAuthConfig(info, cfg, social.GitlabProviderName)
+func NewGitLabProvider(info *social.OAuthInfo, cfg *setting.Cfg, orgRoleMapper *OrgRoleMapper, ssoSettings ssosettings.Service, features featuremgmt.FeatureToggles) *SocialGitlab {
 	provider := &SocialGitlab{
-		SocialBase:      newSocialBase(social.GitlabProviderName, config, info, cfg.AutoAssignOrgRole, cfg.OAuthSkipOrgRoleUpdateSync, *features),
-		apiUrl:          info.ApiUrl,
-		skipOrgRoleSync: cfg.GitLabSkipOrgRoleSync,
-		// FIXME: Move skipOrgRoleSync to OAuthInfo
-		// skipOrgRoleSync: info.SkipOrgRoleSync
+		SocialBase: newSocialBase(social.GitlabProviderName, orgRoleMapper, info, features, cfg),
 	}
 
 	if features.IsEnabledGlobally(featuremgmt.FlagSsoSettingsApi) {
@@ -71,11 +64,39 @@ func NewGitLabProvider(info *social.OAuthInfo, cfg *setting.Cfg, ssoSettings sso
 	return provider
 }
 
-func (s *SocialGitlab) Validate(ctx context.Context, settings ssoModels.SSOSettings) error {
-	return nil
+func (s *SocialGitlab) Validate(ctx context.Context, newSettings ssoModels.SSOSettings, oldSettings ssoModels.SSOSettings, requester identity.Requester) error {
+	info, err := CreateOAuthInfoFromKeyValues(newSettings.Settings)
+	if err != nil {
+		return ssosettings.ErrInvalidSettings.Errorf("SSO settings map cannot be converted to OAuthInfo: %v", err)
+	}
+
+	oldInfo, err := CreateOAuthInfoFromKeyValues(oldSettings.Settings)
+	if err != nil {
+		oldInfo = &social.OAuthInfo{}
+	}
+
+	err = validateInfo(info, oldInfo, requester)
+	if err != nil {
+		return err
+	}
+
+	return validation.Validate(info, requester,
+		validation.MustBeEmptyValidator(info.AuthUrl, "Auth URL"),
+		validation.MustBeEmptyValidator(info.TokenUrl, "Token URL"),
+		validation.MustBeEmptyValidator(info.ApiUrl, "API URL"))
 }
 
 func (s *SocialGitlab) Reload(ctx context.Context, settings ssoModels.SSOSettings) error {
+	newInfo, err := CreateOAuthInfoFromKeyValues(settings.Settings)
+	if err != nil {
+		return ssosettings.ErrInvalidSettings.Errorf("SSO settings map cannot be converted to OAuthInfo: %v", err)
+	}
+
+	s.reloadMutex.Lock()
+	defer s.reloadMutex.Unlock()
+
+	s.updateInfo(ctx, social.GitlabProviderName, newInfo)
+
 	return nil
 }
 
@@ -98,7 +119,7 @@ func (s *SocialGitlab) getGroupsPage(ctx context.Context, client *http.Client, n
 		FullPath string `json:"full_path"`
 	}
 
-	groupURL, err := url.JoinPath(s.apiUrl, "/groups")
+	groupURL, err := url.JoinPath(s.info.ApiUrl, "/groups")
 	if err != nil {
 		s.log.Error("Error joining GitLab API URL", "err", err)
 		return nil, nil
@@ -159,6 +180,9 @@ func (s *SocialGitlab) getGroupsPage(ctx context.Context, client *http.Client, n
 }
 
 func (s *SocialGitlab) UserInfo(ctx context.Context, client *http.Client, token *oauth2.Token) (*social.BasicUserInfo, error) {
+	s.reloadMutex.RLock()
+	defer s.reloadMutex.RUnlock()
+
 	data, err := s.extractFromToken(ctx, client, token)
 	if err != nil {
 		return nil, err
@@ -174,33 +198,43 @@ func (s *SocialGitlab) UserInfo(ctx context.Context, client *http.Client, token 
 	}
 
 	userInfo := &social.BasicUserInfo{
-		Id:             data.ID,
-		Name:           data.Name,
-		Login:          data.Login,
-		Email:          data.Email,
-		Groups:         data.Groups,
-		Role:           data.Role,
-		IsGrafanaAdmin: data.IsGrafanaAdmin,
+		Id:     data.ID,
+		Name:   data.Name,
+		Login:  data.Login,
+		Email:  data.Email,
+		Groups: data.Groups,
+	}
+
+	if s.info.AllowAssignGrafanaAdmin && s.info.SkipOrgRoleSync {
+		s.log.Debug("AllowAssignGrafanaAdmin and skipOrgRoleSync are both set, Grafana Admin role will not be synced, consider setting one or the other")
+	}
+
+	if !s.info.SkipOrgRoleSync {
+		directlyMappedRole, grafanaAdmin, err := s.extractRoleAndAdminOptional(data.raw, userInfo.Groups)
+		if err != nil {
+			s.log.Warn("Failed to extract role", "err", err)
+		}
+
+		if s.info.AllowAssignGrafanaAdmin {
+			userInfo.IsGrafanaAdmin = &grafanaAdmin
+		}
+
+		userInfo.OrgRoles = s.orgRoleMapper.MapOrgRoles(s.orgMappingCfg, userInfo.Groups, directlyMappedRole)
+		if s.info.RoleAttributeStrict && len(userInfo.OrgRoles) == 0 {
+			return nil, errRoleAttributeStrictViolation.Errorf("could not evaluate any valid roles using IdP provided data")
+		}
 	}
 
 	if !s.isGroupMember(data.Groups) {
 		return nil, errMissingGroupMembership
 	}
 
-	if s.allowAssignGrafanaAdmin && s.skipOrgRoleSync {
-		s.log.Debug("AllowAssignGrafanaAdmin and skipOrgRoleSync are both set, Grafana Admin role will not be synced, consider setting one or the other")
-	}
-
 	return userInfo, nil
 }
 
-func (s *SocialGitlab) GetOAuthInfo() *social.OAuthInfo {
-	return s.info
-}
-
-func (s *SocialGitlab) extractFromAPI(ctx context.Context, client *http.Client, token *oauth2.Token) (*userData, error) {
+func (s *SocialGitlab) extractFromAPI(ctx context.Context, client *http.Client, _ *oauth2.Token) (*userData, error) {
 	apiResp := &apiData{}
-	response, err := s.httpGet(ctx, client, s.apiUrl+"/user")
+	response, err := s.httpGet(ctx, client, s.info.ApiUrl+"/user")
 	if err != nil {
 		return nil, fmt.Errorf("Error getting user info: %w", err)
 	}
@@ -224,23 +258,10 @@ func (s *SocialGitlab) extractFromAPI(ctx context.Context, client *http.Client, 
 		Email:  apiResp.Email,
 		Name:   apiResp.Name,
 		Groups: s.getGroups(ctx, client),
+		raw:    response.Body,
 	}
 
-	if !s.skipOrgRoleSync {
-		var grafanaAdmin bool
-		role, grafanaAdmin, err := s.extractRoleAndAdmin(response.Body, idData.Groups)
-		if err != nil {
-			return nil, err
-		}
-
-		if s.allowAssignGrafanaAdmin {
-			idData.IsGrafanaAdmin = &grafanaAdmin
-		}
-
-		idData.Role = role
-	}
-
-	if setting.Env == setting.Dev {
+	if s.cfg.Env == setting.Dev {
 		s.log.Debug("Resolved ID", "data", fmt.Sprintf("%+v", idData))
 	}
 
@@ -281,19 +302,6 @@ func (s *SocialGitlab) extractFromToken(ctx context.Context, client *http.Client
 		s.log.Debug("Retrieved groups from userinfo", "sub", userInfo.Sub,
 			"original_groups", data.Groups, "groups", userInfo.Groups)
 		data.Groups = userInfo.Groups
-	}
-
-	if !s.skipOrgRoleSync {
-		role, grafanaAdmin, errRole := s.extractRoleAndAdmin(rawJSON, data.Groups)
-		if errRole != nil {
-			return nil, errRole
-		}
-
-		if s.allowAssignGrafanaAdmin {
-			data.IsGrafanaAdmin = &grafanaAdmin
-		}
-
-		data.Role = role
 	}
 
 	s.log.Debug("Resolved user data", "data", fmt.Sprintf("%+v", data))

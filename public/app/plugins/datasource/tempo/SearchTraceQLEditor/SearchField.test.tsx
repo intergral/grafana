@@ -1,24 +1,28 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
-import { initTemplateSrv } from 'test/helpers/initTemplateSrv';
 
 import { LanguageProvider } from '@grafana/data';
-import { FetchError, setTemplateSrv } from '@grafana/runtime';
 
 import { TraceqlFilter, TraceqlSearchScope } from '../dataquery.gen';
 import { TempoDatasource } from '../datasource';
 import TempoLanguageProvider from '../language_provider';
+import { initTemplateSrv } from '../test_utils';
 import { keywordOperators, numberOperators, operators, stringOperators } from '../traceql/traceql';
 
 import SearchField from './SearchField';
 
 describe('SearchField', () => {
-  let templateSrv = initTemplateSrv('key', [{ name: 'templateVariable1' }, { name: 'templateVariable2' }]);
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    setTemplateSrv(templateSrv);
+    const expectedValues = {
+      interpolationVar: 'interpolationText',
+      interpolationText: 'interpolationText',
+      interpolationVarWithPipe: 'interpolationTextOne|interpolationTextTwo',
+      scopedInterpolationText: 'scopedInterpolationText',
+    };
+    initTemplateSrv([{ name: 'templateVariable1' }, { name: 'templateVariable2' }], expectedValues);
+
     jest.useFakeTimers();
     // Need to use delay: null here to work with fakeTimers
     // see https://github.com/testing-library/user-event/issues/833
@@ -81,20 +85,30 @@ describe('SearchField', () => {
     if (select) {
       // Add first value
       await user.click(select);
-      jest.advanceTimersByTime(1000);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
       const driverVal = await screen.findByText('driver');
-      await user.click(driverVal);
+
+      await act(async () => {
+        await user.click(driverVal);
+      });
       expect(updateFilter).toHaveBeenCalledWith({ ...filter, value: ['driver'] });
 
       // Add a second value
       await user.click(select);
-      jest.advanceTimersByTime(1000);
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
       const customerVal = await screen.findByText('customer');
+
       await user.click(customerVal);
       expect(updateFilter).toHaveBeenCalledWith({ ...filter, value: ['driver', 'customer'] });
 
       // Remove the first value
       const firstValRemove = await screen.findAllByLabelText('Remove');
+
       await user.click(firstValRemove[0]);
       expect(updateFilter).toHaveBeenCalledWith({ ...filter, value: ['customer'] });
     }
@@ -116,22 +130,26 @@ describe('SearchField', () => {
     if (select) {
       // Select tag22 as the tag
       await user.click(select);
-      jest.advanceTimersByTime(1000);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
       const tag22 = await screen.findByText('tag22');
       await user.click(tag22);
-      expect(updateFilter).toHaveBeenCalledWith({ ...filter, tag: 'tag22' });
+      expect(updateFilter).toHaveBeenCalledWith({ ...filter, tag: 'tag22', value: [] });
 
       // Select tag1 as the tag
       await user.click(select);
-      jest.advanceTimersByTime(1000);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
       const tag1 = await screen.findByText('tag1');
       await user.click(tag1);
-      expect(updateFilter).toHaveBeenCalledWith({ ...filter, tag: 'tag1' });
+      expect(updateFilter).toHaveBeenCalledWith({ ...filter, tag: 'tag1', value: [] });
 
       // Remove the tag
       const tagRemove = await screen.findByLabelText('select-clear-value');
       await user.click(tagRemove);
-      expect(updateFilter).toHaveBeenCalledWith({ ...filter, value: undefined });
+      expect(updateFilter).toHaveBeenCalledWith({ ...filter, value: [] });
     }
   });
 
@@ -284,12 +302,11 @@ const renderSearchField = (
       datasource={datasource}
       updateFilter={updateFilter}
       filter={filter}
-      setError={function (error: FetchError): void {
-        throw error;
-      }}
+      setError={() => {}}
       tags={tags || []}
       hideTag={hideTag}
       query={'{}'}
+      addVariablesToOptions={true}
     />
   );
 };

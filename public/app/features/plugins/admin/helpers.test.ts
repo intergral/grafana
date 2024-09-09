@@ -88,6 +88,83 @@ describe('Plugins/Helpers', () => {
       expect(findMerged('plugin-5')).not.toBeUndefined();
       expect(findMerged('plugin-5')?.isDeprecated).toBe(true);
     });
+
+    test('core plugins should be fullyInstalled in cloud', () => {
+      const corePluginId = 'plugin-core';
+
+      const oldFeatureTogglesManagedPluginsInstall = config.featureToggles.managedPluginsInstall;
+      const oldPluginAdminExternalManageEnabled = config.pluginAdminExternalManageEnabled;
+
+      config.featureToggles.managedPluginsInstall = true;
+      config.pluginAdminExternalManageEnabled = true;
+
+      const merged = mergeLocalsAndRemotes({
+        local: [...localPlugins, getLocalPluginMock({ id: corePluginId, signature: PluginSignatureStatus.internal })],
+        remote: [...remotePlugins, getRemotePluginMock({ slug: corePluginId })],
+      });
+      const findMerged = (mergedId: string) => merged.find(({ id }) => id === mergedId);
+
+      expect(merged).toHaveLength(5);
+      expect(findMerged(corePluginId)).not.toBeUndefined();
+      expect(findMerged(corePluginId)?.isCore).toBe(true);
+      expect(findMerged(corePluginId)?.isFullyInstalled).toBe(true);
+
+      config.featureToggles.managedPluginsInstall = oldFeatureTogglesManagedPluginsInstall;
+      config.pluginAdminExternalManageEnabled = oldPluginAdminExternalManageEnabled;
+    });
+
+    test('plugins should be fully installed if they are installed and it is provisioned', () => {
+      const pluginId = 'plugin-1';
+
+      const oldFeatureTogglesManagedPluginsInstall = config.featureToggles.managedPluginsInstall;
+      const oldPluginAdminExternalManageEnabled = config.pluginAdminExternalManageEnabled;
+
+      config.featureToggles.managedPluginsInstall = true;
+      config.pluginAdminExternalManageEnabled = true;
+
+      const merged = mergeLocalsAndRemotes({
+        local: [...localPlugins, getLocalPluginMock({ id: pluginId })],
+        remote: [...remotePlugins, getRemotePluginMock({ slug: pluginId })],
+        provisioned: [{ slug: pluginId }],
+      });
+      const findMerged = (mergedId: string) => merged.find(({ id }) => id === mergedId);
+
+      expect(merged).toHaveLength(5);
+      expect(findMerged(pluginId)).not.toBeUndefined();
+      expect(findMerged(pluginId)?.isFullyInstalled).toBe(true);
+
+      config.featureToggles.managedPluginsInstall = oldFeatureTogglesManagedPluginsInstall;
+      config.pluginAdminExternalManageEnabled = oldPluginAdminExternalManageEnabled;
+    });
+
+    test('plugins should have update when instance version is different from remote version', () => {
+      const oldFeatureTogglesManagedPluginsInstall = config.featureToggles.managedPluginsInstall;
+      const oldPluginAdminExternalManageEnabled = config.pluginAdminExternalManageEnabled;
+
+      config.featureToggles.managedPluginsInstall = true;
+      config.pluginAdminExternalManageEnabled = true;
+
+      const pluginId = 'plugin-1';
+      const remotePlugin = getRemotePluginMock({ slug: pluginId, version: '1.0.0' });
+      const instancePlugin = {
+        pluginSlug: pluginId,
+        version: '0.0.9',
+      };
+
+      const merged = mergeLocalsAndRemotes({
+        local: [],
+        remote: [remotePlugin],
+        instance: [instancePlugin],
+      });
+      const findMerged = (mergedId: string) => merged.find(({ id }) => id === mergedId);
+
+      expect(merged).toHaveLength(1);
+      expect(findMerged(pluginId)).not.toBeUndefined();
+      expect(findMerged(pluginId)?.hasUpdate).toBe(true);
+
+      config.featureToggles.managedPluginsInstall = oldFeatureTogglesManagedPluginsInstall;
+      config.pluginAdminExternalManageEnabled = oldPluginAdminExternalManageEnabled;
+    });
   });
 
   describe('mergeLocalAndRemote()', () => {
@@ -113,9 +190,10 @@ describe('Plugins/Helpers', () => {
         id: 'alexanderzobnin-zabbix-app',
         info: {
           logos: {
-            large: 'https://grafana.com/api/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/large',
-            small: 'https://grafana.com/api/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/small',
+            large: '/api/gnet/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/large',
+            small: '/api/gnet/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/small',
           },
+          keywords: ['zabbix', 'monitoring', 'dashboard'],
         },
         error: undefined,
         isCore: false,
@@ -125,6 +203,7 @@ describe('Plugins/Helpers', () => {
         isInstalled: false,
         isDeprecated: false,
         isPublished: true,
+        isManaged: false,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
         popularity: 0.2111,
@@ -133,6 +212,7 @@ describe('Plugins/Helpers', () => {
         type: 'app',
         updatedAt: '2021-05-18T14:53:01.000Z',
         isFullyInstalled: false,
+        angularDetected: false,
       });
     });
 
@@ -201,6 +281,7 @@ describe('Plugins/Helpers', () => {
         isInstalled: true,
         isPublished: false,
         isDeprecated: false,
+        isManaged: false,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
         popularity: 0,
@@ -212,6 +293,7 @@ describe('Plugins/Helpers', () => {
         updatedAt: '2021-08-25',
         installedVersion: '4.2.2',
         isFullyInstalled: true,
+        angularDetected: false,
       });
     });
 
@@ -239,9 +321,10 @@ describe('Plugins/Helpers', () => {
         id: 'alexanderzobnin-zabbix-app',
         info: {
           logos: {
-            small: 'https://grafana.com/api/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/small',
-            large: 'https://grafana.com/api/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/large',
+            small: '/api/gnet/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/small',
+            large: '/api/gnet/plugins/alexanderzobnin-zabbix-app/versions/4.1.5/logos/large',
           },
+          keywords: ['zabbix', 'monitoring', 'dashboard'],
         },
         error: undefined,
         isCore: false,
@@ -251,6 +334,7 @@ describe('Plugins/Helpers', () => {
         isInstalled: true,
         isPublished: true,
         isDeprecated: false,
+        isManaged: false,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
         popularity: 0.2111,
@@ -262,6 +346,7 @@ describe('Plugins/Helpers', () => {
         updatedAt: '2021-05-18T14:53:01.000Z',
         installedVersion: '4.2.2',
         isFullyInstalled: true,
+        angularDetected: false,
       });
     });
 
@@ -643,6 +728,35 @@ describe('Plugins/Helpers', () => {
 
       // No local or remote
       expect(mapToCatalogPlugin()).toMatchObject({ updatedAt: '' });
+    });
+
+    test('`.angularDetected` - prefers the local', () => {
+      // Both false shoul return false
+      expect(
+        mapToCatalogPlugin({ ...localPlugin, angularDetected: false }, { ...remotePlugin, angularDetected: false })
+      ).toMatchObject({ angularDetected: false });
+
+      // Remote version is using angular, local isn't, should prefer local
+      expect(
+        mapToCatalogPlugin({ ...localPlugin, angularDetected: false }, { ...remotePlugin, angularDetected: true })
+      ).toMatchObject({ angularDetected: false });
+
+      // Remote only
+      expect(mapToCatalogPlugin(undefined, remotePlugin)).toMatchObject({ angularDetected: false });
+      expect(mapToCatalogPlugin(undefined, { ...remotePlugin, angularDetected: true })).toMatchObject({
+        angularDetected: true,
+      });
+
+      // Local only
+      expect(mapToCatalogPlugin({ ...localPlugin, angularDetected: false }, undefined)).toMatchObject({
+        angularDetected: false,
+      });
+      expect(mapToCatalogPlugin({ ...localPlugin, angularDetected: true }, undefined)).toMatchObject({
+        angularDetected: true,
+      });
+
+      // No local or remote
+      expect(mapToCatalogPlugin()).toMatchObject({ angularDetected: undefined });
     });
   });
 

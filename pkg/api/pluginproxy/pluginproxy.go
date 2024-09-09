@@ -6,13 +6,16 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grafana/grafana/pkg/infra/tracing"
 	"github.com/grafana/grafana/pkg/plugins"
+	ac "github.com/grafana/grafana/pkg/services/accesscontrol"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
+	pluginac "github.com/grafana/grafana/pkg/services/pluginsintegration/pluginaccesscontrol"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginsettings"
 	"github.com/grafana/grafana/pkg/services/secrets"
 	"github.com/grafana/grafana/pkg/setting"
@@ -22,6 +25,7 @@ import (
 )
 
 type PluginProxy struct {
+	accessControl  ac.AccessControl
 	ps             *pluginsettings.DTO
 	pluginRoutes   []*plugins.Route
 	ctx            *contextmodel.ReqContext
@@ -37,8 +41,9 @@ type PluginProxy struct {
 // NewPluginProxy creates a plugin proxy.
 func NewPluginProxy(ps *pluginsettings.DTO, routes []*plugins.Route, ctx *contextmodel.ReqContext,
 	proxyPath string, cfg *setting.Cfg, secretsService secrets.Service, tracer tracing.Tracer,
-	transport *http.Transport, features featuremgmt.FeatureToggles) (*PluginProxy, error) {
+	transport *http.Transport, accessControl ac.AccessControl, features featuremgmt.FeatureToggles) (*PluginProxy, error) {
 	return &PluginProxy{
+		accessControl:  accessControl,
 		ps:             ps,
 		pluginRoutes:   routes,
 		ctx:            ctx,
@@ -67,15 +72,18 @@ func (proxy *PluginProxy) HandleRequest() {
 			continue
 		}
 
-		if route.ReqRole.IsValid() {
-			if !proxy.ctx.HasUserRole(route.ReqRole) {
-				proxy.ctx.JsonApiErr(http.StatusForbidden, "plugin proxy route access denied", nil)
-				return
-			}
+		if !proxy.hasAccessToRoute(route) {
+			proxy.ctx.JsonApiErr(http.StatusForbidden, "plugin proxy route access denied", nil)
+			return
 		}
 
 		if path, exists := params["*"]; exists {
+			hasSlash := strings.HasSuffix(proxy.proxyPath, "/")
 			proxy.proxyPath = path
+
+			if hasSlash && !strings.HasSuffix(path, "/") && proxy.features.IsEnabled(proxy.ctx.Req.Context(), featuremgmt.FlagPluginProxyPreserveTrailingSlash) {
+				proxy.proxyPath += "/"
+			}
 		} else {
 			proxy.proxyPath = ""
 		}
@@ -118,6 +126,22 @@ func (proxy *PluginProxy) HandleRequest() {
 	proxy.tracer.Inject(ctx, proxy.ctx.Req.Header, span)
 
 	reverseProxy.ServeHTTP(proxy.ctx.Resp, proxy.ctx.Req)
+}
+
+func (proxy *PluginProxy) hasAccessToRoute(route *plugins.Route) bool {
+	useRBAC := proxy.features.IsEnabled(proxy.ctx.Req.Context(), featuremgmt.FlagAccessControlOnCall) && route.ReqAction != ""
+	if useRBAC {
+		routeEval := pluginac.GetPluginRouteEvaluator(proxy.ps.PluginID, route.ReqAction)
+		hasAccess := ac.HasAccess(proxy.accessControl, proxy.ctx)(routeEval)
+		if !hasAccess {
+			proxy.ctx.Logger.Debug("plugin route is covered by RBAC, user doesn't have access", "route", proxy.ctx.Req.URL.Path)
+		}
+		return hasAccess
+	}
+	if route.ReqRole.IsValid() {
+		return proxy.ctx.HasUserRole(route.ReqRole)
+	}
+	return true
 }
 
 func (proxy PluginProxy) director(req *http.Request) {
@@ -202,6 +226,7 @@ func (proxy PluginProxy) logRequest() {
 }
 
 type templateData struct {
+	URL            string
 	JsonData       map[string]any
 	SecureJsonData map[string]string
 }

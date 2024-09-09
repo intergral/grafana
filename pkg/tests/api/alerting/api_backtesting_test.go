@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/accesscontrol/resourcepermissions"
 	"github.com/grafana/grafana/pkg/services/datasources"
@@ -35,7 +36,7 @@ func TestBacktesting(t *testing.T) {
 
 	grafanaListedAddr, env := testinfra.StartGrafanaEnv(t, dir, path)
 
-	userId := createUser(t, env.SQLStore, user.CreateUserCommand{
+	userId := createUser(t, env.SQLStore, env.Cfg, user.CreateUserCommand{
 		DefaultOrgRole: string(org.RoleAdmin),
 		Password:       "admin",
 		Login:          "admin",
@@ -91,10 +92,11 @@ func TestBacktesting(t *testing.T) {
 	})
 
 	t.Run("if user does not have permissions", func(t *testing.T) {
-		testUserId := createUser(t, env.SQLStore, user.CreateUserCommand{
-			DefaultOrgRole: "",
+		testUserId := createUser(t, env.SQLStore, env.Cfg, user.CreateUserCommand{
+			DefaultOrgRole: string(identity.RoleNone),
 			Password:       "test",
 			Login:          "test",
+			OrgID:          1,
 		})
 
 		testUserApiCli := newAlertingApiClient(grafanaListedAddr, "test", "test")
@@ -106,7 +108,7 @@ func TestBacktesting(t *testing.T) {
 		})
 
 		// access control permissions store
-		permissionsStore := resourcepermissions.NewStore(env.SQLStore, featuremgmt.WithFeatures())
+		permissionsStore := resourcepermissions.NewStore(env.Cfg, env.SQLStore, featuremgmt.WithFeatures())
 		_, err := permissionsStore.SetUserResourcePermission(context.Background(),
 			accesscontrol.GlobalOrgID,
 			accesscontrol.User{ID: testUserId},
@@ -123,7 +125,7 @@ func TestBacktesting(t *testing.T) {
 
 		t.Run("fail if can't query data sources", func(t *testing.T) {
 			status, body := testUserApiCli.SubmitRuleForBacktesting(t, queryRequest)
-			require.Contains(t, body, "user is not authorized to access rule group")
+			require.Contains(t, body, "user is not authorized to access one or many data sources")
 			require.Equalf(t, http.StatusForbidden, status, "Response: %s", body)
 		})
 	})

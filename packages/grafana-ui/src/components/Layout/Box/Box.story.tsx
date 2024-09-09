@@ -1,5 +1,4 @@
 import { Meta, StoryFn } from '@storybook/react';
-import React from 'react';
 
 import { SpacingTokenControl } from '../../../utils/storybook/themeStorybookControls';
 import { Text } from '../../Text/Text';
@@ -73,6 +72,7 @@ Basic.argTypes = {
   paddingBottom: SpacingTokenControl,
   paddingLeft: SpacingTokenControl,
   paddingRight: SpacingTokenControl,
+  direction: { control: 'select', options: ['row', 'row-reverse', 'column', 'column-reverse'] },
   display: { control: 'select', options: ['flex', 'block', 'inline', 'none'] },
   backgroundColor: { control: 'select', options: backgroundOptions },
   borderStyle: { control: 'select', options: borderStyleOptions },

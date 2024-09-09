@@ -1,10 +1,8 @@
 import { css } from '@emotion/css';
-import React from 'react';
 import { useForm } from 'react-hook-form';
 
 import { GrafanaTheme2, TimeRange } from '@grafana/data/src';
 import { selectors as e2eSelectors } from '@grafana/e2e-selectors/src';
-import { config, featureEnabled } from '@grafana/runtime/src';
 import {
   Button,
   ClipboardButton,
@@ -17,8 +15,10 @@ import {
   useStyles2,
 } from '@grafana/ui/src';
 import { Layout } from '@grafana/ui/src/components/Layout/Layout';
+import { Trans, t } from 'app/core/internationalization';
 import {
   useDeletePublicDashboardMutation,
+  usePauseOrResumePublicDashboardMutation,
   useUpdatePublicDashboardMutation,
 } from 'app/features/dashboard/api/publicDashboardApi';
 import { DashboardModel } from 'app/features/dashboard/state';
@@ -39,6 +39,7 @@ import { UnsupportedTemplateVariablesAlert } from '../ModalAlerts/UnsupportedTem
 import {
   dashboardHasTemplateVariables,
   generatePublicDashboardUrl,
+  isEmailSharingEnabled,
   PublicDashboard,
 } from '../SharePublicDashboardUtils';
 
@@ -78,10 +79,9 @@ export function ConfigPublicDashboardBase({
   const isDesktop = useIsDesktop();
 
   const [update, { isLoading }] = useUpdatePublicDashboardMutation();
+  const [pauseOrResume, { isLoading: isPauseOrResumeLoading }] = usePauseOrResumePublicDashboardMutation();
   const hasWritePermissions = contextSrv.hasPermission(AccessControlAction.DashboardsPublicWrite);
-  const disableInputs = !hasWritePermissions || isLoading;
-  const hasEmailSharingEnabled =
-    !!config.featureToggles.publicDashboardsEmailSharing && featureEnabled('publicDashboardsEmailSharing');
+  const disableInputs = !hasWritePermissions || isLoading || isPauseOrResumeLoading;
 
   const { handleSubmit, setValue, register } = useForm<ConfigPublicDashboardForm>({
     defaultValues: {
@@ -104,10 +104,28 @@ export function ConfigPublicDashboardBase({
       },
     });
   };
+  const onPauseOrResume = async (values: ConfigPublicDashboardForm) => {
+    const { isAnnotationsEnabled, isTimeSelectionEnabled, isPaused } = values;
+
+    pauseOrResume({
+      dashboard: dashboard,
+      payload: {
+        ...publicDashboard!,
+        annotationsEnabled: isAnnotationsEnabled,
+        timeSelectionEnabled: isTimeSelectionEnabled,
+        isEnabled: !isPaused,
+      },
+    });
+  };
 
   const onChange = async (name: keyof ConfigPublicDashboardForm, value: boolean) => {
     setValue(name, value);
     await handleSubmit((data) => onPublicDashboardUpdate(data))();
+  };
+
+  const onTogglePause = async (value: boolean) => {
+    setValue('isPaused', value);
+    await handleSubmit((data) => onPauseOrResume(data))();
   };
 
   function onCopyURL() {
@@ -123,9 +141,12 @@ export function ConfigPublicDashboardBase({
         <UnsupportedDataSourcesAlert unsupportedDataSources={unsupportedDatasources.join(', ')} />
       )}
 
-      {hasEmailSharingEnabled && <EmailSharingConfiguration />}
+      {isEmailSharingEnabled() && <EmailSharingConfiguration dashboard={dashboard} />}
 
-      <Field label="Dashboard URL" className={styles.fieldSpace}>
+      <Field
+        label={t('public-dashboard.config.dashboard-url-field-label', 'Dashboard URL')}
+        className={styles.fieldSpace}
+      >
         <Input
           value={generatePublicDashboardUrl(publicDashboard!.accessToken!)}
           readOnly
@@ -139,7 +160,7 @@ export function ConfigPublicDashboardBase({
               getText={() => generatePublicDashboardUrl(publicDashboard!.accessToken!)}
               onClipboardCopy={onCopyURL}
             >
-              Copy
+              <Trans i18nKey="public-dashboard.config.copy-button">Copy</Trans>
             </ClipboardButton>
           }
         />
@@ -154,23 +175,23 @@ export function ConfigPublicDashboardBase({
               DashboardInteractions.publicDashboardPauseSharingClicked({
                 paused: e.currentTarget.checked,
               });
-              onChange('isPaused', e.currentTarget.checked);
+              onTogglePause(e.currentTarget.checked);
             }}
             data-testid={selectors.PauseSwitch}
           />
           <Label
-            className={css`
-              margin-bottom: 0;
-            `}
+            className={css({
+              marginBottom: 0,
+            })}
           >
-            Pause sharing dashboard
+            <Trans i18nKey="public-dashboard.config.pause-sharing-dashboard-label">Pause sharing dashboard</Trans>
           </Label>
         </Layout>
       </Field>
 
       <Field className={styles.fieldSpace}>
         <SettingsBar
-          title="Settings"
+          title={t('public-dashboard.config.settings-title', 'Settings')}
           headerElement={({ className }) => (
             <SettingsSummary
               className={className}
@@ -193,8 +214,7 @@ export function ConfigPublicDashboardBase({
       >
         <HorizontalGroup justify="flex-end">
           <Button
-            aria-label="Revoke public URL"
-            title="Revoke public URL"
+            title={t('public-dashboard.config.revoke-public-URL-button-title', 'Revoke public URL')}
             onClick={onRevoke}
             type="button"
             disabled={disableInputs}
@@ -202,7 +222,7 @@ export function ConfigPublicDashboardBase({
             variant="destructive"
             fill="outline"
           >
-            Revoke public URL
+            <Trans i18nKey="public-dashboard.config.revoke-public-URL-button">Revoke public URL</Trans>
           </Button>
         </HorizontalGroup>
       </Layout>
@@ -262,18 +282,18 @@ export function ConfigPublicDashboard({ publicDashboard, unsupportedDatasources 
 }
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  configContainer: css`
-    label: config container;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    gap: ${theme.spacing(3)};
-  `,
-  fieldSpace: css`
-    label: field space;
-    width: 100%;
-    margin-bottom: 0;
-  `,
+  configContainer: css({
+    label: 'config container',
+    display: 'flex',
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    gap: theme.spacing(3),
+  }),
+  fieldSpace: css({
+    label: 'field space',
+    width: '100%',
+    marginBottom: 0,
+  }),
   timeRange: css({
     display: 'inline-block',
   }),

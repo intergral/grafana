@@ -1,9 +1,8 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
 import { GrafanaTheme2, PluginErrorCode, PluginSignatureStatus, PluginType } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import { Alert, HorizontalGroup, Icon, List, PluginSignatureBadge, useStyles2 } from '@grafana/ui';
+import { Alert, Icon, List, PluginSignatureBadge, Stack, useStyles2 } from '@grafana/ui';
 
 import { useGetErrors, useFetchStatus } from '../admin/state/hooks';
 
@@ -23,7 +22,7 @@ export function PluginsErrorsInfo({ filterByPluginType }: PluginsErrorInfoProps)
   return (
     <Alert
       title="Unsigned plugins were found during plugin initialization. Grafana Labs cannot guarantee the integrity of these plugins. We recommend only using signed plugins."
-      aria-label={selectors.pages.PluginsList.signatureErrorNotice}
+      data-testid={selectors.pages.PluginsList.signatureErrorNotice}
       severity="warning"
     >
       <p>The following plugins are disabled and not shown in the list below:</p>
@@ -32,13 +31,13 @@ export function PluginsErrorsInfo({ filterByPluginType }: PluginsErrorInfoProps)
         className={styles.list}
         renderItem={(error) => (
           <div className={styles.wrapper}>
-            <HorizontalGroup spacing="sm" justify="flex-start" align="center">
+            <Stack justifyContent="flex-start" alignItems="center">
               <strong>{error.pluginId}</strong>
               <PluginSignatureBadge
                 status={mapPluginErrorCodeToSignatureStatus(error.errorCode)}
                 className={styles.badge}
               />
-            </HorizontalGroup>
+            </Stack>
           </div>
         )}
       />

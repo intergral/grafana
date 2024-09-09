@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
-import React, { CSSProperties } from 'react';
+import { CSSProperties } from 'react';
+import * as React from 'react';
 
 import { LinkModel } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -63,7 +64,7 @@ export const DataLinksContextMenu = ({ children, links, style }: DataLinksContex
         target={linkModel.target}
         title={linkModel.title}
         style={{ ...style, overflow: 'hidden', display: 'flex' }}
-        aria-label={selectors.components.DataLinksContextMenu.singleLink}
+        data-testid={selectors.components.DataLinksContextMenu.singleLink}
       >
         {children({})}
       </a>

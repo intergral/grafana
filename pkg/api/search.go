@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/grafana/grafana/pkg/services/org"
+
 	"github.com/grafana/grafana/pkg/api/response"
 	"github.com/grafana/grafana/pkg/infra/metrics"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
@@ -21,6 +23,9 @@ import (
 // 422: unprocessableEntityError
 // 500: internalServerError
 func (hs *HTTPServer) Search(c *contextmodel.ReqContext) response.Response {
+	c, span := hs.injectSpan(c, "api.Search")
+	defer span.End()
+
 	query := c.Query("query")
 	tags := c.QueryStrings("tag")
 	starred := c.Query("starred")
@@ -28,10 +33,15 @@ func (hs *HTTPServer) Search(c *contextmodel.ReqContext) response.Response {
 	page := c.QueryInt64("page")
 	dashboardType := c.Query("type")
 	sort := c.Query("sort")
+	deleted := c.Query("deleted")
 	permission := dashboardaccess.PERMISSION_VIEW
 
+	if deleted == "true" && c.SignedInUser.GetOrgRole() != org.RoleAdmin {
+		return response.Error(http.StatusUnauthorized, "Unauthorized", nil)
+	}
+
 	if limit > 5000 {
-		return response.Error(422, "Limit is above maximum allowed (5000), use page parameter to access hits beyond limit", nil)
+		return response.Error(http.StatusUnprocessableEntity, "Limit is above maximum allowed (5000), use page parameter to access hits beyond limit", nil)
 	}
 
 	if c.Query("permission") == "Edit" {
@@ -57,6 +67,7 @@ func (hs *HTTPServer) Search(c *contextmodel.ReqContext) response.Response {
 		folderID, err := strconv.ParseInt(id, 10, 64)
 		if err == nil {
 			folderIDs = append(folderIDs, folderID)
+			metrics.MFolderIDsAPICount.WithLabelValues(metrics.Search).Inc()
 		}
 	}
 
@@ -66,7 +77,7 @@ func (hs *HTTPServer) Search(c *contextmodel.ReqContext) response.Response {
 	bothFolderIds := len(folderIDs) > 0 && len(folderUIDs) > 0
 
 	if bothDashboardIds || bothFolderIds {
-		return response.Error(400, "search supports UIDs or IDs, not both", nil)
+		return response.Error(http.StatusBadRequest, "search supports UIDs or IDs, not both", nil)
 	}
 
 	searchQuery := search.Query{
@@ -76,6 +87,7 @@ func (hs *HTTPServer) Search(c *contextmodel.ReqContext) response.Response {
 		Limit:         limit,
 		Page:          page,
 		IsStarred:     starred == "true",
+		IsDeleted:     deleted == "true",
 		OrgId:         c.SignedInUser.GetOrgID(),
 		DashboardIds:  dbIDs,
 		DashboardUIDs: dbUIDs,
@@ -88,7 +100,7 @@ func (hs *HTTPServer) Search(c *contextmodel.ReqContext) response.Response {
 
 	hits, err := hs.SearchService.SearchHandler(c.Req.Context(), &searchQuery)
 	if err != nil {
-		return response.Error(500, "Search failed", err)
+		return response.Error(http.StatusInternalServerError, "Search failed", err)
 	}
 
 	defer c.TimeRequest(metrics.MApiDashboardSearch)
@@ -189,6 +201,10 @@ type SearchParams struct {
 	// default: alpha-asc
 	// Enum: alpha-asc,alpha-desc
 	Sort string `json:"sort"`
+	// Flag indicating if only soft deleted Dashboards should be returned
+	// in:query
+	// required: false
+	Deleted bool `json:"deleted"`
 }
 
 // swagger:response searchResponse

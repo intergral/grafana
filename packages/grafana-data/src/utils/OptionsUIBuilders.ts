@@ -1,23 +1,27 @@
+import { set, cloneDeep } from 'lodash';
+
 import {
+  FieldNamePickerConfigSettings,
+  NumberFieldConfigSettings,
+  SelectFieldConfigSettings,
+  SliderFieldConfigSettings,
+  StringFieldConfigSettings,
+  UnitFieldConfigSettings,
+  booleanOverrideProcessor,
+  identityOverrideProcessor,
   numberOverrideProcessor,
   selectOverrideProcessor,
   stringOverrideProcessor,
-  booleanOverrideProcessor,
-  standardEditorsRegistry,
-  SelectFieldConfigSettings,
-  StandardEditorProps,
-  StringFieldConfigSettings,
-  NumberFieldConfigSettings,
-  SliderFieldConfigSettings,
-  identityOverrideProcessor,
-  UnitFieldConfigSettings,
   unitOverrideProcessor,
-  FieldNamePickerConfigSettings,
+} from '../field/overrides/processors';
+import {
   StandardEditorContext,
-} from '../field';
+  StandardEditorProps,
+  standardEditorsRegistry,
+} from '../field/standardFieldConfigEditorRegistry';
 import { PanelOptionsSupplier } from '../panel/PanelPlugin';
-import { isObject } from '../types';
 import { OptionsEditorItem, OptionsUIRegistryBuilder } from '../types/OptionsUIRegistryBuilder';
+import { isObject } from '../types/data';
 import { FieldConfigPropertyItem, FieldConfigEditorConfig } from '../types/fieldOverrides';
 import { PanelOptionsEditorConfig, PanelOptionsEditorItem } from '../types/panel';
 
@@ -185,7 +189,24 @@ export class NestedPanelOptionsBuilder<TSub = any> implements OptionsEditorItem<
   constructor(public cfg: NestedPanelOptions<TSub>) {
     this.path = cfg.path;
     this.category = cfg.category;
-    this.defaultValue = cfg.defaultValue;
+    this.defaultValue = this.getDefaultValue(cfg);
+  }
+
+  private getDefaultValue(cfg: NestedPanelOptions<TSub>): TSub {
+    let result = isObject(cfg.defaultValue) ? cloneDeep(cfg.defaultValue) : {};
+
+    const builder = new PanelOptionsEditorBuilder<TSub>();
+    cfg.build(builder, { data: [] });
+
+    for (const item of builder.getItems()) {
+      if (item.defaultValue != null) {
+        set(result, item.path, item.defaultValue);
+      }
+    }
+
+    // TSub is defined as type any and we need to cast it back
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    return result as TSub;
   }
 
   getBuilder = () => {

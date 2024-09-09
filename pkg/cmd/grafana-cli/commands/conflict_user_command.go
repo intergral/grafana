@@ -22,6 +22,8 @@ import (
 	"github.com/grafana/grafana/pkg/infra/tracing"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/accesscontrol/acimpl"
+	"github.com/grafana/grafana/pkg/services/accesscontrol/permreg"
+	"github.com/grafana/grafana/pkg/services/authz/zanzana"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/quota/quotaimpl"
 	"github.com/grafana/grafana/pkg/services/sqlstore"
@@ -33,7 +35,7 @@ import (
 	"github.com/grafana/grafana/pkg/setting"
 )
 
-func initConflictCfg(cmd *utils.ContextCommandLine) (*setting.Cfg, error) {
+func initConflictCfg(cmd *utils.ContextCommandLine) (*setting.Cfg, tracing.Tracer, featuremgmt.FeatureToggles, error) {
 	configOptions := strings.Split(cmd.String("configOverrides"), " ")
 	configOptions = append(configOptions, cmd.Args().Slice()...)
 	cfg, err := setting.NewCfgFromArgs(setting.CommandLineArgs{
@@ -43,17 +45,33 @@ func initConflictCfg(cmd *utils.ContextCommandLine) (*setting.Cfg, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return cfg, nil
+
+	features, err := featuremgmt.ProvideManagerService(cfg)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	tracingCfg, err := tracing.ProvideTracingConfig(cfg)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("%v: %w", "failed to initialize tracer config", err)
+	}
+
+	tracer, err := tracing.ProvideService(tracingCfg)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("%v: %w", "failed to initialize tracer service", err)
+	}
+
+	return cfg, tracer, features, err
 }
 
 func initializeConflictResolver(cmd *utils.ContextCommandLine, f Formatter, ctx *cli.Context) (*ConflictResolver, error) {
-	cfg, err := initConflictCfg(cmd)
+	cfg, tracer, features, err := initConflictCfg(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("%v: %w", "failed to load configuration", err)
 	}
-	s, err := getSqlStore(cfg)
+	s, replstore, err := getSqlStore(cfg, tracer, features)
 	if err != nil {
 		return nil, fmt.Errorf("%v: %w", "failed to get to sql", err)
 	}
@@ -61,17 +79,19 @@ func initializeConflictResolver(cmd *utils.ContextCommandLine, f Formatter, ctx 
 	if err != nil {
 		return nil, fmt.Errorf("%v: %w", "failed to get users with conflicting logins", err)
 	}
-	quotaService := quotaimpl.ProvideService(s, cfg)
-	userService, err := userimpl.ProvideService(s, nil, cfg, nil, nil, quotaService, supportbundlestest.NewFakeBundleService())
+	quotaService := quotaimpl.ProvideService(replstore, cfg)
+	userService, err := userimpl.ProvideService(s, nil, cfg, nil, nil, tracer, quotaService, supportbundlestest.NewFakeBundleService())
 	if err != nil {
 		return nil, fmt.Errorf("%v: %w", "failed to get user service", err)
 	}
 	routing := routing.ProvideRegister()
-	featMgmt, err := featuremgmt.ProvideManagerService(cfg, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", "failed to get feature management service", err)
+		return nil, fmt.Errorf("%v: %w", "failed to initialize tracer config", err)
 	}
-	acService, err := acimpl.ProvideService(cfg, s, routing, nil, nil, featMgmt)
+	if err != nil {
+		return nil, fmt.Errorf("%v: %w", "failed to initialize tracer service", err)
+	}
+	acService, err := acimpl.ProvideService(cfg, replstore, routing, nil, nil, nil, features, tracer, zanzana.NewNoopClient(), permreg.ProvidePermissionRegistry())
 	if err != nil {
 		return nil, fmt.Errorf("%v: %w", "failed to get access control", err)
 	}
@@ -80,13 +100,15 @@ func initializeConflictResolver(cmd *utils.ContextCommandLine, f Formatter, ctx 
 	return &resolver, nil
 }
 
-func getSqlStore(cfg *setting.Cfg) (*sqlstore.SQLStore, error) {
-	tracer, err := tracing.ProvideService(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("%v: %w", "failed to initialize tracer service", err)
-	}
+func getSqlStore(cfg *setting.Cfg, tracer tracing.Tracer, features featuremgmt.FeatureToggles) (*sqlstore.SQLStore, *sqlstore.ReplStore, error) {
 	bus := bus.ProvideBus(tracer)
-	return sqlstore.ProvideService(cfg, &migrations.OSSMigrations{}, bus, tracer)
+	ss, err := sqlstore.ProvideService(cfg, features, &migrations.OSSMigrations{}, bus, tracer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	replStore, err := sqlstore.ProvideServiceWithReadReplica(ss, cfg, features, &migrations.OSSMigrations{}, bus, tracer)
+	return ss, replStore, err
 }
 
 func runListConflictUsers() func(context *cli.Context) error {
@@ -768,7 +790,7 @@ ORDER BY
 
 func notServiceAccount(ss *sqlstore.SQLStore) string {
 	return fmt.Sprintf("is_service_account = %s",
-		ss.Dialect.BooleanStr(false))
+		ss.GetDialect().BooleanStr(false))
 }
 
 // confirm function asks for user input

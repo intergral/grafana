@@ -79,3 +79,17 @@ func WithLabels(labels data.Labels) ResultMutator {
 		r.Instance = labels
 	}
 }
+
+func WithValues(values map[string]NumberValueCapture) ResultMutator {
+	return func(r *Result) {
+		r.Values = values
+	}
+}
+
+type FakeLoadedMetricsReader struct {
+	fingerprints map[data.Fingerprint]struct{}
+}
+
+func (f FakeLoadedMetricsReader) Read() map[data.Fingerprint]struct{} {
+	return f.fingerprints
+}

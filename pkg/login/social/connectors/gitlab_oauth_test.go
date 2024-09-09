@@ -15,10 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
+	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/login/social"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/org"
+	"github.com/grafana/grafana/pkg/services/org/orgtest"
+	"github.com/grafana/grafana/pkg/services/ssosettings"
+	ssoModels "github.com/grafana/grafana/pkg/services/ssosettings/models"
 	"github.com/grafana/grafana/pkg/services/ssosettings/ssosettingstests"
+	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -41,13 +46,12 @@ const (
 func TestSocialGitlab_UserInfo(t *testing.T) {
 	var nilPointer *bool
 
-	provider := NewGitLabProvider(&social.OAuthInfo{SkipOrgRoleSync: false}, &setting.Cfg{}, &ssosettingstests.MockService{}, featuremgmt.WithFeatures())
-
 	type conf struct {
 		AllowAssignGrafanaAdmin bool
 		RoleAttributeStrict     bool
 		AutoAssignOrgRole       org.RoleType
 		SkipOrgRoleSync         bool
+		OrgMapping              []string
 	}
 
 	tests := []struct {
@@ -59,7 +63,7 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 		RoleAttributePath    string
 		ExpectedLogin        string
 		ExpectedEmail        string
-		ExpectedRole         org.RoleType
+		ExpectedRoles        map[int64]org.RoleType
 		ExpectedGrafanaAdmin *bool
 		ExpectedError        error
 	}{
@@ -77,7 +81,7 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 			RoleAttributePath:    gitlabAttrPath,
 			ExpectedLogin:        "root",
 			ExpectedEmail:        "root@example.org",
-			ExpectedRole:         "Admin",
+			ExpectedRoles:        map[int64]org.RoleType{1: "Admin"},
 			ExpectedGrafanaAdmin: trueBoolPtr(),
 		},
 		{ // Edge case, user in Viewer Group, Server Admin disabled but attribute path contains a condition for Server Admin => User has the Admin role
@@ -94,7 +98,7 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 			RoleAttributePath:    gitlabAttrPath,
 			ExpectedLogin:        "root",
 			ExpectedEmail:        "root@example.org",
-			ExpectedRole:         "Admin",
+			ExpectedRoles:        map[int64]org.RoleType{1: "Admin"},
 			ExpectedGrafanaAdmin: nil,
 		},
 		{
@@ -105,7 +109,7 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 			RoleAttributePath:    gitlabAttrPath,
 			ExpectedLogin:        "gitlab-editor",
 			ExpectedEmail:        "gitlab-editor@example.org",
-			ExpectedRole:         "Editor",
+			ExpectedRoles:        map[int64]org.RoleType{1: "Editor"},
 			ExpectedGrafanaAdmin: falseBoolPtr(),
 			GroupHeaders:         map[string]string{
 				// All headers omitted to test that the provider does not make a second request
@@ -119,7 +123,7 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 			RoleAttributePath:    gitlabAttrPath,
 			ExpectedLogin:        "gitlab-editor",
 			ExpectedEmail:        "gitlab-editor@example.org",
-			ExpectedRole:         "",
+			ExpectedRoles:        nil,
 			ExpectedGrafanaAdmin: nilPointer,
 		},
 		{ // Fallback to autoAssignOrgRole
@@ -130,7 +134,7 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 			RoleAttributePath: gitlabAttrPath,
 			ExpectedLogin:     "gitlab-editor",
 			ExpectedEmail:     "gitlab-editor@example.org",
-			ExpectedRole:      "Admin",
+			ExpectedRoles:     map[int64]org.RoleType{1: "Admin"},
 		},
 		{
 			Name:              "Strict mode prevents fallback to default",
@@ -142,13 +146,13 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 		},
 		{ // Edge case, no match, no strict mode and no fallback => User has the Viewer role (hard coded)
 			Name:              "Fallback with no default will create a user with a default role",
-			Cfg:               conf{},
+			Cfg:               conf{AutoAssignOrgRole: org.RoleViewer},
 			UserRespBody:      editorUserRespBody,
 			GroupsRespBody:    "[]",
 			RoleAttributePath: gitlabAttrPath,
 			ExpectedLogin:     "gitlab-editor",
 			ExpectedEmail:     "gitlab-editor@example.org",
-			ExpectedRole:      "Viewer",
+			ExpectedRoles:     map[int64]org.RoleType{1: "Viewer"},
 		},
 		{ // Edge case, no attribute path with strict mode => Error
 			Name:              "Strict mode with no attribute path",
@@ -156,49 +160,88 @@ func TestSocialGitlab_UserInfo(t *testing.T) {
 			UserRespBody:      editorUserRespBody,
 			GroupsRespBody:    "[" + strings.Join([]string{editorGroup}, ",") + "]",
 			RoleAttributePath: "",
-			ExpectedError:     errRoleAttributePathNotSet,
+			ExpectedError:     errRoleAttributeStrictViolation,
+		},
+		{
+			Name:           "Should map role when only org mapping is set",
+			Cfg:            conf{OrgMapping: []string{"editors:Org4:Editor", "*:Org5:Viewer"}},
+			UserRespBody:   editorUserRespBody,
+			GroupsRespBody: "[" + strings.Join([]string{editorGroup}, ",") + "]",
+			ExpectedLogin:  "gitlab-editor",
+			ExpectedEmail:  "gitlab-editor@example.org",
+			ExpectedRoles:  map[int64]org.RoleType{4: "Editor", 5: "Viewer"},
+		},
+		{
+			Name:           "Should map role when only org mapping is set and role attribute strict is enabled",
+			Cfg:            conf{OrgMapping: []string{"editors:Org4:Editor", "*:Org5:Viewer"}, RoleAttributeStrict: true},
+			UserRespBody:   editorUserRespBody,
+			GroupsRespBody: "[" + strings.Join([]string{editorGroup}, ",") + "]",
+			ExpectedLogin:  "gitlab-editor",
+			ExpectedEmail:  "gitlab-editor@example.org",
+			ExpectedRoles:  map[int64]org.RoleType{4: "Editor", 5: "Viewer"},
+		},
+		{
+			Name:           "Should return error when neither role attribute path nor org mapping evaluates to a role and role attribute strict is enabled",
+			Cfg:            conf{RoleAttributeStrict: true, OrgMapping: []string{"other:Org4:Editor"}},
+			UserRespBody:   editorUserRespBody,
+			GroupsRespBody: "[" + strings.Join([]string{editorGroup}, ",") + "]",
+			ExpectedError:  errRoleAttributeStrictViolation,
+		},
+		{
+			Name:           "should return error when neither role attribute path nor org mapping is set and role attribute strict is enabled",
+			Cfg:            conf{RoleAttributeStrict: true},
+			UserRespBody:   editorUserRespBody,
+			GroupsRespBody: "[" + strings.Join([]string{editorGroup}, ",") + "]",
+			ExpectedError:  errRoleAttributeStrictViolation,
 		},
 	}
 
-	for _, test := range tests {
-		provider.roleAttributePath = test.RoleAttributePath
-		provider.allowAssignGrafanaAdmin = test.Cfg.AllowAssignGrafanaAdmin
-		provider.autoAssignOrgRole = string(test.Cfg.AutoAssignOrgRole)
-		provider.roleAttributeStrict = test.Cfg.RoleAttributeStrict
-		provider.skipOrgRoleSync = test.Cfg.SkipOrgRoleSync
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			cfg := setting.NewCfg()
+			cfg.AutoAssignOrgRole = string(tt.Cfg.AutoAssignOrgRole)
 
-		t.Run(test.Name, func(t *testing.T) {
+			orgMapper := ProvideOrgRoleMapper(cfg, &orgtest.FakeOrgService{ExpectedOrgs: []*org.OrgDTO{{ID: 4, Name: "Org4"}, {ID: 5, Name: "Org5"}}})
+			provider := NewGitLabProvider(&social.OAuthInfo{
+				RoleAttributePath:       tt.RoleAttributePath,
+				RoleAttributeStrict:     tt.Cfg.RoleAttributeStrict,
+				AllowAssignGrafanaAdmin: tt.Cfg.AllowAssignGrafanaAdmin,
+				SkipOrgRoleSync:         tt.Cfg.SkipOrgRoleSync,
+				OrgMapping:              tt.Cfg.OrgMapping,
+				// OrgAttributePath:        "",
+			}, cfg, orgMapper, &ssosettingstests.MockService{}, featuremgmt.WithFeatures())
+
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
 				w.Header().Set("Content-Type", "application/json")
 				switch r.RequestURI {
 				case userURI:
 					w.WriteHeader(http.StatusOK)
-					_, err := w.Write([]byte(test.UserRespBody))
+					_, err := w.Write([]byte(tt.UserRespBody))
 					require.NoError(t, err)
 				case groupsURI:
 					w.WriteHeader(http.StatusOK)
-					for k, v := range test.GroupHeaders {
+					for k, v := range tt.GroupHeaders {
 						w.Header().Set(k, v)
 					}
-					_, err := w.Write([]byte(test.GroupsRespBody))
+					_, err := w.Write([]byte(tt.GroupsRespBody))
 					require.NoError(t, err)
 				default:
+					w.WriteHeader(http.StatusOK)
 					require.Fail(t, "unexpected request URI: "+r.RequestURI)
 				}
 			}))
-			provider.apiUrl = ts.URL + apiURI
+			provider.info.ApiUrl = ts.URL + apiURI
 			actualResult, err := provider.UserInfo(context.Background(), ts.Client(), &oauth2.Token{})
-			if test.ExpectedError != nil {
-				require.ErrorIs(t, err, test.ExpectedError)
+			if tt.ExpectedError != nil {
+				require.ErrorIs(t, err, tt.ExpectedError)
 				return
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, test.ExpectedEmail, actualResult.Email)
-			require.Equal(t, test.ExpectedLogin, actualResult.Login)
-			require.Equal(t, test.ExpectedRole, actualResult.Role)
-			require.Equal(t, test.ExpectedGrafanaAdmin, actualResult.IsGrafanaAdmin)
+			require.Equal(t, tt.ExpectedEmail, actualResult.Email)
+			require.Equal(t, tt.ExpectedLogin, actualResult.Login)
+			require.Equal(t, tt.ExpectedRoles, actualResult.OrgRoles)
+			require.Equal(t, tt.ExpectedGrafanaAdmin, actualResult.IsGrafanaAdmin)
 		})
 	}
 }
@@ -263,14 +306,12 @@ func TestSocialGitlab_extractFromToken(t *testing.T) {
 				},
 			},
 			wantUser: &userData{
-				ID:             "12345678",
-				Login:          "johndoe",
-				Email:          "johndoe@example.com",
-				Name:           "John Doe",
-				Groups:         []string{"admins", "editors", "viewers"},
-				EmailVerified:  true,
-				Role:           "Viewer",
-				IsGrafanaAdmin: nil,
+				ID:            "12345678",
+				Login:         "johndoe",
+				Email:         "johndoe@example.com",
+				Name:          "John Doe",
+				Groups:        []string{"admins", "editors", "viewers"},
+				EmailVerified: true,
 			},
 		},
 		{
@@ -330,14 +371,12 @@ func TestSocialGitlab_extractFromToken(t *testing.T) {
 				},
 			},
 			wantUser: &userData{
-				ID:             "12345678",
-				Login:          "johndoe",
-				Email:          "johndoe@example.com",
-				Name:           "John Doe",
-				Groups:         []string{"admins"},
-				EmailVerified:  true,
-				Role:           "Viewer",
-				IsGrafanaAdmin: nil,
+				ID:            "12345678",
+				Login:         "johndoe",
+				Email:         "johndoe@example.com",
+				Name:          "John Doe",
+				Groups:        []string{"admins"},
+				EmailVerified: true,
 			},
 		},
 	}
@@ -353,16 +392,13 @@ func TestSocialGitlab_extractFromToken(t *testing.T) {
 					AllowSignup:         false,
 					RoleAttributePath:   "",
 					RoleAttributeStrict: false,
-					// TODO: use this setting when SkipOrgRoleSync has moved to OAuthInfo
-					//SkipOrgRoleSync:     false,
-					AuthUrl:  tc.config.Endpoint.AuthURL,
-					TokenUrl: tc.config.Endpoint.TokenURL,
+					SkipOrgRoleSync:     false,
+					AuthUrl:             tc.config.Endpoint.AuthURL,
+					TokenUrl:            tc.config.Endpoint.TokenURL,
 				},
 				&setting.Cfg{
-					AutoAssignOrgRole:          "",
-					OAuthSkipOrgRoleUpdateSync: false,
-					GitLabSkipOrgRoleSync:      false,
-				}, &ssosettingstests.MockService{},
+					AutoAssignOrgRole: "",
+				}, nil, &ssosettingstests.MockService{},
 				featuremgmt.WithFeatures())
 
 			// Test case: successful extraction
@@ -453,11 +489,220 @@ func TestSocialGitlab_GetGroupsNextPage(t *testing.T) {
 	defer mockServer.Close()
 
 	// Create a SocialGitlab instance with the mock server URL
-	s := NewGitLabProvider(&social.OAuthInfo{ApiUrl: mockServer.URL}, &setting.Cfg{}, &ssosettingstests.MockService{}, featuremgmt.WithFeatures())
+	s := NewGitLabProvider(&social.OAuthInfo{ApiUrl: mockServer.URL}, &setting.Cfg{}, nil, &ssosettingstests.MockService{}, featuremgmt.WithFeatures())
 
 	// Call getGroups and verify that it returns all groups
 	expectedGroups := []string{"admins", "editors", "viewers", "serveradmins"}
 	actualGroups := s.getGroups(context.Background(), mockServer.Client())
 	assert.Equal(t, expectedGroups, actualGroups)
 	assert.Equal(t, 2, calls)
+}
+
+func TestSocialGitlab_Validate(t *testing.T) {
+	testCases := []struct {
+		name      string
+		settings  ssoModels.SSOSettings
+		requester identity.Requester
+		wantErr   error
+	}{
+		{
+			name: "SSOSettings is valid",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id":                  "client-id",
+					"allow_assign_grafana_admin": "true",
+					"auth_url":                   "",
+					"token_url":                  "",
+					"api_url":                    "",
+				},
+			},
+			requester: &user.SignedInUser{IsGrafanaAdmin: true},
+		},
+		{
+			name: "fails if settings map contains an invalid field",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id":     "client-id",
+					"invalid_field": []int{1, 2, 3},
+				},
+			},
+			wantErr: ssosettings.ErrInvalidSettings,
+		},
+		{
+			name: "fails if client id is empty",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id": "",
+				},
+			},
+			wantErr: ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+		{
+			name: "fails if client id does not exist",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{},
+			},
+			wantErr: ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+		{
+			name: "fails if both allow assign grafana admin and skip org role sync are enabled",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id":                  "client-id",
+					"allow_assign_grafana_admin": "true",
+					"skip_org_role_sync":         "true",
+					"auth_url":                   "https://example.com/auth",
+					"token_url":                  "https://example.com/token",
+				},
+			},
+			requester: &user.SignedInUser{IsGrafanaAdmin: true},
+			wantErr:   ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+		{
+			name: "fails if the user is not allowed to update allow assign grafana admin",
+			requester: &user.SignedInUser{
+				IsGrafanaAdmin: false,
+			},
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id":                  "client-id",
+					"allow_assign_grafana_admin": "true",
+				},
+			},
+			wantErr: ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+		{
+			name: "fails if api url is  not empty",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id": "client-id",
+					"auth_url":  "",
+					"token_url": "",
+					"api_url":   "https://example.com/api",
+				},
+			},
+			wantErr: ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+		{
+			name: "fails if auth url is not empty",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id": "client-id",
+					"auth_url":  "https://example.com/auth",
+					"token_url": "",
+					"api_url":   "",
+				},
+			},
+			wantErr: ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+		{
+			name: "fails if token url is not empty",
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id": "client-id",
+					"auth_url":  "",
+					"token_url": "https://example.com/token",
+					"api_url":   "",
+				},
+			},
+			wantErr: ssosettings.ErrBaseInvalidOAuthConfig,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewGitLabProvider(&social.OAuthInfo{}, &setting.Cfg{}, nil, &ssosettingstests.MockService{}, featuremgmt.WithFeatures())
+
+			if tc.requester == nil {
+				tc.requester = &user.SignedInUser{IsGrafanaAdmin: false}
+			}
+
+			err := s.Validate(context.Background(), tc.settings, ssoModels.SSOSettings{}, tc.requester)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestSocialGitlab_Reload(t *testing.T) {
+	testCases := []struct {
+		name           string
+		info           *social.OAuthInfo
+		settings       ssoModels.SSOSettings
+		expectError    bool
+		expectedInfo   *social.OAuthInfo
+		expectedConfig *oauth2.Config
+	}{
+		{
+			name: "SSO provider successfully updated",
+			info: &social.OAuthInfo{
+				ClientId:     "client-id",
+				ClientSecret: "client-secret",
+			},
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id":     "new-client-id",
+					"client_secret": "new-client-secret",
+					"auth_url":      "some-new-url",
+				},
+			},
+			expectError: false,
+			expectedInfo: &social.OAuthInfo{
+				ClientId:     "new-client-id",
+				ClientSecret: "new-client-secret",
+				AuthUrl:      "some-new-url",
+			},
+			expectedConfig: &oauth2.Config{
+				ClientID:     "new-client-id",
+				ClientSecret: "new-client-secret",
+				Endpoint: oauth2.Endpoint{
+					AuthURL: "some-new-url",
+				},
+				RedirectURL: "/login/gitlab",
+			},
+		},
+		{
+			name: "fails if settings contain invalid values",
+			info: &social.OAuthInfo{
+				ClientId:     "client-id",
+				ClientSecret: "client-secret",
+			},
+			settings: ssoModels.SSOSettings{
+				Settings: map[string]any{
+					"client_id":     "new-client-id",
+					"client_secret": "new-client-secret",
+					"auth_url":      []string{"first", "second"},
+				},
+			},
+			expectError: true,
+			expectedInfo: &social.OAuthInfo{
+				ClientId:     "client-id",
+				ClientSecret: "client-secret",
+			},
+			expectedConfig: &oauth2.Config{
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				RedirectURL:  "/login/gitlab",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewGitLabProvider(tc.info, &setting.Cfg{}, nil, &ssosettingstests.MockService{}, featuremgmt.WithFeatures())
+
+			err := s.Reload(context.Background(), tc.settings)
+			if tc.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			require.EqualValues(t, tc.expectedInfo, s.info)
+			require.EqualValues(t, tc.expectedConfig, s.Config)
+		})
+	}
 }

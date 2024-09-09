@@ -2,9 +2,9 @@ import { map } from 'rxjs/operators';
 
 import { TimeZone } from '@grafana/schema';
 
-import { DateTimeOptionsWhenParsing, dateTimeParse } from '../../datetime';
-import { SynchronousDataTransformerInfo } from '../../types';
+import { dateTimeParse, DateTimeOptionsWhenParsing } from '../../datetime/parser';
 import { DataFrame, EnumFieldConfig, Field, FieldType } from '../../types/dataFrame';
+import { SynchronousDataTransformerInfo } from '../../types/transformations';
 import { fieldMatchers } from '../matchers';
 import { FieldMatcherID } from '../matchers/ids';
 
@@ -27,6 +27,10 @@ export interface ConvertFieldTypeOptions {
    * Date format to parse a string datetime
    */
   dateFormat?: string;
+  /**
+   * When converting an array to a string, the values can be joined with a custom separator
+   */
+  joinWith?: string;
   /**
    * When converting a date to a string an option timezone.
    */
@@ -103,7 +107,7 @@ export function convertFieldType(field: Field, opts: ConvertFieldTypeOptions): F
     case FieldType.number:
       return fieldToNumberField(field);
     case FieldType.string:
-      return fieldToStringField(field, opts.dateFormat, { timeZone: opts.timezone });
+      return fieldToStringField(field, opts.dateFormat, { timeZone: opts.timezone }, opts.joinWith);
     case FieldType.boolean:
       return fieldToBooleanField(field);
     case FieldType.enum:
@@ -192,7 +196,8 @@ function fieldToBooleanField(field: Field): Field {
 export function fieldToStringField(
   field: Field,
   dateFormat?: string,
-  parseOptions?: DateTimeOptionsWhenParsing
+  parseOptions?: DateTimeOptionsWhenParsing,
+  joinWith?: string
 ): Field {
   let values = field.values;
 
@@ -202,7 +207,12 @@ export function fieldToStringField(
       break;
 
     case FieldType.other:
-      values = values.map((v) => JSON.stringify(v));
+      values = values.map((v) => {
+        if (joinWith?.length && Array.isArray(v)) {
+          return v.join(joinWith);
+        }
+        return JSON.stringify(v); // will quote strings and avoid "object"
+      });
       break;
 
     default:

@@ -15,7 +15,8 @@ import { Labels } from 'app/types/unified-alerting-dto';
 import { MatcherFieldValue } from '../types/silence-form';
 
 import { getAllDataSources } from './config';
-import { DataSourceType } from './datasource';
+import { DataSourceType, GRAFANA_RULES_SOURCE_NAME } from './datasource';
+import { MatcherFormatter, parsePromQLStyleMatcherLooseSafe, unquoteWithUnescape } from './matchers';
 
 export function addDefaultsToAlertmanagerConfig(config: AlertManagerCortexConfig): AlertManagerCortexConfig {
   // add default receiver if it does not exist
@@ -51,6 +52,10 @@ export function renameMuteTimings(newMuteTimingName: string, oldMuteTimingName: 
     ),
     routes: route.routes?.map((subRoute) => renameMuteTimings(newMuteTimingName, oldMuteTimingName, subRoute)),
   };
+}
+
+export function unescapeObjectMatchers(matchers: ObjectMatcher[]): ObjectMatcher[] {
+  return matchers.map(([name, operator, value]) => [name, operator, unquoteWithUnescape(value)]);
 }
 
 export function matcherToOperator(matcher: Matcher): MatcherOperator {
@@ -101,10 +106,10 @@ export function matchersToString(matchers: Matcher[]) {
 
   const combinedMatchers = matcherFields.reduce((acc, current) => {
     const currentMatcherString = `${current.name}${current.operator}"${current.value}"`;
-    return acc ? `${acc},${currentMatcherString}` : currentMatcherString;
+    return acc ? `${acc}, ${currentMatcherString}` : currentMatcherString;
   }, '');
 
-  return `{${combinedMatchers}}`;
+  return `{ ${combinedMatchers} }`;
 }
 
 export const matcherFieldOptions: SelectableValue[] = [
@@ -117,35 +122,6 @@ export const matcherFieldOptions: SelectableValue[] = [
 export function matcherToObjectMatcher(matcher: Matcher): ObjectMatcher {
   const operator = matcherToOperator(matcher);
   return [matcher.name, operator, matcher.value];
-}
-
-export function parseMatchers(matcherQueryString: string): Matcher[] {
-  const matcherRegExp = /\b([\w.-]+)(=~|!=|!~|=(?="?\w))"?([^"\n,}]*)"?/g;
-  const matchers: Matcher[] = [];
-
-  matcherQueryString.replace(matcherRegExp, (_, key, operator, value) => {
-    const isEqual = operator === MatcherOperator.equal || operator === MatcherOperator.regex;
-    const isRegex = operator === MatcherOperator.regex || operator === MatcherOperator.notRegex;
-    matchers.push({
-      name: key,
-      value: isRegex ? getValidRegexString(value.trim()) : value.trim(),
-      isEqual,
-      isRegex,
-    });
-    return '';
-  });
-
-  return matchers;
-}
-
-function getValidRegexString(regex: string): string {
-  // Regexes provided by users might be invalid, so we need to catch the error
-  try {
-    new RegExp(regex);
-    return regex;
-  } catch (error) {
-    return '';
-  }
 }
 
 export function labelsMatchMatchers(labels: Labels, matchers: Matcher[]): boolean {
@@ -172,9 +148,13 @@ export function labelsMatchMatchers(labels: Labels, matchers: Matcher[]): boolea
 }
 
 export function combineMatcherStrings(...matcherStrings: string[]): string {
-  const matchers = matcherStrings.map(parseMatchers).flat();
+  const matchers = matcherStrings.map(parsePromQLStyleMatcherLooseSafe).flat();
   const uniqueMatchers = uniqWith(matchers, isEqual);
   return matchersToString(uniqueMatchers);
+}
+
+export function getAmMatcherFormatter(alertmanagerSourceName?: string): MatcherFormatter {
+  return alertmanagerSourceName === GRAFANA_RULES_SOURCE_NAME ? 'default' : 'unquote';
 }
 
 export function getAllAlertmanagerDataSources() {

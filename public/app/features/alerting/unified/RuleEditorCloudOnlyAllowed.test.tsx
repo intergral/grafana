@@ -1,8 +1,6 @@
-import { screen, waitForElementToBeRemoved } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { renderRuleEditor, ui } from 'test/helpers/alertingRuleEditor';
-import { byRole, byText } from 'testing-library-selector';
+import { screen, waitForElementToBeRemoved } from 'test/test-utils';
+import { byText } from 'testing-library-selector';
 
 import { setDataSourceSrv } from '@grafana/runtime';
 import { contextSrv } from 'app/core/services/context_srv';
@@ -104,6 +102,7 @@ jest.mock('@grafana/runtime', () => ({
   getDataSourceSrv: jest.fn(() => ({
     getInstanceSettings: () => dataSources.prom,
     get: () => dataSources.prom,
+    getList: () => Object.values(dataSources),
   })),
 }));
 
@@ -182,22 +181,22 @@ describe('RuleEditor cloud: checking editable data sources', () => {
     mocks.searchFolders.mockResolvedValue([]);
 
     // render rule editor, select mimir/loki managed alerts
-    renderRuleEditor();
-    await waitForElementToBeRemoved(screen.getAllByTestId('Spinner'));
+    const { user } = renderRuleEditor();
+    await waitForElementToBeRemoved(screen.queryAllByTestId('Spinner'));
 
     await ui.inputs.name.find();
 
     const switchToCloudButton = screen.getByText('Data source-managed');
     expect(switchToCloudButton).toBeInTheDocument();
 
-    await userEvent.click(switchToCloudButton);
+    await user.click(switchToCloudButton);
 
     //expressions are removed after switching to data-source managed
     expect(screen.queryAllByLabelText('Remove expression')).toHaveLength(0);
 
     // check that only rules sources that have ruler available are there
     const dataSourceSelect = ui.inputs.dataSource.get();
-    await userEvent.click(byRole('combobox').get(dataSourceSelect));
+    await user.click(dataSourceSelect);
 
     expect(byText('cortex with ruler').query()).toBeInTheDocument();
     expect(byText('loki with ruler').query()).toBeInTheDocument();

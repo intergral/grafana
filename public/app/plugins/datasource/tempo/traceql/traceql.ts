@@ -40,13 +40,21 @@ export const intrinsics = [
 ];
 export const scopes: string[] = ['resource', 'span'];
 
-export const functions = ['avg', 'min', 'max', 'sum', 'count', 'by'];
+const aggregatorFunctions = ['avg', 'count', 'max', 'min', 'sum'];
+const functions = aggregatorFunctions.concat([
+  'by',
+  'count_over_time',
+  'histogram_over_time',
+  'quantile_over_time',
+  'rate',
+  'select',
+]);
 
 const keywords = intrinsics.concat(scopes);
 
 const statusValues = ['ok', 'unset', 'error', 'false', 'true'];
 
-export const language: languages.IMonarchLanguage = {
+const language: languages.IMonarchLanguage = {
   ignoreCase: false,
   defaultToken: '',
   tokenPostfix: '.traceql',
@@ -88,13 +96,9 @@ export const language: languages.IMonarchLanguage = {
 
       // functions and predefined values
       [
-        // If not inside quotes, namely outside of open and closed `"`,
-        // allow only word characters (those matching `\w`) and full stop (`.`).
-        //
-        // If inside quotes, e.g. `"here"`, allow for any character, except for `"` and `\` which must be
-        // escaped with a backslash (`\"` and `\\` respectively).
-        // Quotes can be used to support special tag names, such as those with spaces (e.g., `my tag`).
-        /(?:\w|[.]|"(?:\\"|\\\\|[^\\"])*")+/,
+        // Inside (double) quotes, all characters are allowed, with the exception of `\` and `"` that must be escaped (`\\` and `\"`).
+        // Outside quotes, some more characters are prohibited, such as `!` and `=`.
+        /(?:\w|^[^{}()=~!<>&|," ]|"(?:\\"|\\\\|[^\\"])*")+/,
         {
           cases: {
             '@functions': 'predefined',
@@ -109,6 +113,7 @@ export const language: languages.IMonarchLanguage = {
       [/'([^'\\]|\\.)*$/, 'string.invalid'], // non-teminated string
       [/([^\w])(")/, [{ token: '' }, { token: 'string', next: '@string_double' }]],
       [/([^\w])(')/, [{ token: '' }, { token: 'string', next: '@string_single' }]],
+      [/([^\w])(`)/, [{ token: '' }, { token: 'string', next: '@string_back' }]],
 
       // delimiters and operators
       [/[{}()\[\]]/, 'delimiter.bracket'],
@@ -144,9 +149,17 @@ export const language: languages.IMonarchLanguage = {
       [/\\./, 'string.escape.invalid'],
       [/'/, 'string', '@pop'],
     ],
+
+    string_back: [
+      [/[^\\`]+/, 'string'],
+      [/@escapes/, 'string.escape'],
+      [/\\./, 'string.escape.invalid'],
+      [/`/, 'string', '@pop'],
+    ],
   },
 };
 
+// For "TraceQL" tab (Monarch editor for TraceQL)
 export const languageDefinition = {
   id: 'traceql',
   extensions: ['.traceql'],
@@ -158,6 +171,7 @@ export const languageDefinition = {
   },
 };
 
+// For "Search" tab (query builder)
 export const traceqlGrammar: Grammar = {
   comment: {
     pattern: /\/\/.*/,

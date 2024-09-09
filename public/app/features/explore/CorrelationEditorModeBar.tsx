@@ -1,11 +1,11 @@
 import { css } from '@emotion/css';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Prompt } from 'react-router-dom';
 import { useBeforeUnload, useUnmount } from 'react-use';
 
 import { GrafanaTheme2, colorManipulator } from '@grafana/data';
 import { reportInteraction } from '@grafana/runtime';
-import { Button, HorizontalGroup, Icon, Tooltip, useStyles2 } from '@grafana/ui';
+import { Button, Icon, Stack, Tooltip, useStyles2 } from '@grafana/ui';
 import { CORRELATION_EDITOR_POST_CONFIRM_ACTION, ExploreItemState, useDispatch, useSelector } from 'app/types';
 
 import { CorrelationUnsavedChangesModal } from './CorrelationUnsavedChangesModal';
@@ -57,7 +57,9 @@ export const CorrelationEditorModeBar = ({ panes }: { panes: Array<[string, Expl
         ) {
           const { exploreId, changeDatasourceUid } = correlationDetails?.postConfirmAction;
           if (exploreId && changeDatasourceUid) {
-            dispatch(changeDatasource(exploreId, changeDatasourceUid, { importQueries: true }));
+            dispatch(
+              changeDatasource({ exploreId, datasource: changeDatasourceUid, options: { importQueries: true } })
+            );
             dispatch(
               changeCorrelationEditorDetails({
                 isExiting: false,
@@ -143,7 +145,7 @@ export const CorrelationEditorModeBar = ({ panes }: { panes: Array<[string, Expl
 
   const changeDatasourcePostAction = (exploreId: string, datasourceUid: string) => {
     setSaveMessage(undefined);
-    dispatch(changeDatasource(exploreId, datasourceUid, { importQueries: true }));
+    dispatch(changeDatasource({ exploreId, datasource: datasourceUid, options: { importQueries: true } }));
   };
 
   const saveCorrelationPostAction = (skipPostConfirmAction: boolean) => {
@@ -163,7 +165,7 @@ export const CorrelationEditorModeBar = ({ panes }: { panes: Array<[string, Expl
         action === CORRELATION_EDITOR_POST_CONFIRM_ACTION.CHANGE_DATASOURCE &&
         changeDatasourceUid !== undefined
       ) {
-        changeDatasource(exploreId, changeDatasourceUid);
+        changeDatasource({ exploreId, datasource: changeDatasourceUid });
         resetEditor();
       }
     } else {
@@ -227,7 +229,7 @@ export const CorrelationEditorModeBar = ({ panes }: { panes: Array<[string, Expl
         />
       )}
       <div className={styles.correlationEditorTop}>
-        <HorizontalGroup spacing="md" justify="flex-end">
+        <Stack gap={2} justifyContent="flex-end" alignItems="center">
           <Tooltip content="Correlations editor in Explore is an experimental feature.">
             <Icon className={styles.iconColor} name="info-circle" size="xl" />
           </Tooltip>
@@ -254,7 +256,7 @@ export const CorrelationEditorModeBar = ({ panes }: { panes: Array<[string, Expl
           >
             Exit correlation editor
           </Button>
-        </HorizontalGroup>
+        </Stack>
       </div>
     </>
   );

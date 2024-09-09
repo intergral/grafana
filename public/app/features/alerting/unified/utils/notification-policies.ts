@@ -1,4 +1,4 @@
-import { isArray, merge, pick, reduce } from 'lodash';
+import { isArray, pick, reduce } from 'lodash';
 
 import {
   AlertmanagerGroup,
@@ -9,7 +9,7 @@ import {
 } from 'app/plugins/datasource/alertmanager/types';
 import { Labels } from 'app/types/unified-alerting-dto';
 
-import { Label, normalizeMatchers } from './matchers';
+import { Label, normalizeMatchers, unquoteWithUnescape } from './matchers';
 
 // If a policy has no matchers it still can be a match, hence matchers can be empty and match can be true
 // So we cannot use null as an indicator of no match
@@ -17,6 +17,10 @@ interface LabelMatchResult {
   match: boolean;
   matcher: ObjectMatcher | null;
 }
+
+export const INHERITABLE_KEYS = ['receiver', 'group_by', 'group_wait', 'group_interval', 'repeat_interval'] as const;
+export type InheritableKeys = typeof INHERITABLE_KEYS;
+export type InheritableProperties = Pick<Route, InheritableKeys[number]>;
 
 type LabelsMatch = Map<Label, LabelMatchResult>;
 
@@ -85,7 +89,7 @@ function findMatchingRoutes<T extends Route>(route: T, labels: Label[]): Array<R
   // If the current node matches, recurse through child nodes
   if (route.routes) {
     for (const child of route.routes) {
-      let matchingChildren = findMatchingRoutes(child, labels);
+      const matchingChildren = findMatchingRoutes(child, labels);
       // TODO how do I solve this typescript thingy? It looks correct to me /shrug
       // @ts-ignore
       childMatches = childMatches.concat(matchingChildren);
@@ -120,6 +124,20 @@ export function normalizeRoute(rootRoute: RouteWithID): RouteWithID {
   return normalizedRootRoute;
 }
 
+export function unquoteRouteMatchers(route: RouteWithID): RouteWithID {
+  function unquoteRoute(route: RouteWithID) {
+    route.object_matchers = route.object_matchers?.map(([name, operator, value]) => {
+      return [unquoteWithUnescape(name), operator, unquoteWithUnescape(value)];
+    });
+    route.routes?.forEach(unquoteRoute);
+  }
+
+  const unwrappedRootRoute = structuredClone(route);
+  unquoteRoute(unwrappedRootRoute);
+
+  return unwrappedRootRoute;
+}
+
 /**
  * find all of the groups that have instances that match the route, thay way we can find all instances
  * (and their grouping) for the given route
@@ -150,38 +168,27 @@ function findMatchingAlertGroups(
   }, matchingGroups);
 }
 
-export type InhertitableProperties = Pick<
-  Route,
-  'receiver' | 'group_by' | 'group_wait' | 'group_interval' | 'repeat_interval' | 'mute_time_intervals'
->;
-
 // inherited properties are config properties that exist on the parent route (or its inherited properties) but not on the child route
 function getInheritedProperties(
   parentRoute: Route,
   childRoute: Route,
-  propertiesParentInherited?: Partial<InhertitableProperties>
-) {
-  const fullParentProperties = merge({}, parentRoute, propertiesParentInherited);
+  propertiesParentInherited?: InheritableProperties
+): InheritableProperties {
+  const propsFromParent: InheritableProperties = pick(parentRoute, INHERITABLE_KEYS);
+  const inheritableProperties: InheritableProperties = {
+    ...propsFromParent,
+    ...propertiesParentInherited,
+  };
 
-  const inheritableProperties: InhertitableProperties = pick(fullParentProperties, [
-    'receiver',
-    'group_by',
-    'group_wait',
-    'group_interval',
-    'repeat_interval',
-    'mute_time_intervals',
-  ]);
-
-  // TODO how to solve this TypeScript mystery?
   const inherited = reduce(
     inheritableProperties,
-    (inheritedProperties: Partial<Route> = {}, parentValue, property) => {
-      const parentHasValue = parentValue !== undefined;
+    (inheritedProperties: InheritableProperties, parentValue, property) => {
+      const parentHasValue = parentValue != null;
 
+      const inheritableValues = [undefined, '', null];
       // @ts-ignore
-      const inheritFromParentUndefined = parentHasValue && childRoute[property] === undefined;
-      // @ts-ignore
-      const inheritFromParentEmptyString = parentHasValue && childRoute[property] === '';
+      const childIsInheriting = inheritableValues.some((value) => childRoute[property] === value);
+      const inheritFromValue = childIsInheriting && parentHasValue;
 
       const inheritEmptyGroupByFromParent =
         property === 'group_by' &&
@@ -189,8 +196,7 @@ function getInheritedProperties(
         isArray(childRoute[property]) &&
         childRoute[property]?.length === 0;
 
-      const inheritFromParent =
-        inheritFromParentUndefined || inheritFromParentEmptyString || inheritEmptyGroupByFromParent;
+      const inheritFromParent = inheritFromValue || inheritEmptyGroupByFromParent;
 
       if (inheritFromParent) {
         // @ts-ignore
@@ -226,8 +232,17 @@ type OperatorPredicate = (labelValue: string, matcherValue: string) => boolean;
 const OperatorFunctions: Record<MatcherOperator, OperatorPredicate> = {
   [MatcherOperator.equal]: (lv, mv) => lv === mv,
   [MatcherOperator.notEqual]: (lv, mv) => lv !== mv,
-  [MatcherOperator.regex]: (lv, mv) => new RegExp(mv).test(lv),
-  [MatcherOperator.notRegex]: (lv, mv) => !new RegExp(mv).test(lv),
+  // At the time of writing, Alertmanager compiles to another (anchored) Regular Expression,
+  // so we should also anchor our UI matches for consistency with this behaviour
+  // https://github.com/prometheus/alertmanager/blob/fd37ce9c95898ca68be1ab4d4529517174b73c33/pkg/labels/matcher.go#L69
+  [MatcherOperator.regex]: (lv, mv) => {
+    const re = new RegExp(`^(?:${mv})$`);
+    return re.test(lv);
+  },
+  [MatcherOperator.notRegex]: (lv, mv) => {
+    const re = new RegExp(`^(?:${mv})$`);
+    return !re.test(lv);
+  },
 };
 
 function isLabelMatchInSet(matcher: ObjectMatcher, labels: Label[]): boolean {
@@ -251,7 +266,7 @@ function isLabelMatchInSet(matcher: ObjectMatcher, labels: Label[]): boolean {
 // for route selection algorithm, always compare a single matcher to the entire label set
 // see "matchLabelsSet"
 function isLabelMatch(matcher: ObjectMatcher, label: Label): boolean {
-  let [labelKey, labelValue] = label;
+  const [labelKey, labelValue] = label;
   const [matcherKey, operator, matcherValue] = matcher;
 
   if (labelKey !== matcherKey) {

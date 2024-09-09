@@ -103,6 +103,7 @@ function getTestData(
       scopedVars: {},
       targets: [],
       timezone: 'utc',
+      panelPluginId: 'timeseries',
       ...overrides,
     },
     series: series || [],
@@ -121,7 +122,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: MetaAnalyticsEventName.DataRequest,
           datasourceName: datasource.name,
@@ -134,6 +135,7 @@ describe('emitDataRequestEvent', () => {
           duration: 1,
           totalQueries: 0,
           cachedQueries: 0,
+          panelPluginId: 'timeseries',
         })
       );
     });
@@ -148,7 +150,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: MetaAnalyticsEventName.DataRequest,
           datasourceName: datasource.name,
@@ -161,6 +163,7 @@ describe('emitDataRequestEvent', () => {
           duration: 1,
           totalQueries: 2,
           cachedQueries: 1,
+          panelPluginId: 'timeseries',
         })
       );
     });
@@ -175,7 +178,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: MetaAnalyticsEventName.DataRequest,
           datasourceName: datasource.name,
@@ -188,6 +191,7 @@ describe('emitDataRequestEvent', () => {
           duration: 1,
           totalQueries: 1,
           cachedQueries: 1,
+          panelPluginId: 'timeseries',
         })
       );
     });
@@ -225,7 +229,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: MetaAnalyticsEventName.DataRequest,
           source: CoreApp.Explore,
@@ -234,6 +238,7 @@ describe('emitDataRequestEvent', () => {
           dataSize: 0,
           duration: 1,
           totalQueries: 0,
+          panelPluginId: 'timeseries',
         })
       );
     });
@@ -242,7 +247,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(expect.not.objectContaining({ error: 'test error' }));
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(expect.not.objectContaining({ error: 'test error' }));
     });
   });
 
@@ -261,7 +266,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: MetaAnalyticsEventName.DataRequest,
           source: CoreApp.Correlations,
@@ -270,6 +275,7 @@ describe('emitDataRequestEvent', () => {
           dataSize: 0,
           duration: 1,
           totalQueries: 0,
+          panelPluginId: 'timeseries',
         })
       );
     });
@@ -278,7 +284,7 @@ describe('emitDataRequestEvent', () => {
       emitDataRequestEvent(datasource)(data);
 
       expect(reportMetaAnalytics).toBeCalledTimes(1);
-      expect(reportMetaAnalytics).toBeCalledWith(expect.not.objectContaining({ error: 'test error' }));
+      expect(reportMetaAnalytics).toHaveBeenCalledWith(expect.not.objectContaining({ error: 'test error' }));
     });
   });
 });

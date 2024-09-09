@@ -1,13 +1,13 @@
 import { MonoTypeOperatorFunction, Observable, of } from 'rxjs';
 import { map, mergeMap } from 'rxjs/operators';
 
+import { DataFrame } from '../types/dataFrame';
 import {
-  DataFrame,
+  CustomTransformOperator,
   DataTransformContext,
   DataTransformerConfig,
   FrameMatcher,
-  CustomTransformOperator,
-} from '../types';
+} from '../types/transformations';
 
 import { getFrameMatchers } from './matchers';
 import { standardTransformersRegistry, TransformerRegistryItem } from './standardTransformersRegistry';
@@ -53,19 +53,6 @@ const postProcessTransform =
       map((after) => {
         if (after === before) {
           return after;
-        }
-
-        // Add a key to the metadata if the data changed
-        for (const series of after) {
-          if (!series.meta) {
-            series.meta = {};
-          }
-
-          if (!series.meta.transformations) {
-            series.meta.transformations = [info.id];
-          } else {
-            series.meta.transformations = [...series.meta.transformations, info.id];
-          }
         }
 
         // Add back the filtered out frames

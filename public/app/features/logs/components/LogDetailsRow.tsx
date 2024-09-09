@@ -1,7 +1,8 @@
 import { css, cx } from '@emotion/css';
 import { isEqual } from 'lodash';
 import memoizeOne from 'memoize-one';
-import React, { PureComponent, useState } from 'react';
+import { PureComponent, useEffect, useState } from 'react';
+import * as React from 'react';
 
 import {
   CoreApp,
@@ -14,7 +15,7 @@ import {
   LogRowModel,
 } from '@grafana/data';
 import { reportInteraction } from '@grafana/runtime';
-import { ClipboardButton, DataLinkButton, IconButton, Themeable2, withTheme2 } from '@grafana/ui';
+import { ClipboardButton, DataLinkButton, IconButton, PopoverContent, Themeable2, withTheme2 } from '@grafana/ui';
 import { OpspilotDataLinkButton } from 'app/intergral/OpspilotDataLinkButton';
 
 import { logRowToSingleRowDataFrame } from '../logsModel';
@@ -38,6 +39,8 @@ export interface Props extends Themeable2 {
   row: LogRowModel;
   app?: CoreApp;
   isFilterLabelActive?: (key: string, value: string, refId?: string) => Promise<boolean>;
+  onPinLine?: (row: LogRowModel, allowUnPin?: boolean) => void;
+  pinLineButtonTooltipTitle?: PopoverContent;
 }
 
 interface State {
@@ -262,6 +265,9 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
       onClickFilterOutLabel,
       disableActions,
       row,
+      app,
+      onPinLine,
+      pinLineButtonTooltipTitle,
     } = this.props;
     const { showFieldsStats, fieldStats, fieldCount } = this.state;
     const styles = getStyles(theme);
@@ -269,7 +275,7 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
     const singleKey = parsedKeys == null ? false : parsedKeys.length === 1;
     const singleVal = parsedValues == null ? false : parsedValues.length === 1;
     const hasFilteringFunctionality = !disableActions && onClickFilterLabel && onClickFilterOutLabel;
-    const refIdTooltip = row.dataFrame?.refId ? ` in query ${row.dataFrame?.refId}` : '';
+    const refIdTooltip = app === CoreApp.Explore && row.dataFrame?.refId ? ` in query ${row.dataFrame?.refId}` : '';
 
     const isMultiParsedValueWithNoContent =
       !singleVal && parsedValues != null && !parsedValues.every((val) => val === '');
@@ -291,7 +297,8 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
                   <AsyncIconButton
                     name="search-plus"
                     onClick={this.filterLabel}
-                    isActive={this.isFilterLabelActive}
+                    // We purposely want to pass a new function on every render to allow the active state to be updated when log details remains open between updates.
+                    isActive={() => this.isFilterLabelActive()}
                     tooltipSuffix={refIdTooltip}
                   />
                   <IconButton
@@ -322,11 +329,34 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
               {singleVal ? parsedValues[0] : this.generateMultiVal(parsedValues, true)}
               {singleVal && this.generateClipboardButton(parsedValues[0])}
               <div className={cx((singleVal || isMultiParsedValueWithNoContent) && styles.adjoiningLinkButton)}>
-                {links?.map((link, i) => (
-                  <span key={`${link.title}-${i}`}>
-                    {link.title === "OpsPilot AI" ? <OpspilotDataLinkButton link={link} /> : <DataLinkButton link={link} />}  
-                  </span>
-                ))}
+                {links?.map((link, i) => {
+                  if (link.onClick && onPinLine) {
+                    const originalOnClick = link.onClick;
+                    link.onClick = (e, origin) => {
+                      // Pin the line
+                      onPinLine(row, false);
+
+                      // Execute the link onClick function
+                      originalOnClick(e, origin);
+                    };
+                  }
+                  return (
+                    <span key={`${link.title}-${i}`}>
+                      {link.title === "OpsPilot AI" ? <OpspilotDataLinkButton link={link} /> :
+
+                      <DataLinkButton
+                        buttonProps={{
+                          // Show tooltip message if max number of pinned lines has been reached
+                          tooltip:
+                            typeof pinLineButtonTooltipTitle === 'object' && link.onClick
+                              ? pinLineButtonTooltipTitle
+                              : undefined,
+                        }}
+                        link={link}
+                      />}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </td>
@@ -369,11 +399,9 @@ const AsyncIconButton = ({ isActive, tooltipSuffix, ...rest }: AsyncIconButtonPr
   const [active, setActive] = useState(false);
   const tooltip = active ? 'Remove filter' : 'Filter for value';
 
-  /**
-   * We purposely want to run this on every render to allow the active state to be updated
-   * when log details remains open between updates.
-   */
-  isActive().then(setActive);
+  useEffect(() => {
+    isActive().then(setActive);
+  }, [isActive]);
 
   return <IconButton {...rest} variant={active ? 'primary' : undefined} tooltip={tooltip + tooltipSuffix} />;
 };

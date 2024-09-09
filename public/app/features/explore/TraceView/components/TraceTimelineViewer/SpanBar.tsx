@@ -15,7 +15,8 @@
 import { css } from '@emotion/css';
 import cx from 'classnames';
 import { groupBy as _groupBy } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
+import * as React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -215,7 +216,7 @@ function SpanBar({
             placement="top"
             content={
               <div>
-                A segment on the <em>critical path</em> of the overall trace/request/workflow.
+                A segment on the <em>critical path</em> of the overall trace / request / workflow.
               </div>
             }
           >

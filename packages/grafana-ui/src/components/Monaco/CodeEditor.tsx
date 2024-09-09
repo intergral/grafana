@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import type * as monacoType from 'monaco-editor/esm/vs/editor/editor.api';
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
 
 import { GrafanaTheme2, monacoLanguageRegistry } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -119,14 +119,12 @@ class UnthemedCodeEditor extends PureComponent<Props> {
       }
     });
 
-    const languagePromise = this.loadCustomLanguage();
-
     if (onChange) {
       editor.getModel()?.onDidChangeContent(() => onChange(editor.getValue()));
     }
 
     if (onEditorDidMount) {
-      languagePromise.then(() => onEditorDidMount(editor, monaco));
+      onEditorDidMount(editor, monaco);
     }
   };
 

@@ -4,7 +4,7 @@
 //     public/app/plugins/gen.go
 // Using jennies:
 //     TSTypesJenny
-//     PluginTSTypesJenny
+//     PluginTsTypesJenny
 //
 // Run 'make gen-cue' from repository root to regenerate.
 
@@ -20,6 +20,10 @@ export interface Options extends ui.OptionsWithLegend, ui.OptionsWithTooltip, ui
    */
   mergeValues?: boolean;
   /**
+   * Enables pagination when > 0
+   */
+  perPage?: number;
+  /**
    * Controls the row height
    */
   rowHeight: number;
@@ -32,6 +36,7 @@ export interface Options extends ui.OptionsWithLegend, ui.OptionsWithTooltip, ui
 export const defaultOptions: Partial<Options> = {
   alignValue: 'left',
   mergeValues: true,
+  perPage: 20,
   rowHeight: 0.9,
   showValue: ui.VisibilityMode.Auto,
 };

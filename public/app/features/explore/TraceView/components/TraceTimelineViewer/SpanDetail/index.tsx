@@ -15,23 +15,22 @@
 import { css } from '@emotion/css';
 import { SpanStatusCode } from '@opentelemetry/api';
 import cx from 'classnames';
-import React from 'react';
+import * as React from 'react';
 
-import { DataFrame, dateTimeFormat, GrafanaTheme2, IconName, LinkModel, TimeZone } from '@grafana/data';
+import { DataFrame, dateTimeFormat, GrafanaTheme2, IconName, LinkModel } from '@grafana/data';
+import { TraceToProfilesOptions } from '@grafana/o11y-ds-frontend';
 import { config, locationService, reportInteraction } from '@grafana/runtime';
-import { DataLinkButton, Icon, TextArea, useStyles2 } from '@grafana/ui';
-import { TraceToProfilesOptions } from 'app/core/components/TraceToProfiles/TraceToProfilesSettings';
-import { RelatedProfilesTitle } from 'app/plugins/datasource/tempo/resultTransformer';
+import { TimeZone } from '@grafana/schema';
+import { DataLinkButton, Divider, Icon, TextArea, useStyles2 } from '@grafana/ui';
+import { RelatedProfilesTitle } from '@grafana-plugins/tempo/resultTransformer';
 
 import { pyroscopeProfileIdTagKey } from '../../../createSpanLink';
 import { autoColor } from '../../Theme';
-import { Divider } from '../../common/Divider';
 import LabeledList from '../../common/LabeledList';
 import { KIND, LIBRARY_NAME, LIBRARY_VERSION, STATUS, STATUS_MESSAGE, TRACE_STATE } from '../../constants/span';
 import { SpanLinkFunc, TNil } from '../../types';
 import { SpanLinkDef, SpanLinkType } from '../../types/links';
 import { TraceKeyValuePair, TraceLink, TraceLog, TraceSpan, TraceSpanReference } from '../../types/trace';
-import { uAlignIcon, ubM0, ubMb1, ubMy1, ubTxRightAlign } from '../../uberUtilityStyles';
 import { formatDuration } from '../utils';
 
 import AccordianKeyValues from './AccordianKeyValues';
@@ -53,6 +52,12 @@ const getStyles = (theme: GrafanaTheme2) => {
     listWrapper: css`
       overflow: hidden;
     `,
+    list: css({
+      textAlign: 'right',
+    }),
+    operationName: css({
+      margin: 0,
+    }),
     debugInfo: css`
       label: debugInfo;
       display: block;
@@ -99,6 +104,9 @@ const getStyles = (theme: GrafanaTheme2) => {
       label: AccordianWarningsLabel;
       color: ${autoColor(theme, '#d36c08')};
     `,
+    AccordianKeyValuesItem: css({
+      marginBottom: theme.spacing(0.5),
+    }),
     Textarea: css`
       word-break: break-all;
       white-space: pre;
@@ -106,8 +114,17 @@ const getStyles = (theme: GrafanaTheme2) => {
     LinkIcon: css`
       font-size: 1.5em;
     `,
+    linkList: css({
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '10px',
+    }),
   };
 };
+
+export const alignIcon = css({
+  margin: '-0.2rem 0.25rem 0 0',
+});
 
 export type TraceFlameGraphs = {
   [spanID: string]: DataFrame;
@@ -124,6 +141,8 @@ export type SpanDetailProps = {
   timeZone: TimeZone;
   tagsToggle: (spanID: string) => void;
   traceStartTime: number;
+  traceDuration: number;
+  traceName: string;
   warningsToggle: (spanID: string) => void;
   stackTracesToggle: (spanID: string) => void;
   referenceItemToggle: (spanID: string, reference: TraceSpanReference) => void;
@@ -147,6 +166,8 @@ export default function SpanDetail(props: SpanDetailProps) {
     span,
     tagsToggle,
     traceStartTime,
+    traceDuration,
+    traceName,
     warningsToggle,
     stackTracesToggle,
     referencesToggle,
@@ -287,6 +308,7 @@ export default function SpanDetail(props: SpanDetailProps) {
 
   let logLinkButton: JSX.Element | null = null;
   let profileLinkButton: JSX.Element | null = null;
+  let sessionLinkButton: JSX.Element | null = null;
   if (createSpanLink) {
     const links = createSpanLink(span);
     const logsLink = links?.filter((link) => link.type === SpanLinkType.Logs);
@@ -299,20 +321,32 @@ export default function SpanDetail(props: SpanDetailProps) {
     if (links && profilesLink && profilesLink.length > 0) {
       profileLinkButton = createLinkButton(profilesLink[0], SpanLinkType.Profiles, 'Profiles for this span', 'link');
     }
+    const sessionLink = links?.filter((link) => link.type === SpanLinkType.Session);
+    if (links && sessionLink && sessionLink.length > 0) {
+      sessionLinkButton = createLinkButton(
+        sessionLink[0],
+        SpanLinkType.Session,
+        'Session for this span',
+        'frontend-observability'
+      );
+    }
   }
 
   const focusSpanLink = createFocusSpanLink(traceID, spanID);
   return (
     <div data-testid="span-detail-component">
       <div className={styles.header}>
-        <h2 className={cx(ubM0)}>{operationName}</h2>
+        <h2 className={styles.operationName}>{operationName}</h2>
         <div className={styles.listWrapper}>
-          <LabeledList className={ubTxRightAlign} divider={true} items={overviewItems} />
+          <LabeledList className={styles.list} divider={true} items={overviewItems} />
         </div>
       </div>
-      <span style={{ marginRight: '10px' }}>{logLinkButton}</span>
-      {profileLinkButton}
-      <Divider className={ubMy1} type={'horizontal'} />
+      <div className={styles.linkList}>
+        {logLinkButton}
+        {profileLinkButton}
+        {sessionLinkButton}
+      </div>
+      <Divider spacing={1} />
       <div>
         <div>
           <AccordianKeyValues
@@ -324,7 +358,7 @@ export default function SpanDetail(props: SpanDetailProps) {
           />
           {process.tags && (
             <AccordianKeyValues
-              className={ubMb1}
+              className={styles.AccordianKeyValuesItem}
               data={process.tags}
               label="Resource Attributes"
               linksGetter={linksGetter}
@@ -392,17 +426,18 @@ export default function SpanDetail(props: SpanDetailProps) {
             createFocusSpanLink={createFocusSpanLink}
           />
         )}
-        {config.featureToggles.tracesEmbeddedFlameGraph &&
-          span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey) && (
-            <SpanFlameGraph
-              span={span}
-              timeZone={timeZone}
-              traceFlameGraphs={traceFlameGraphs}
-              setTraceFlameGraphs={setTraceFlameGraphs}
-              traceToProfilesOptions={traceToProfilesOptions}
-              setRedrawListView={setRedrawListView}
-            />
-          )}
+        {span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey) && (
+          <SpanFlameGraph
+            span={span}
+            timeZone={timeZone}
+            traceFlameGraphs={traceFlameGraphs}
+            setTraceFlameGraphs={setTraceFlameGraphs}
+            traceToProfilesOptions={traceToProfilesOptions}
+            setRedrawListView={setRedrawListView}
+            traceDuration={traceDuration}
+            traceName={traceName}
+          />
+        )}
         <small className={styles.debugInfo}>
           {/* TODO: fix keyboard a11y */}
           {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
@@ -422,7 +457,7 @@ export default function SpanDetail(props: SpanDetailProps) {
               }
             }}
           >
-            <Icon name={'link'} className={cx(uAlignIcon, styles.LinkIcon)}></Icon>
+            <Icon name={'link'} className={cx(alignIcon, styles.LinkIcon)}></Icon>
           </a>
           <span className={styles.debugLabel} data-label="SpanID:" /> {spanID}
         </small>

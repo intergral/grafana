@@ -22,6 +22,10 @@ export function getNavTitle(navId: string | undefined) {
       return t('nav.create-import.title', 'Import dashboard');
     case 'alert':
       return t('nav.create-alert.title', 'New alert rule');
+    case 'bookmarks':
+      return t('nav.bookmarks.title', 'Bookmarks');
+    case 'bookmarks-empty':
+      return t('nav.bookmarks-empty.title', 'Bookmark pages for them to appear here');
     case 'starred':
       return t('nav.starred.title', 'Starred');
     case 'starred-empty':
@@ -40,6 +44,8 @@ export function getNavTitle(navId: string | undefined) {
       return t('nav.reporting.title', 'Reporting');
     case 'dashboards/public':
       return t('nav.public.title', 'Public dashboards');
+    case 'dashboards/recently-deleted':
+      return t('nav.recently-deleted.title', 'Recently deleted');
     case 'dashboards/new':
       return t('nav.new-dashboard.title', 'New dashboard');
     case 'dashboards/folder/new':
@@ -56,10 +62,14 @@ export function getNavTitle(navId: string | undefined) {
       return t('nav.oncall.title', 'OnCall');
     case 'alerting-legacy':
       return t('nav.alerting-legacy.title', 'Alerting (legacy)');
+    case 'alerting-upgrade':
+      return t('nav.alerting-upgrade.title', 'Alerting upgrade');
     case 'alert-home':
       return t('nav.alerting-home.title', 'Home');
     case 'alert-list':
       return t('nav.alerting-list.title', 'Alert rules');
+    case 'alert-list-legacy':
+      return t('nav.alert-list-legacy.title', 'Alert rules');
     case 'receivers':
       return t('nav.alerting-receivers.title', 'Contact points');
     case 'am-routes':
@@ -69,9 +79,9 @@ export function getNavTitle(navId: string | undefined) {
     case 'silences':
       return t('nav.alerting-silences.title', 'Silences');
     case 'groups':
-      return t('nav.alerting-groups.title', 'Groups');
+      return t('nav.alerting-groups.title', 'Active notifications');
     case 'alerting-admin':
-      return t('nav.alerting-admin.title', 'Admin');
+      return t('nav.alerting-admin.title', 'Settings');
     case 'cfg':
       return t('nav.config.title', 'Administration');
     case 'cfg/general':
@@ -114,6 +124,8 @@ export function getNavTitle(navId: string | undefined) {
       return t('nav.server-settings.title', 'Settings');
     case 'storage':
       return t('nav.storage.title', 'Storage');
+    case 'migrate-to-cloud':
+      return t('nav.migrate-to-cloud.title', 'Migrate to Grafana Cloud');
     case 'upgrading':
       return t('nav.upgrading.title', 'Stats and license');
     case 'monitoring':
@@ -126,14 +138,16 @@ export function getNavTitle(navId: string | undefined) {
       return t('nav.apps.title', 'Apps');
     case 'alerts-and-incidents':
       return t('nav.alerts-and-incidents.title', 'Alerts & IRM');
+    case 'testing-and-synthetics':
+      return t('nav.testing-and-synthetics.title', 'Testing & synthetics');
     case 'plugin-page-grafana-incident-app':
-      return t('nav.incidents.title', 'Incidents');
+      return t('nav.incidents.title', 'Incident');
     case 'plugin-page-grafana-ml-app':
       return t('nav.machine-learning.title', 'Machine learning');
     case 'plugin-page-grafana-slo-app':
       return t('nav.slo.title', 'SLO');
     case 'plugin-page-k6-app':
-      return t('nav.performance-testing.title', 'Performance testing');
+      return t('nav.k6.title', 'Performance');
     case 'monitoring':
       return t('nav.observability.title', 'Observability');
     case 'plugin-page-grafana-k8s-app':
@@ -162,12 +176,16 @@ export function getNavTitle(navId: string | undefined) {
       return t('nav.connections.title', 'Connections');
     case 'connections-add-new-connection':
       return t('nav.add-new-connections.title', 'Add new connection');
+    case 'standalone-plugin-page-/connections/collector':
+      return t('nav.collector.title', 'Collector');
     case 'connections-datasources':
       return t('nav.data-sources.title', 'Data sources');
     case 'standalone-plugin-page-/connections/infrastructure':
       return t('nav.integrations.title', 'Integrations');
     case 'standalone-plugin-page-/connections/connect-data':
       return t('nav.connect-data.title', 'Connect data');
+    case 'standalone-plugin-page-/connections/private-data-source-connections':
+      return t('nav.private-data-source-connections.title', 'Private data source connect');
     case 'plugin-page-grafana-detect-app':
       return t('nav.detect.title', 'Detect');
     case 'plugin-page-grafana-quaderno-app':
@@ -194,8 +212,20 @@ export function getNavSubTitle(navId: string | undefined) {
       );
     case 'dashboards/library-panels':
       return t('nav.library-panels.subtitle', 'Reusable panels that can be added to multiple dashboards');
+    case 'dashboards/recently-deleted':
+      return t(
+        'nav.recently-deleted.subtitle',
+        'Any items listed here for more than 30 days will be automatically deleted.'
+      );
     case 'alerting':
       return t('nav.alerting.subtitle', 'Learn about problems in your systems moments after they occur');
+    case 'alerting-upgrade':
+      return t(
+        'nav.alerting-upgrade.subtitle',
+        'Upgrade your existing legacy alerts and notification channels to the new Grafana Alerting'
+      );
+    case 'alerting-admin':
+      return t('nav.alerting-admin.subtitle', 'Manage Alertmanager configurations');
     case 'alert-list':
       return t('nav.alerting-list.subtitle', 'Rules that determine whether an alert will fire');
     case 'receivers':
@@ -208,7 +238,7 @@ export function getNavSubTitle(navId: string | undefined) {
     case 'silences':
       return t('nav.alerting-silences.subtitle', 'Stop notifications from one or more alerting rules');
     case 'groups':
-      return t('nav.alerting-groups.subtitle', 'See grouped alerts from an Alertmanager instance');
+      return t('nav.alerting-groups.subtitle', 'See grouped alerts with active notifications');
     case 'datasources':
       return t('nav.datasources.subtitle', 'Add and configure data sources');
     case 'correlations':
@@ -233,6 +263,11 @@ export function getNavSubTitle(navId: string | undefined) {
       return t('nav.server-settings.subtitle', 'View the settings defined in your Grafana config');
     case 'storage':
       return t('nav.storage.subtitle', 'Manage file storage');
+    case 'migrate-to-cloud':
+      return t(
+        'nav.migrate-to-cloud.subtitle',
+        'Copy configuration from your self-managed installation to a cloud stack'
+      );
     case 'support-bundles':
       return t('nav.support-bundles.subtitle', 'Download support bundles');
     case 'admin':
@@ -256,10 +291,17 @@ export function getNavSubTitle(navId: string | undefined) {
       return t('nav.frontend.subtitle', 'Gain real user monitoring insights');
     case 'alerts-and-incidents':
       return t('nav.alerts-and-incidents.subtitle', 'Alerting and incident management apps');
+    case 'testing-and-synthetics':
+      return t('nav.testing-and-synthetics.subtitle', 'Optimize performance with k6 and Synthetic Monitoring insights');
     case 'connections-add-new-connection':
       return t('nav.connections.subtitle', 'Browse and create new connections');
     case 'connections-datasources':
       return t('nav.data-sources.subtitle', 'View and manage your connected data source connections');
+    case 'connections-private-data-source-connections':
+      return t(
+        'nav.private-data-source-connections.subtitle',
+        'Query data that lives within a secured network without opening the network to inbound traffic from Grafana Cloud. Learn more in our docs.'
+      );
     default:
       return undefined;
   }

@@ -10,10 +10,10 @@ import { TrendSuggestionsSupplier } from './suggestions';
 export const plugin = new PanelPlugin<Options, FieldConfig>(TrendPanel)
   .useFieldConfig(getGraphFieldConfig(defaultGraphConfig, false))
   .setPanelOptions((builder) => {
-    const category = ['X Axis'];
+    const category = ['X axis'];
     builder.addFieldNamePicker({
       path: 'xField',
-      name: 'X Field',
+      name: 'X field',
       description: 'An increasing numeric value',
       category,
       defaultValue: undefined,
@@ -24,7 +24,7 @@ export const plugin = new PanelPlugin<Options, FieldConfig>(TrendPanel)
       },
     });
 
-    commonOptionsBuilder.addTooltipOptions(builder);
+    commonOptionsBuilder.addTooltipOptions(builder, false, true);
     commonOptionsBuilder.addLegendOptions(builder);
   })
   .setSuggestionsSupplier(new TrendSuggestionsSupplier());

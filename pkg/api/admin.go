@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/grafana/grafana/pkg/api/response"
+	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	ac "github.com/grafana/grafana/pkg/services/accesscontrol"
-	"github.com/grafana/grafana/pkg/services/auth/identity"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/services/stats"
 	"github.com/grafana/grafana/pkg/setting"
@@ -62,12 +62,12 @@ func (hs *HTTPServer) AdminGetVerboseSettings(c *contextmodel.ReqContext) respon
 func (hs *HTTPServer) AdminGetStats(c *contextmodel.ReqContext) response.Response {
 	adminStats, err := hs.statsService.GetAdminStats(c.Req.Context(), &stats.GetAdminStatsQuery{})
 	if err != nil {
-		return response.Error(500, "Failed to get admin stats from database", err)
+		return response.Error(http.StatusInternalServerError, "Failed to get admin stats from database", err)
 	}
-	thirtyDays := 30 * 24 * time.Hour
-	devicesCount, err := hs.anonService.CountDevices(c.Req.Context(), time.Now().Add(-thirtyDays), time.Now().Add(time.Minute))
+	anonymousDeviceExpiration := 30 * 24 * time.Hour
+	devicesCount, err := hs.anonService.CountDevices(c.Req.Context(), time.Now().Add(-anonymousDeviceExpiration), time.Now().Add(time.Minute))
 	if err != nil {
-		return response.Error(500, "Failed to get anon stats from database", err)
+		return response.Error(http.StatusInternalServerError, "Failed to get anon stats from database", err)
 	}
 	adminStats.AnonymousStats.ActiveDevices = devicesCount
 

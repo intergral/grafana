@@ -15,14 +15,18 @@ var (
 	batchSize = 1000
 )
 
-func MigrateScopeSplit(db db.DB, log log.Logger) error {
+const (
+	maxLen = 40
+)
+
+func MigrateScopeSplit(db db.ReplDB, log log.Logger) error {
 	t := time.Now()
 	ctx := context.Background()
 	cnt := 0
 
 	// Search for the permissions to update
 	var permissions []ac.Permission
-	if errFind := db.WithTransactionalDbSession(ctx, func(sess *sqlstore.DBSession) error {
+	if errFind := db.DB().WithTransactionalDbSession(ctx, func(sess *sqlstore.DBSession) error {
 		return sess.SQL("SELECT * FROM permission WHERE NOT scope = '' AND identifier = ''").Find(&permissions)
 	}); errFind != nil {
 		log.Error("Could not search for permissions to update", "migration", "scopeSplit", "error", errFind)
@@ -49,6 +53,12 @@ func MigrateScopeSplit(db db.DB, log log.Logger) error {
 		for i := start; i < end; i++ {
 			kind, attribute, identifier := permissions[i].SplitScope()
 
+			// Trim to max length to avoid bootloop.
+			// too long scopes will be truncated and the permission will become invalid.
+			kind = trimToMaxLen(kind, maxLen)
+			attribute = trimToMaxLen(attribute, maxLen)
+			identifier = trimToMaxLen(identifier, maxLen)
+
 			delQuery += "?,"
 			delArgs = append(delArgs, permissions[i].ID)
 
@@ -66,7 +76,7 @@ func MigrateScopeSplit(db db.DB, log log.Logger) error {
 		delQuery = delQuery[:len(delQuery)-1] + ")"
 
 		// Batch update the permissions
-		if errBatchUpdate := db.GetSqlxSession().WithTransaction(ctx, func(tx *session.SessionTx) error {
+		if errBatchUpdate := db.DB().GetSqlxSession().WithTransaction(ctx, func(tx *session.SessionTx) error {
 			if _, errDel := tx.Exec(ctx, delQuery, delArgs...); errDel != nil {
 				log.Error("Error deleting permissions", "migration", "scopeSplit", "error", errDel)
 				return errDel
@@ -108,4 +118,11 @@ func batch(count, batchSize int, eachFn func(start, end int) error) error {
 	}
 
 	return nil
+}
+
+func trimToMaxLen(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen]
+	}
+	return s
 }

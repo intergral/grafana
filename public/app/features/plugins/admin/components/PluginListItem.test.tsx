@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 
 import { PluginErrorCode, PluginSignatureStatus, PluginType } from '@grafana/data';
 
@@ -42,6 +41,7 @@ describe('PluginListItem', () => {
         small: 'https://grafana.com/api/plugins/test-plugin/versions/0.0.10/logos/small',
         large: 'https://grafana.com/api/plugins/test-plugin/versions/0.0.10/logos/large',
       },
+      keywords: ['test', 'plugin'],
     },
     name: 'Testing Plugin',
     orgName: 'Test',
@@ -57,6 +57,7 @@ describe('PluginListItem', () => {
     isDisabled: false,
     isDeprecated: false,
     isPublished: true,
+    isManaged: false,
   };
 
   /** As Grid */
@@ -65,7 +66,7 @@ describe('PluginListItem', () => {
 
     expect(screen.getByRole('link')).toHaveAttribute('href', '/plugins/test-plugin');
 
-    const logo = screen.getByRole('img');
+    const logo = screen.getByRole('presentation');
     expect(logo).toHaveAttribute('src', plugin.info.logos.small);
 
     expect(screen.getByRole('heading', { name: /testing plugin/i })).toBeVisible();
@@ -108,7 +109,7 @@ describe('PluginListItem', () => {
 
     expect(screen.getByRole('link')).toHaveAttribute('href', '/plugins/test-plugin');
 
-    const logo = screen.getByRole('img');
+    const logo = screen.getByRole('presentation');
     expect(logo).toHaveAttribute('src', plugin.info.logos.small);
 
     expect(screen.getByRole('heading', { name: /testing plugin/i })).toBeVisible();

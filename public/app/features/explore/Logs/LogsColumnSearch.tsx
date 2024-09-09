@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import React from 'react';
+import * as React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data/src';
 import { Field, Input, useTheme2 } from '@grafana/ui/src';
@@ -7,7 +7,7 @@ import { Field, Input, useTheme2 } from '@grafana/ui/src';
 function getStyles(theme: GrafanaTheme2) {
   return {
     searchWrap: css({
-      padding: theme.spacing(0.4),
+      padding: `${theme.spacing(0.4)} 0 ${theme.spacing(0.4)} ${theme.spacing(0.4)}`,
     }),
   };
 }

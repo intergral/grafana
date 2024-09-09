@@ -1,22 +1,17 @@
 import { ComponentType } from 'react';
 
-import { StandardEditorProps, FieldConfigOptionsRegistry, StandardEditorContext } from '../field';
-import { GrafanaTheme2 } from '../themes';
-import {
-  MatcherConfig,
-  FieldConfig,
-  Field,
-  DataFrame,
-  TimeZone,
-  ScopedVars,
-  ValueLinkConfig,
-  LinkModel,
-  DataLink,
-} from '../types';
+import { FieldConfigOptionsRegistry } from '../field/FieldConfigOptionsRegistry';
+import { StandardEditorContext, StandardEditorProps } from '../field/standardFieldConfigEditorRegistry';
+import { GrafanaTheme2 } from '../themes/types';
 
 import { OptionsEditorItem } from './OptionsUIRegistryBuilder';
+import { ScopedVars } from './ScopedVars';
+import { DataFrame, Field, FieldConfig, ValueLinkConfig } from './dataFrame';
+import { DataLink, LinkModel } from './dataLink';
 import { OptionEditorConfig } from './options';
 import { InterpolateFunction } from './panel';
+import { TimeZone } from './time';
+import { MatcherConfig } from './transformations';
 
 export interface DynamicConfigValue {
   id: string;
@@ -46,8 +41,7 @@ export interface SystemConfigOverrideRule extends ConfigOverrideRule {
  */
 export function isSystemOverrideWithRef<T extends SystemConfigOverrideRule>(ref: string) {
   return (override: ConfigOverrideRule): override is T => {
-    const overrideAs = override as T;
-    return overrideAs.__systemRef === ref;
+    return '__systemRef' in override && override.__systemRef === ref;
   };
 }
 
@@ -58,7 +52,7 @@ export function isSystemOverrideWithRef<T extends SystemConfigOverrideRule>(ref:
  * @internal
  */
 export const isSystemOverride = (override: ConfigOverrideRule): override is SystemConfigOverrideRule => {
-  return typeof (override as SystemConfigOverrideRule)?.__systemRef === 'string';
+  return '__systemRef' in override && typeof override.__systemRef === 'string';
 };
 
 export interface FieldConfigSource<TOptions = any> {
@@ -69,7 +63,7 @@ export interface FieldConfigSource<TOptions = any> {
   overrides: ConfigOverrideRule[];
 }
 
-export interface FieldOverrideContext extends StandardEditorContext<any, any> {
+export interface FieldOverrideContext extends StandardEditorContext<any> {
   field?: Field;
   dataFrameIndex?: number; // The index for the selected field frame
 }

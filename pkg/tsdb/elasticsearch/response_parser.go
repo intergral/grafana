@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/tracing"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/experimental/errorsource"
 	"go.opentelemetry.io/otel/attribute"
@@ -19,8 +21,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/grafana/pkg/components/simplejson"
-	"github.com/grafana/grafana/pkg/infra/log"
-	"github.com/grafana/grafana/pkg/infra/tracing"
 	es "github.com/grafana/grafana/pkg/tsdb/elasticsearch/client"
 	"github.com/grafana/grafana/pkg/tsdb/elasticsearch/instrumentation"
 )
@@ -47,20 +47,20 @@ const (
 
 var searchWordsRegex = regexp.MustCompile(regexp.QuoteMeta(es.HighlightPreTagsString) + `(.*?)` + regexp.QuoteMeta(es.HighlightPostTagsString))
 
-func parseResponse(ctx context.Context, responses []*es.SearchResponse, targets []*Query, configuredFields es.ConfiguredFields, logger log.Logger, tracer tracing.Tracer) (*backend.QueryDataResponse, error) {
+func parseResponse(ctx context.Context, responses []*es.SearchResponse, targets []*Query, configuredFields es.ConfiguredFields, keepLabelsInResponse bool, logger log.Logger) (*backend.QueryDataResponse, error) {
 	result := backend.QueryDataResponse{
 		Responses: backend.Responses{},
 	}
 	if responses == nil {
 		return &result, nil
 	}
-	ctx, span := tracer.Start(ctx, "datasource.elastic.parseResponse", trace.WithAttributes(
+	ctx, span := tracing.DefaultTracer().Start(ctx, "datasource.elastic.parseResponse", trace.WithAttributes(
 		attribute.Int("responseLength", len(responses)),
 	))
 	defer span.End()
 
 	for i, res := range responses {
-		_, resSpan := tracer.Start(ctx, "datasource.elastic.parseResponse.response", trace.WithAttributes(
+		_, resSpan := tracing.DefaultTracer().Start(ctx, "datasource.elastic.parseResponse.response", trace.WithAttributes(
 			attribute.String("queryMetricType", targets[i].Metrics[0].Type),
 		))
 		start := time.Now()
@@ -117,7 +117,7 @@ func parseResponse(ctx context.Context, responses []*es.SearchResponse, targets 
 				resSpan.End()
 				return &backend.QueryDataResponse{}, err
 			}
-			nameFields(queryRes, target)
+			nameFields(queryRes, target, keepLabelsInResponse)
 			trimDatapoints(queryRes, target)
 
 			result.Responses[target.RefID] = queryRes
@@ -136,8 +136,14 @@ func processLogsResponse(res *es.SearchResponse, target *Query, configuredFields
 
 	for hitIdx, hit := range res.Hits.Hits {
 		var flattened map[string]interface{}
+		var sourceString string
 		if hit["_source"] != nil {
 			flattened = flatten(hit["_source"].(map[string]interface{}), 10)
+			sourceMarshalled, err := json.Marshal(flattened)
+			if err != nil {
+				return err
+			}
+			sourceString = string(sourceMarshalled)
 		}
 
 		doc := map[string]interface{}{
@@ -146,7 +152,8 @@ func processLogsResponse(res *es.SearchResponse, target *Query, configuredFields
 			"_index":    hit["_index"],
 			"sort":      hit["sort"],
 			"highlight": hit["highlight"],
-			"_source":   flattened,
+			// In case of logs query we want to have the raw source as a string field so it can be visualized in logs panel
+			"_source": sourceString,
 		}
 
 		for k, v := range flattened {
@@ -866,22 +873,22 @@ func trimDatapoints(queryResult backend.DataResponse, target *Query) {
 // we sort the label's pairs by the label-key,
 // and return the label-values
 func getSortedLabelValues(labels data.Labels) []string {
-	var keys []string
+	keys := make([]string, 0, len(labels))
 	for key := range labels {
 		keys = append(keys, key)
 	}
 
 	sort.Strings(keys)
 
-	var values []string
-	for _, key := range keys {
-		values = append(values, labels[key])
+	values := make([]string, len(keys))
+	for i, key := range keys {
+		values[i] = labels[key]
 	}
 
 	return values
 }
 
-func nameFields(queryResult backend.DataResponse, target *Query) {
+func nameFields(queryResult backend.DataResponse, target *Query, keepLabelsInResponse bool) {
 	set := make(map[string]struct{})
 	frames := queryResult.Frames
 	for _, v := range frames {
@@ -900,10 +907,18 @@ func nameFields(queryResult backend.DataResponse, target *Query) {
 			// another is "number"
 			valueField := frame.Fields[1]
 			fieldName := getFieldName(*valueField, target, metricTypeCount)
-			if valueField.Config == nil {
-				valueField.Config = &data.FieldConfig{}
+			// If we  need to keep the labels in the response, to prevent duplication in names and to keep
+			// backward compatibility with alerting and expressions we use DisplayNameFromDS
+			if keepLabelsInResponse {
+				if valueField.Config == nil {
+					valueField.Config = &data.FieldConfig{}
+				}
+				valueField.Config.DisplayNameFromDS = fieldName
+				// If we don't need to keep labels (how frontend mode worked), we use frame.Name and remove labels
+			} else {
+				valueField.Labels = nil
+				frame.Name = fieldName
 			}
-			valueField.Config.DisplayNameFromDS = fieldName
 		}
 	}
 }

@@ -1,13 +1,16 @@
 import { map } from 'rxjs/operators';
 
-import { getDisplayProcessor } from '../../field';
-import { createTheme, GrafanaTheme2 } from '../../themes';
-import { DataFrameType, DataTransformContext, SynchronousDataTransformerInfo } from '../../types';
+import { getDisplayProcessor } from '../../field/displayProcessor';
+import { createTheme } from '../../themes/createTheme';
+import { GrafanaTheme2 } from '../../themes/types';
 import { DataFrame, Field, FieldConfig, FieldType } from '../../types/dataFrame';
-import { roundDecimals } from '../../utils';
+import { DataFrameType } from '../../types/dataFrameTypes';
+import { DataTransformContext, SynchronousDataTransformerInfo } from '../../types/transformations';
+import { roundDecimals } from '../../utils/numbers';
 
 import { DataTransformerID } from './ids';
 import { AlignedData, join } from './joinDataFrames';
+import { nullToValueField } from './nulls/nullToValue';
 import { transformationsVariableSupport } from './utils';
 
 /**
@@ -38,10 +41,13 @@ export const histogramBucketSizes = [
 ];
 /* eslint-enable */
 
+const DEFAULT_BUCKET_COUNT = 30;
+
 const histFilter: number[] = [];
 const histSort = (a: number, b: number) => a - b;
 
 export interface HistogramTransformerInputs {
+  bucketCount?: number;
   bucketSize?: string | number;
   bucketOffset?: string | number;
   combine?: boolean;
@@ -51,6 +57,7 @@ export interface HistogramTransformerInputs {
  * @alpha
  */
 export interface HistogramTransformerOptions {
+  bucketCount?: number;
   bucketSize?: number; // 0 is auto
   bucketOffset?: number;
   // xMin?: number;
@@ -64,6 +71,10 @@ export interface HistogramTransformerOptions {
  * @internal
  */
 export const histogramFieldInfo = {
+  bucketCount: {
+    name: 'Bucket count',
+    description: 'approx bucket count',
+  },
   bucketSize: {
     name: 'Bucket size',
     description: undefined,
@@ -318,14 +329,33 @@ export function getHistogramFields(frame: DataFrame): HistogramFields | undefine
   return undefined;
 }
 
-const APPROX_BUCKETS = 20;
-
 /**
  * @alpha
  */
 export function buildHistogram(frames: DataFrame[], options?: HistogramTransformerOptions): HistogramFields | null {
   let bucketSize = options?.bucketSize;
+  let bucketCount = options?.bucketCount ?? DEFAULT_BUCKET_COUNT;
   let bucketOffset = options?.bucketOffset ?? 0;
+
+  // replace or filter nulls from numeric fields
+  frames = frames.map((frame) => {
+    return {
+      ...frame,
+      fields: frame.fields.map((field) => {
+        if (field.type === FieldType.number) {
+          const noValue = Number(field.config.noValue);
+
+          if (!Number.isNaN(noValue)) {
+            field = nullToValueField(field, noValue);
+          } else {
+            field = { ...field, values: field.values.filter((v) => v != null) };
+          }
+        }
+
+        return field;
+      }),
+    };
+  });
 
   // if bucket size is auto, try to calc from all numeric fields
   if (!bucketSize || bucketSize < 0) {
@@ -339,8 +369,6 @@ export function buildHistogram(frames: DataFrame[], options?: HistogramTransform
         }
       }
     }
-
-    allValues = allValues.filter((v) => v != null);
 
     allValues.sort((a, b) => a - b);
 
@@ -364,7 +392,7 @@ export function buildHistogram(frames: DataFrame[], options?: HistogramTransform
 
     let range = max - min;
 
-    const targetSize = range / APPROX_BUCKETS;
+    const targetSize = range / bucketCount;
 
     // choose bucket
     for (let i = 0; i < histogramBucketSizes.length; i++) {
@@ -377,7 +405,7 @@ export function buildHistogram(frames: DataFrame[], options?: HistogramTransform
     }
   }
 
-  const getBucket = (v: number) => incrRoundDn(v - bucketOffset, bucketSize!) + bucketOffset;
+  const getBucket = (v: number) => roundDecimals(incrRoundDn(v - bucketOffset, bucketSize!) + bucketOffset, 9);
 
   // guess number of decimals
   let bucketDecimals = (('' + bucketSize).match(/\.\d+$/) ?? ['.'])[0].length - 1;
@@ -431,7 +459,7 @@ export function buildHistogram(frames: DataFrame[], options?: HistogramTransform
     state: undefined,
     config:
       bucketDecimals === 0
-        ? config ?? {}
+        ? (config ?? {})
         : {
             ...config,
             decimals: bucketDecimals,
@@ -456,7 +484,12 @@ export function buildHistogram(frames: DataFrame[], options?: HistogramTransform
         name: 'count',
         values: vals,
         type: FieldType.number,
-        state: undefined,
+        state: {
+          ...counts[0].state,
+          displayName: 'Count',
+          multipleFrames: false,
+          origin: { frameIndex: 0, fieldIndex: 2 },
+        },
       },
     ];
   } else {

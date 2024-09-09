@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 
 import { LinkModel, PanelData, PanelPlugin, renderMarkdown } from '@grafana/data';
 import { config, getTemplateSrv, locationService } from '@grafana/runtime';
@@ -26,8 +26,6 @@ interface CommonProps {
 }
 
 export function getPanelChromeProps(props: CommonProps) {
-  let descriptionInteractionReported = false;
-
   function hasOverlayHeader() {
     // always show normal header if we have time override
     if (props.data.request && props.data.request.timeInfo) {
@@ -40,12 +38,6 @@ export function getPanelChromeProps(props: CommonProps) {
   const onShowPanelDescription = () => {
     const descriptionMarkdown = getTemplateSrv().replace(props.panel.description, props.panel.scopedVars);
     const interpolatedDescription = renderMarkdown(descriptionMarkdown);
-
-    if (!descriptionInteractionReported) {
-      // Description rendering function can be called multiple times due to re-renders but we want to report the interaction once.
-      DashboardInteractions.panelDescriptionShown();
-      descriptionInteractionReported = true;
-    }
 
     return interpolatedDescription;
   };
@@ -79,7 +71,7 @@ export function getPanelChromeProps(props: CommonProps) {
 
   const onCancelQuery = () => {
     props.panel.getQueryRunner().cancelQuery();
-    DashboardInteractions.panelCancelQueryClicked();
+    DashboardInteractions.panelCancelQueryClicked({ data_state: props.data.state });
   };
 
   const padding: PanelPadding = props.plugin.noPadding ? 'none' : 'md';
@@ -121,10 +113,6 @@ export function getPanelChromeProps(props: CommonProps) {
 
   const title = props.panel.getDisplayTitle();
 
-  const onOpenMenu = () => {
-    DashboardInteractions.panelMenuShown();
-  };
-
   return {
     hasOverlayHeader,
     onShowPanelDescription,
@@ -137,6 +125,5 @@ export function getPanelChromeProps(props: CommonProps) {
     dragClass,
     title,
     titleItems,
-    onOpenMenu,
   };
 }

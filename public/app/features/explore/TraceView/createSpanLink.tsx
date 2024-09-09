@@ -1,5 +1,3 @@
-import React from 'react';
-
 import {
   DataFrame,
   DataLink,
@@ -14,14 +12,17 @@ import {
   SplitOpen,
   TimeRange,
 } from '@grafana/data';
+import {
+  TraceToProfilesOptions,
+  TraceToMetricsOptions,
+  TraceToLogsOptionsV2,
+  TraceToLogsTag,
+} from '@grafana/o11y-ds-frontend';
+import { PromQuery } from '@grafana/prometheus';
 import { getTemplateSrv } from '@grafana/runtime';
 import { DataQuery } from '@grafana/schema';
 import { Icon } from '@grafana/ui';
-import { TraceToLogsOptionsV2, TraceToLogsTag } from 'app/core/components/TraceToLogs/TraceToLogsSettings';
-import { TraceToMetricQuery, TraceToMetricsOptions } from 'app/core/components/TraceToMetrics/TraceToMetricsSettings';
-import { TraceToProfilesOptions } from 'app/core/components/TraceToProfiles/TraceToProfilesSettings';
 import { getDatasourceSrv } from 'app/features/plugins/datasource_srv';
-import { PromQuery } from 'app/plugins/datasource/prometheus/types';
 
 import { LokiQuery } from '../../../plugins/datasource/loki/types';
 import { ExploreFieldLinkModel, getFieldLinksForExplore, getVariableUsageInfo } from '../utils/links';
@@ -55,7 +56,7 @@ export function createSpanLinkFactory({
     return undefined;
   }
 
-  let scopedVars = scopedVarsFromTrace(trace);
+  let scopedVars = scopedVarsFromTrace(trace.duration, trace.traceName, trace.traceID);
   const hasLinks = dataFrame.fields.some((f) => Boolean(f.config.links?.length));
 
   const createSpanLinks = legacyCreateSpanLinkFactory(
@@ -136,6 +137,7 @@ const formatDefaultKeys = (keys: string[]) => {
 const defaultKeys = formatDefaultKeys(['cluster', 'hostname', 'namespace', 'pod', 'service.name', 'service.namespace']);
 export const defaultProfilingKeys = formatDefaultKeys(['service.name', 'service.namespace']);
 export const pyroscopeProfileIdTagKey = 'pyroscope.profile.id';
+export const feO11yTagKey = 'gf.feo11y.app.id';
 
 function legacyCreateSpanLinkFactory(
   splitOpenFn: SplitOpen,
@@ -254,7 +256,9 @@ function legacyCreateSpanLinkFactory(
     // Get metrics links
     if (metricsDataSourceSettings && traceToMetricsOptions?.queries) {
       for (const query of traceToMetricsOptions.queries) {
-        const expr = buildMetricsQuery(query, traceToMetricsOptions?.tags || [], span);
+        const expr =
+          query.query ||
+          `histogram_quantile(0.5, sum(rate(traces_spanmetrics_latency_bucket{service="${span.process.serviceName}"}[5m])) by (le))`;
         const dataLink: DataLink<PromQuery> = {
           title: metricsDataSourceSettings.name,
           url: '',
@@ -268,10 +272,23 @@ function legacyCreateSpanLinkFactory(
           },
         };
 
+        const tagsToUse =
+          traceToMetricsOptions.tags && traceToMetricsOptions.tags.length > 0
+            ? traceToMetricsOptions.tags
+            : defaultKeys;
+
+        scopedVars = {
+          ...scopedVars,
+          __tags: {
+            text: 'Tags',
+            value: getFormattedTags(span, tagsToUse),
+          },
+        };
+
         const link = mapInternalLinkToExplore({
           link: dataLink,
           internalLink: dataLink.internal!,
-          scopedVars: {},
+          scopedVars,
           range: getTimeRangeFromSpan(span, {
             startMs: traceToMetricsOptions.spanStartTimeShift
               ? rangeUtil.intervalToMs(traceToMetricsOptions.spanStartTimeShift)
@@ -332,6 +349,18 @@ function legacyCreateSpanLinkFactory(
       }
     }
 
+    // Get session links
+    const feO11yLink = getLinkForFeO11y(span);
+    if (feO11yLink) {
+      links.push({
+        title: 'Session for this span',
+        href: feO11yLink,
+        content: <Icon name="frontend-observability" title="Session for this span" />,
+        field,
+        type: SpanLinkType.Session,
+      });
+    }
+
     return links;
   };
 }
@@ -364,6 +393,15 @@ function getQueryForLoki(
     expr: expr,
     refId: '',
   };
+}
+
+function getLinkForFeO11y(span: TraceSpan): string | undefined {
+  const feO11yAppId = span.process.tags.find((tag) => tag.key === feO11yTagKey)?.value;
+  const feO11ySessionId = span.tags.find((tag) => tag.key === 'session_id' || tag.key === 'session.id')?.value;
+
+  return feO11yAppId && feO11ySessionId
+    ? `/a/grafana-kowalski-app/apps/${feO11yAppId}/sessions/${feO11ySessionId}`
+    : undefined;
 }
 
 // we do not have access to the dataquery type for opensearch,
@@ -564,46 +602,18 @@ function getTimeRangeFromSpan(
   };
 }
 
-// Interpolates span attributes into trace to metric query, or returns default query
-function buildMetricsQuery(
-  query: TraceToMetricQuery,
-  tags: Array<{ key: string; value?: string }> = [],
-  span: TraceSpan
-): string {
-  if (!query.query) {
-    return `histogram_quantile(0.5, sum(rate(traces_spanmetrics_latency_bucket{service="${span.process.serviceName}"}[5m])) by (le))`;
-  }
-
-  let expr = query.query;
-  if (tags.length && expr.indexOf('$__tags') !== -1) {
-    const spanTags = [...span.process.tags, ...span.tags];
-    const labels = tags.reduce<string[]>((acc, tag) => {
-      const tagValue = spanTags.find((t) => t.key === tag.key)?.value;
-      if (tagValue) {
-        acc.push(`${tag.value ? tag.value : tag.key}="${tagValue}"`);
-      }
-      return acc;
-    }, []);
-
-    const labelsQuery = labels?.join(', ');
-    expr = expr.replace(/\$__tags/g, labelsQuery);
-  }
-
-  return expr;
-}
-
 /**
  * Variables from trace that can be used in the query
  * @param trace
  */
-function scopedVarsFromTrace(trace: Trace): ScopedVars {
+export function scopedVarsFromTrace(duration: number, name: string, traceId: string): ScopedVars {
   return {
     __trace: {
       text: 'Trace',
       value: {
-        duration: trace.duration,
-        name: trace.traceName,
-        traceId: trace.traceID,
+        duration,
+        name,
+        traceId,
       },
     },
   };
@@ -613,7 +623,7 @@ function scopedVarsFromTrace(trace: Trace): ScopedVars {
  * Variables from span that can be used in the query
  * @param span
  */
-function scopedVarsFromSpan(span: TraceSpan): ScopedVars {
+export function scopedVarsFromSpan(span: TraceSpan): ScopedVars {
   const tags: ScopedVars = {};
 
   // We put all these tags together similar way we do for the __tags variable. This means there can be some overriding
@@ -643,7 +653,10 @@ function scopedVarsFromSpan(span: TraceSpan): ScopedVars {
  * Variables from tags that can be used in the query
  * @param span
  */
-function scopedVarsFromTags(span: TraceSpan, traceToProfilesOptions: TraceToProfilesOptions | undefined): ScopedVars {
+export function scopedVarsFromTags(
+  span: TraceSpan,
+  traceToProfilesOptions: TraceToProfilesOptions | undefined
+): ScopedVars {
   let tags: ScopedVars = {};
 
   if (traceToProfilesOptions) {

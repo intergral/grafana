@@ -1,5 +1,5 @@
 import { css, cx } from '@emotion/css';
-import React, { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 
 import { GrafanaTheme2, isDateTime, rangeUtil, RawTimeRange, TimeOption, TimeRange, TimeZone } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -7,9 +7,9 @@ import { selectors } from '@grafana/e2e-selectors';
 import { useStyles2, useTheme2 } from '../../../themes';
 import { getFocusStyles } from '../../../themes/mixins';
 import { t, Trans } from '../../../utils/i18n';
-import { CustomScrollbar } from '../../CustomScrollbar/CustomScrollbar';
 import { FilterInput } from '../../FilterInput/FilterInput';
 import { Icon } from '../../Icon/Icon';
+import { WeekStart } from '../WeekStartPicker';
 
 import { TimePickerFooter } from './TimePickerFooter';
 import { TimePickerTitle } from './TimePickerTitle';
@@ -22,6 +22,7 @@ interface Props {
   onChange: (timeRange: TimeRange) => void;
   onChangeTimeZone: (timeZone: TimeZone) => void;
   onChangeFiscalYearStartMonth?: (month: number) => void;
+  onError?: (error?: string) => void;
   timeZone?: TimeZone;
   fiscalYearStartMonth?: number;
   quickOptions?: TimeOption[];
@@ -33,6 +34,7 @@ interface Props {
   isReversed?: boolean;
   hideQuickRanges?: boolean;
   widthOverride?: number;
+  weekStart?: WeekStart;
 }
 
 export interface PropsWithScreenSize extends Props {
@@ -82,18 +84,17 @@ export const TimePickerContentWithScreenSize = (props: PropsWithScreenSize) => {
             <div className={styles.timeRangeFilter}>
               <FilterInput
                 width={0}
-                autoFocus={true}
                 value={searchTerm}
                 onChange={setSearchQuery}
                 placeholder={t('time-picker.content.filter-placeholder', 'Search quick ranges')}
               />
             </div>
-            <CustomScrollbar>
+            <div className={styles.scrollContent}>
               {!isFullscreen && <NarrowScreenForm {...props} historyOptions={historyOptions} />}
               {!hideQuickRanges && (
                 <TimeRangeList options={filteredQuickOptions} onChange={onChangeTimeOption} value={timeOption} />
               )}
-            </CustomScrollbar>
+            </div>
           </div>
         )}
         {isFullscreen && (
@@ -122,7 +123,7 @@ export const TimePickerContent = (props: Props) => {
 };
 
 const NarrowScreenForm = (props: FormProps) => {
-  const { value, hideQuickRanges, onChange, timeZone, historyOptions = [], showHistory } = props;
+  const { value, hideQuickRanges, onChange, timeZone, historyOptions = [], showHistory, onError, weekStart } = props;
   const styles = useStyles2(getNarrowScreenStyles);
   const isAbsolute = isDateTime(value.raw.from) || isDateTime(value.raw.to);
   const [collapsedFlag, setCollapsedFlag] = useState(!isAbsolute);
@@ -156,7 +157,14 @@ const NarrowScreenForm = (props: FormProps) => {
       {!collapsed && (
         <div className={styles.body} id="expanded-timerange">
           <div className={styles.form}>
-            <TimeRangeContent value={value} onApply={onChange} timeZone={timeZone} isFullscreen={false} />
+            <TimeRangeContent
+              value={value}
+              onApply={onChange}
+              timeZone={timeZone}
+              isFullscreen={false}
+              onError={onError}
+              weekStart={weekStart}
+            />
           </div>
           {showHistory && (
             <TimeRangeList
@@ -173,7 +181,7 @@ const NarrowScreenForm = (props: FormProps) => {
 };
 
 const FullScreenForm = (props: FormProps) => {
-  const { onChange, value, timeZone, fiscalYearStartMonth, isReversed, historyOptions } = props;
+  const { onChange, value, timeZone, fiscalYearStartMonth, isReversed, historyOptions, onError, weekStart } = props;
   const styles = useStyles2(getFullScreenStyles, props.hideQuickRanges);
   const onChangeTimeOption = (timeOption: TimeOption) => {
     return onChange(mapOptionToTimeRange(timeOption, timeZone));
@@ -194,6 +202,8 @@ const FullScreenForm = (props: FormProps) => {
           onApply={onChange}
           isFullscreen={true}
           isReversed={isReversed}
+          onError={onError}
+          weekStart={weekStart}
         />
       </div>
       {props.showHistory && (
@@ -273,6 +283,8 @@ const getStyles = (
     borderRadius: theme.shape.radius.default,
     border: `1px solid ${theme.colors.border.weak}`,
     [`${isReversed ? 'left' : 'right'}`]: 0,
+    display: 'flex',
+    flexDirection: 'column',
   }),
   body: css({
     display: 'flex',
@@ -285,7 +297,8 @@ const getStyles = (
     flexDirection: 'column',
     borderRight: `${isReversed ? 'none' : `1px solid ${theme.colors.border.weak}`}`,
     width: `${!hideQuickRanges ? '60%' : '100%'}`,
-    overflow: 'hidden',
+    overflow: 'auto',
+    scrollbarWidth: 'thin',
     order: isReversed ? 1 : 0,
   }),
   rightSide: css({
@@ -299,6 +312,10 @@ const getStyles = (
   }),
   spacing: css({
     marginTop: '16px',
+  }),
+  scrollContent: css({
+    overflowY: 'auto',
+    scrollbarWidth: 'thin',
   }),
 });
 

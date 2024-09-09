@@ -7,8 +7,28 @@
     { "type": "dashboard", "name": "Azure / Alert Consumption", "path": "dashboards/v1Alerts.json" },
     {
       "type": "dashboard",
-      "name": "Azure / Infrastructure / Infrastructure Monitoring",
-      "path": "dashboards/infrastructureMonitoring.json"
+      "name": "Azure / Infrastructure / Apps Monitoring",
+      "path": "dashboards/azureInfraApps.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Azure / Infrastructure / Compute Monitoring",
+      "path": "dashboards/azureInfraCompute.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Azure / Infrastructure / Data Monitoring",
+      "path": "dashboards/azureInfraData.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Azure / Infrastructure / Network Monitoring",
+      "path": "dashboards/azureInfraNetwork.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Azure / Infrastructure / Storage and Key Vaults Monitoring",
+      "path": "dashboards/azureInfraStorageVaults.json"
     },
     {
       "type": "dashboard",
@@ -77,7 +97,7 @@
     },
     { "type": "dashboard", "name": "Azure / Resources Overview", "path": "dashboards/arg.json" }
   ],
-
+  "executable": "gpx_azuremonitor",
   "info": {
     "description": "Data source for Microsoft Azure Monitor & Application Insights",
     "author": {
@@ -98,11 +118,11 @@
       { "name": "Azure Monitor Network", "path": "img/azure_monitor_network.png" },
       { "name": "Azure Monitor CPU", "path": "img/azure_monitor_cpu.png" }
     ],
-    "version": "1.0.0"
+    "version": "%VERSION%"
   },
 
   "dependencies": {
-    "grafanaVersion": "5.2.x",
+    "grafanaDependency": ">=10.3.0",
     "plugins": []
   },
 
@@ -110,5 +130,6 @@
   "annotations": true,
   "alerting": true,
   "backend": true,
-  "logs": true
+  "logs": true,
+  "tracing": true
 }

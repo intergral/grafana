@@ -1,6 +1,6 @@
 package definitions
 
-import "github.com/grafana/grafana/pkg/util/errutil"
+import "github.com/grafana/grafana/pkg/apimachinery/errutil"
 
 // swagger:model
 type NotFound struct{}
@@ -16,6 +16,13 @@ type ValidationError struct {
 
 // swagger:model
 type ForbiddenError struct {
+	// The response message
+	// in: body
+	Body errutil.PublicError `json:"body"`
+}
+
+// swagger:model
+type GenericPublicError struct {
 	// The response message
 	// in: body
 	Body errutil.PublicError `json:"body"`

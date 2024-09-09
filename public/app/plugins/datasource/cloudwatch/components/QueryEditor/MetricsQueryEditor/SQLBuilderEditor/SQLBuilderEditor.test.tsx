@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 
 import { setupMockedDataSource } from '../../../../__mocks__/CloudWatchDataSource';
 import { QueryEditorExpressionType, QueryEditorPropertyType } from '../../../../expressions';
@@ -16,7 +15,7 @@ export const makeSQLQuery = (sql?: SQLExpression): CloudWatchMetricsQuery => ({
   region: 'us-east-1',
   namespace: 'ec2',
   dimensions: { somekey: 'somevalue' },
-  metricQueryType: MetricQueryType.Query,
+  metricQueryType: MetricQueryType.Insights,
   metricEditorMode: MetricEditorMode.Builder,
   sql: sql,
 });
@@ -95,12 +94,15 @@ describe('Cloudwatch SQLBuilderEditor', () => {
 
     render(<SQLBuilderEditor {...baseProps} query={query} />);
     await waitFor(() =>
-      expect(datasource.resources.getDimensionKeys).toHaveBeenCalledWith({
-        namespace: 'AWS/EC2',
-        region: query.region,
-        dimensionFilters: { InstanceId: null },
-        metricName: undefined,
-      })
+      expect(datasource.resources.getDimensionKeys).toHaveBeenCalledWith(
+        {
+          namespace: 'AWS/EC2',
+          region: query.region,
+          dimensionFilters: { InstanceId: null },
+          metricName: undefined,
+        },
+        false
+      )
     );
     expect(screen.getByText('AWS/EC2')).toBeInTheDocument();
     expect(screen.getByLabelText('With schema')).toBeChecked();

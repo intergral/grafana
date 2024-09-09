@@ -1,9 +1,10 @@
 import { isNearMembraneProxy } from '@locker/near-membrane-shared';
-import React from 'react';
+import { cloneDeep } from 'lodash';
+import * as React from 'react';
 
 import { PluginSignatureType, PluginType } from '@grafana/data';
 import { LogContext } from '@grafana/faro-web-sdk';
-import { logWarning as logWarningRuntime, logError as logErrorRuntime, config } from '@grafana/runtime';
+import { config, createMonitoringLogger } from '@grafana/runtime';
 
 import { getPluginSettings } from '../pluginSettings';
 
@@ -19,26 +20,22 @@ export function assertNever(x: never): never {
   throw new Error(`Unexpected object: ${x}. This should never happen.`);
 }
 
+const sandboxLogger = createMonitoringLogger('sandbox', { monitorOnly: String(monitorOnly) });
+
 export function isReactClassComponent(obj: unknown): obj is React.Component {
   return obj instanceof React.Component;
 }
 
 export function logWarning(message: string, context?: LogContext) {
-  context = {
-    ...context,
-    source: 'sandbox',
-    monitorOnly: String(monitorOnly),
-  };
-  logWarningRuntime(message, context);
+  sandboxLogger.logWarning(message, context);
 }
 
 export function logError(error: Error, context?: LogContext) {
-  context = {
-    ...context,
-    source: 'sandbox',
-    monitorOnly: String(monitorOnly),
-  };
-  logErrorRuntime(error, context);
+  sandboxLogger.logError(error, context);
+}
+
+export function logInfo(message: string, context?: LogContext) {
+  sandboxLogger.logInfo(message, context);
 }
 
 export async function isFrontendSandboxSupported({
@@ -111,6 +108,27 @@ export function unboxRegexesFromMembraneProxy(structure: unknown): unknown {
   if (typeof structure === 'object') {
     return Object.keys(structure).reduce((acc, key) => {
       Reflect.set(acc, key, unboxRegexesFromMembraneProxy(Reflect.get(structure, key)));
+      return acc;
+    }, {});
+  }
+  return structure;
+}
+
+export function unboxNearMembraneProxies(structure: unknown): unknown {
+  if (!structure) {
+    return structure;
+  }
+
+  if (isNearMembraneProxy(structure)) {
+    return cloneDeep(structure);
+  }
+
+  if (Array.isArray(structure)) {
+    return structure.map(unboxNearMembraneProxies);
+  }
+  if (typeof structure === 'object') {
+    return Object.keys(structure).reduce((acc, key) => {
+      Reflect.set(acc, key, unboxNearMembraneProxies(Reflect.get(structure, key)));
       return acc;
     }, {});
   }

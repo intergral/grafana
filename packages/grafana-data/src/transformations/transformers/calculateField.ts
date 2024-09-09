@@ -2,8 +2,10 @@ import { defaults } from 'lodash';
 import { map } from 'rxjs/operators';
 
 import { getTimeField } from '../../dataframe/processDataFrame';
-import { getFieldDisplayName } from '../../field';
-import { DataFrame, DataTransformerInfo, Field, FieldType, NullValueMode } from '../../types';
+import { getFieldDisplayName } from '../../field/fieldState';
+import { NullValueMode } from '../../types/data';
+import { DataFrame, FieldType, Field } from '../../types/dataFrame';
+import { DataTransformerInfo } from '../../types/transformations';
 import { BinaryOperationID, binaryOperators } from '../../utils/binaryOperators';
 import { UnaryOperationID, unaryOperators } from '../../utils/unaryOperators';
 import { doStandardCalcs, fieldReducers, ReducerID } from '../fieldReducer';
@@ -61,7 +63,7 @@ export interface BinaryOptions {
   right: string;
 }
 
-export interface IndexOptions {
+interface IndexOptions {
   asPercentile: boolean;
 }
 

@@ -17,9 +17,9 @@ load(
     "publish_npm_pipelines",
     "publish_packages_pipeline",
 )
+load("scripts/drone/events/rrc-patch.star", "rrc_patch_pipelines")
 load(
     "scripts/drone/pipelines/ci_images.star",
-    "publish_ci_build_container_image_pipeline",
     "publish_ci_windows_test_image_pipeline",
 )
 load(
@@ -40,6 +40,7 @@ def main(_ctx):
     return (
         pr_pipelines() +
         main_pipelines() +
+        rrc_patch_pipelines() +
         publish_image_pipelines_public() +
         publish_artifacts_pipelines("public") +
         publish_npm_pipelines() +
@@ -51,7 +52,6 @@ def main(_ctx):
         }, "oss", "testing")] +
         integration_test_pipelines() +
         publish_ci_windows_test_image_pipeline() +
-        publish_ci_build_container_image_pipeline() +
         cronjobs() +
         secrets()
     )

@@ -1,116 +1,114 @@
 import { css } from '@emotion/css';
-import React from 'react';
+import { useMemo } from 'react';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { dateTimeFormat, GrafanaTheme2 } from '@grafana/data';
 import { AdHocFiltersVariable, sceneGraph } from '@grafana/scenes';
-import { useStyles2, Stack, Tooltip, Button } from '@grafana/ui';
+import { Card, IconButton, Stack, Tag, useStyles2 } from '@grafana/ui';
 
 import { DataTrail } from './DataTrail';
-import { LOGS_METRIC, VAR_DATASOURCE_EXPR, VAR_FILTERS } from './shared';
+import { getTrailStore, DataTrailBookmark } from './TrailStore/TrailStore';
+import { VAR_FILTERS } from './shared';
+import { getDataSource, getDataSourceName, getMetricName } from './utils';
 
-export interface Props {
-  trail: DataTrail;
-  onSelect: (trail: DataTrail) => void;
+export type Props = {
+  trail?: DataTrail;
+  bookmark?: DataTrailBookmark;
+  onSelect: () => void;
   onDelete?: () => void;
-}
+};
 
-export function DataTrailCard({ trail, onSelect, onDelete }: Props) {
+export function DataTrailCard(props: Props) {
+  const { onSelect, onDelete, bookmark } = props;
   const styles = useStyles2(getStyles);
 
-  const filtersVariable = sceneGraph.lookupVariable(VAR_FILTERS, trail)!;
-  if (!(filtersVariable instanceof AdHocFiltersVariable)) {
+  const values = useMemo(() => {
+    let trail = props.trail || (bookmark && getTrailStore().getTrailForBookmark(bookmark));
+
+    if (!trail) {
+      return null;
+    }
+
+    const filtersVariable = sceneGraph.lookupVariable(VAR_FILTERS, trail)!;
+    if (!(filtersVariable instanceof AdHocFiltersVariable)) {
+      return null;
+    }
+
+    const createdAt = bookmark?.createdAt || trail.state.createdAt;
+
+    return {
+      dsValue: getDataSource(trail),
+      filters: filtersVariable.state.filters,
+      metric: trail.state.metric,
+      createdAt,
+    };
+  }, [props.trail, bookmark]);
+
+  if (!values) {
     return null;
   }
 
-  const filters = filtersVariable.state.set.state.filters;
-  const dsValue = getDataSource(trail);
+  const { dsValue, filters, metric, createdAt } = values;
 
   return (
-    <button className={styles.container} onClick={() => onSelect(trail)}>
-      <div className={styles.wrapper}>
-        <div className={styles.heading}>{getMetricName(trail.state.metric)}</div>
-        {onDelete && (
-          <Tooltip content={'Remove bookmark'}>
-            <Button size="sm" icon="trash-alt" variant="destructive" fill="text" onClick={onDelete} />
-          </Tooltip>
-        )}
+    <Card onClick={onSelect} className={styles.card}>
+      <Card.Heading>{getMetricName(metric)}</Card.Heading>
+      <div className={styles.description}>
+        <Stack gap={1.5} wrap="wrap">
+          {filters.map((f) => (
+            <Tag key={f.key} name={`${f.key}: ${f.value}`} colorIndex={12} />
+          ))}
+        </Stack>
       </div>
-
-      <Stack gap={1.5}>
-        {dsValue && (
-          <Stack direction="column" gap={0.5}>
-            <div className={styles.label}>Datasource</div>
-            <div className={styles.value}>{getDataSource(trail)}</div>
-          </Stack>
-        )}
-        {filters.map((filter, index) => (
-          <Stack key={index} direction="column" gap={0.5}>
-            <div className={styles.label}>{filter.key}</div>
-            <div className={styles.value}>{filter.value}</div>
-          </Stack>
-        ))}
-      </Stack>
-    </button>
+      <Card.Actions className={styles.actions}>
+        <Stack gap={1} justifyContent={'space-between'} grow={1}>
+          <div className={styles.secondary}>
+            <b>Datasource:</b> {getDataSourceName(dsValue)}
+          </div>
+          {createdAt && (
+            <i className={styles.secondary}>
+              <b>Created:</b> {dateTimeFormat(createdAt, { format: 'LL' })}
+            </i>
+          )}
+        </Stack>
+      </Card.Actions>
+      {onDelete && (
+        <Card.SecondaryActions>
+          <IconButton
+            key="delete"
+            name="trash-alt"
+            className={styles.secondary}
+            tooltip="Remove bookmark"
+            onClick={onDelete}
+          />
+        </Card.SecondaryActions>
+      )}
+    </Card>
   );
-}
-
-function getMetricName(metric?: string) {
-  if (!metric) {
-    return 'Select metric';
-  }
-
-  if (metric === LOGS_METRIC) {
-    return 'Logs';
-  }
-
-  return metric;
-}
-
-function getDataSource(trail: DataTrail) {
-  return sceneGraph.interpolate(trail, VAR_DATASOURCE_EXPR);
 }
 
 function getStyles(theme: GrafanaTheme2) {
   return {
-    container: css({
+    tag: css({
+      maxWidth: '260px',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    }),
+    card: css({
       padding: theme.spacing(1),
-      flexGrow: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: theme.spacing(2),
+    }),
+    secondary: css({
+      color: theme.colors.text.secondary,
+      fontSize: '12px',
+    }),
+    description: css({
       width: '100%',
-      border: `1px solid ${theme.colors.border.weak}`,
-      borderRadius: theme.shape.radius.default,
-      cursor: 'pointer',
-      boxShadow: 'none',
-      background: 'transparent',
-      textAlign: 'left',
-      '&:hover': {
-        background: theme.colors.emphasize(theme.colors.background.primary, 0.03),
-      },
+      gridArea: 'Description',
+      margin: theme.spacing(1, 0, 0),
+      color: theme.colors.text.secondary,
+      lineHeight: theme.typography.body.lineHeight,
     }),
-    label: css({
-      fontWeight: theme.typography.fontWeightMedium,
-      fontSize: theme.typography.bodySmall.fontSize,
-    }),
-    value: css({
-      fontSize: theme.typography.bodySmall.fontSize,
-    }),
-    heading: css({
-      padding: theme.spacing(0),
-      display: 'flex',
-      fontWeight: theme.typography.fontWeightMedium,
-      overflowX: 'hidden',
-    }),
-    body: css({
-      padding: theme.spacing(0),
-    }),
-    wrapper: css({
-      position: 'relative',
-      display: 'flex',
-      gap: theme.spacing.x1,
-      justifyContent: 'space-between',
-      width: '100%',
+    actions: css({
+      marginRight: theme.spacing(1),
     }),
   };
 }

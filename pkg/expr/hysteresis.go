@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grafana/grafana/pkg/expr/mathexp"
 	"github.com/grafana/grafana/pkg/infra/tracing"
@@ -34,12 +35,18 @@ func (h *HysteresisCommand) NeedsVars() []string {
 func (h *HysteresisCommand) Execute(ctx context.Context, now time.Time, vars mathexp.Vars, tracer tracing.Tracer) (mathexp.Results, error) {
 	results := vars[h.ReferenceVar]
 
+	logger := logger.FromContext(ctx)
+	traceCtx, span := tracer.Start(ctx, "SSE.ExecuteHysteresis")
+	span.SetAttributes(attribute.Int("previousLoadedDimensions", len(h.LoadedDimensions)))
+	span.SetAttributes(attribute.Int("totalDimensions", len(results.Values)))
+	defer span.End()
+
 	// shortcut for NoData
 	if results.IsNoData() {
 		return mathexp.Results{Values: mathexp.Values{mathexp.NewNoData()}}, nil
 	}
 	if h.LoadedDimensions == nil || len(h.LoadedDimensions) == 0 {
-		return h.LoadingThresholdFunc.Execute(ctx, now, vars, tracer)
+		return h.LoadingThresholdFunc.Execute(traceCtx, now, vars, tracer)
 	}
 	var loadedVals, unloadedVals mathexp.Values
 	for _, value := range results.Values {
@@ -51,11 +58,14 @@ func (h *HysteresisCommand) Execute(ctx context.Context, now time.Time, vars mat
 		}
 	}
 
+	span.SetAttributes(attribute.Int("matchedLoadedDimensions", len(loadedVals)))
+
+	logger.Debug("Evaluating thresholds", "unloadingThresholdDimensions", len(loadedVals), "loadingThresholdDimensions", len(unloadedVals))
 	if len(loadedVals) == 0 { // if all values are unloaded
-		return h.LoadingThresholdFunc.Execute(ctx, now, vars, tracer)
+		return h.LoadingThresholdFunc.Execute(traceCtx, now, vars, tracer)
 	}
 	if len(unloadedVals) == 0 { // if all values are loaded
-		return h.UnloadingThresholdFunc.Execute(ctx, now, vars, tracer)
+		return h.UnloadingThresholdFunc.Execute(traceCtx, now, vars, tracer)
 	}
 
 	defer func() {
@@ -64,17 +74,21 @@ func (h *HysteresisCommand) Execute(ctx context.Context, now time.Time, vars mat
 	}()
 
 	vars[h.ReferenceVar] = mathexp.Results{Values: unloadedVals}
-	loadingResults, err := h.LoadingThresholdFunc.Execute(ctx, now, vars, tracer)
+	loadingResults, err := h.LoadingThresholdFunc.Execute(traceCtx, now, vars, tracer)
 	if err != nil {
 		return mathexp.Results{}, fmt.Errorf("failed to execute loading threshold: %w", err)
 	}
 	vars[h.ReferenceVar] = mathexp.Results{Values: loadedVals}
-	unloadingResults, err := h.UnloadingThresholdFunc.Execute(ctx, now, vars, tracer)
+	unloadingResults, err := h.UnloadingThresholdFunc.Execute(traceCtx, now, vars, tracer)
 	if err != nil {
 		return mathexp.Results{}, fmt.Errorf("failed to execute unloading threshold: %w", err)
 	}
 
 	return mathexp.Results{Values: append(loadingResults.Values, unloadingResults.Values...)}, nil
+}
+
+func (h HysteresisCommand) Type() string {
+	return "hysteresis"
 }
 
 func NewHysteresisCommand(refID string, referenceVar string, loadCondition ThresholdCommand, unloadCondition ThresholdCommand, l Fingerprints) (*HysteresisCommand, error) {
@@ -119,4 +133,18 @@ func FingerprintsFromFrame(frame *data.Frame) (Fingerprints, error) {
 		}
 	}
 	return result, nil
+}
+
+// FingerprintsToFrame converts Fingerprints to data.Frame.
+func FingerprintsToFrame(fingerprints Fingerprints) *data.Frame {
+	fp := make([]uint64, 0, len(fingerprints))
+	for fingerprint := range fingerprints {
+		fp = append(fp, uint64(fingerprint))
+	}
+	frame := data.NewFrame("", data.NewField("fingerprints", nil, fp))
+	frame.SetMeta(&data.FrameMeta{
+		Type:        "fingerprints",
+		TypeVersion: data.FrameTypeVersion{1, 0},
+	})
+	return frame
 }

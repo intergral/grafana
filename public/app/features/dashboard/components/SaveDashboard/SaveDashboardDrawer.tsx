@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { config, isFetchError } from '@grafana/runtime';
 import { Drawer, Tab, TabsBar } from '@grafana/ui';
-
-import { jsonDiff } from '../VersionHistory/utils';
+import { jsonDiff } from 'app/features/dashboard-scene/settings/version-history/utils';
 
 import DashboardValidation from './DashboardValidation';
 import { SaveDashboardDiff } from './SaveDashboardDiff';
@@ -19,6 +18,7 @@ export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCop
   const previous = dashboard.getOriginalDashboard();
   const isProvisioned = dashboard.meta.provisioned;
   const isNew = dashboard.version === 0;
+  const hasUnsavedFolderChange = Boolean(dashboard.meta.hasUnsavedFolderChange);
   const [errorIsHandled, setErrorIsHandled] = useState(false);
 
   const data = useMemo<SaveDashboardData>(() => {
@@ -41,9 +41,9 @@ export const SaveDashboardDrawer = ({ dashboard, onDismiss, onSaveSuccess, isCop
       clone,
       diff,
       diffCount,
-      hasChanges: diffCount > 0 && !isNew,
+      hasChanges: (diffCount > 0 || hasUnsavedFolderChange) && !isNew,
     };
-  }, [dashboard, previous, options, isNew]);
+  }, [dashboard, previous, options, isNew, hasUnsavedFolderChange]);
 
   const [showDiff, setShowDiff] = useState(false);
   const { state, onDashboardSave } = useDashboardSave(isCopy);

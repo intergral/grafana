@@ -2,16 +2,17 @@ package converter
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	sdkjsoniter "github.com/grafana/grafana-plugin-sdk-go/data/utils/jsoniter"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/grafana/grafana/pkg/tsdb/influxdb/influxql/util"
 	"github.com/grafana/grafana/pkg/tsdb/influxdb/models"
-	"github.com/grafana/grafana/pkg/util/converter/jsonitere"
 )
 
 func rspErr(e error) *backend.DataResponse {
@@ -19,7 +20,7 @@ func rspErr(e error) *backend.DataResponse {
 }
 
 func ReadInfluxQLStyleResult(jIter *jsoniter.Iterator, query *models.Query) *backend.DataResponse {
-	iter := jsonitere.NewIterator(jIter)
+	iter := sdkjsoniter.NewIterator(jIter)
 	var rsp *backend.DataResponse
 
 l1Fields:
@@ -33,6 +34,26 @@ l1Fields:
 			if rsp.Error != nil {
 				return rsp
 			}
+		case "error":
+			v, err := iter.ReadString()
+			if err != nil {
+				rsp.Error = err
+			} else {
+				rsp.Error = fmt.Errorf(v)
+			}
+			return rsp
+		case "code":
+			// we only care of the message
+			_, err := iter.Read()
+			if err != nil {
+				return rspErr(err)
+			}
+		case "message":
+			v, err := iter.Read()
+			if err != nil {
+				return rspErr(err)
+			}
+			return rspErr(fmt.Errorf("%s", v))
 		case "":
 			if err != nil {
 				return rspErr(err)
@@ -40,18 +61,22 @@ l1Fields:
 			break l1Fields
 		default:
 			v, err := iter.Read()
-			if err != nil {
-				rsp.Error = err
-				return rsp
-			}
 			fmt.Printf("[ROOT] unsupported key: %s / %v\n\n", l1Field, v)
+			if err != nil {
+				if rsp != nil {
+					rsp.Error = err
+					return rsp
+				} else {
+					return rspErr(err)
+				}
+			}
 		}
 	}
 
 	return rsp
 }
 
-func readResults(iter *jsonitere.Iterator, query *models.Query) *backend.DataResponse {
+func readResults(iter *sdkjsoniter.Iterator, query *models.Query) *backend.DataResponse {
 	rsp := &backend.DataResponse{Frames: make(data.Frames, 0)}
 l1Fields:
 	for more, err := iter.ReadArray(); more; more, err = iter.ReadArray() {
@@ -79,7 +104,7 @@ l1Fields:
 	return rsp
 }
 
-func readSeries(iter *jsonitere.Iterator, query *models.Query) *backend.DataResponse {
+func readSeries(iter *sdkjsoniter.Iterator, query *models.Query) *backend.DataResponse {
 	var (
 		measurement   string
 		tags          map[string]string
@@ -179,7 +204,7 @@ func readSeries(iter *jsonitere.Iterator, query *models.Query) *backend.DataResp
 	return rsp
 }
 
-func readTags(iter *jsonitere.Iterator) (map[string]string, error) {
+func readTags(iter *sdkjsoniter.Iterator) (map[string]string, error) {
 	tags := make(map[string]string)
 	for l1Field, err := iter.ReadObject(); l1Field != ""; l1Field, err = iter.ReadObject() {
 		if err != nil {
@@ -194,7 +219,7 @@ func readTags(iter *jsonitere.Iterator) (map[string]string, error) {
 	return tags, nil
 }
 
-func readColumns(iter *jsonitere.Iterator) (columns []string, err error) {
+func readColumns(iter *sdkjsoniter.Iterator) (columns []string, err error) {
 	for more, err := iter.ReadArray(); more; more, err = iter.ReadArray() {
 		if err != nil {
 			return nil, err
@@ -209,7 +234,7 @@ func readColumns(iter *jsonitere.Iterator) (columns []string, err error) {
 	return columns, nil
 }
 
-func readValues(iter *jsonitere.Iterator, hasTimeColumn bool) (valueFields data.Fields, err error) {
+func readValues(iter *sdkjsoniter.Iterator, hasTimeColumn bool) (valueFields data.Fields, err error) {
 	if hasTimeColumn {
 		valueFields = append(valueFields, data.NewField("Time", nil, make([]time.Time, 0)))
 	}
@@ -345,11 +370,9 @@ func typeOf(value interface{}) data.FieldType {
 
 func handleTimeSeriesFormatWithTimeColumn(valueFields data.Fields, tags map[string]string, columns []string, measurement string, frameName []byte, query *models.Query) []*data.Frame {
 	frames := make([]*data.Frame, 0, len(columns)-1)
-	for i, v := range columns {
-		if v == "time" {
-			continue
-		}
-		formattedFrameName := string(util.FormatFrameName(measurement, v, tags, *query, frameName[:]))
+	// don't iterate over first column as it is a time column already
+	for i := 1; i < len(columns); i++ {
+		formattedFrameName := string(util.FormatFrameName(measurement, columns[i], tags, *query, frameName[:]))
 		valueFields[i].Labels = tags
 		valueFields[i].Config = &data.FieldConfig{DisplayNameFromDS: formattedFrameName}
 
@@ -361,6 +384,18 @@ func handleTimeSeriesFormatWithTimeColumn(valueFields data.Fields, tags map[stri
 
 func handleTimeSeriesFormatWithoutTimeColumn(valueFields data.Fields, columns []string, measurement string, query *models.Query) *data.Frame {
 	// Frame without time column
+	if strings.Contains(strings.ToLower(query.RawQuery), strings.ToLower("CARDINALITY")) {
+		var stringArray []*string
+		for _, v := range valueFields {
+			if f, ok := v.At(0).(*float64); ok {
+				str := strconv.FormatFloat(*f, 'f', -1, 64)
+				stringArray = append(stringArray, util.ParseString(str))
+			} else {
+				stringArray = append(stringArray, util.ParseString(v.At(0)))
+			}
+		}
+		return data.NewFrame(measurement, data.NewField("Value", nil, stringArray))
+	}
 	if len(columns) >= 2 && strings.Contains(strings.ToLower(query.RawQuery), strings.ToLower("SHOW TAG VALUES")) {
 		return data.NewFrame(measurement, valueFields[1])
 	}
@@ -421,26 +456,24 @@ func handleTableFormatValueFields(rsp *backend.DataResponse, valueFields data.Fi
 	// number of fields we currently have in the first frame
 	// we handled first value field and then tags.
 	si := len(tags) + 1
-	for i, v := range valueFields {
-		// first value field is always handled first, before tags.
-		// no need to create another one again here
-		if i == 0 {
-			continue
-		}
-
+	l := len(valueFields)
+	// first value field is always handled first, before tags.
+	// no need to create another one again here
+	for i := 1; i < l; i++ {
 		if len(rsp.Frames[0].Fields) == si {
-			rsp.Frames[0].Fields = append(rsp.Frames[0].Fields, v)
+			rsp.Frames[0].Fields = append(rsp.Frames[0].Fields, valueFields[i])
 		} else {
-			for vi := 0; vi < v.Len(); vi++ {
-				if v.Type() == data.FieldTypeNullableJSON {
+			ll := valueFields[i].Len()
+			for vi := 0; vi < ll; vi++ {
+				if valueFields[i].Type() == data.FieldTypeNullableJSON {
 					// add nil explicitly.
 					// we don't know if it is a float pointer nil or string pointer nil or etc
 					rsp.Frames[0].Fields[si].Append(nil)
 				} else {
-					if v.Type() != rsp.Frames[0].Fields[si].Type() {
-						maybeFixValueFieldType(rsp.Frames[0].Fields, v.Type(), si)
+					if valueFields[i].Type() != rsp.Frames[0].Fields[si].Type() {
+						maybeFixValueFieldType(rsp.Frames[0].Fields, valueFields[i].Type(), si)
 					}
-					rsp.Frames[0].Fields[si].Append(v.At(vi))
+					rsp.Frames[0].Fields[si].Append(valueFields[i].At(vi))
 				}
 			}
 		}

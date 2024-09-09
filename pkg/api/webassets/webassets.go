@@ -1,12 +1,17 @@
 package webassets
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/grafana/grafana/pkg/api/dtos"
+	"github.com/grafana/grafana/pkg/services/licensing"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -27,29 +32,78 @@ type EntryPointInfo struct {
 	} `json:"assets,omitempty"`
 }
 
-var entryPointAssetsCache *dtos.EntryPointAssets = nil
+var (
+	entryPointAssetsCacheMu sync.RWMutex           // guard entryPointAssetsCache
+	entryPointAssetsCache   *dtos.EntryPointAssets // TODO: get rid of global state
+)
 
-func GetWebAssets(cfg *setting.Cfg) (*dtos.EntryPointAssets, error) {
-	if cfg.Env != setting.Dev && entryPointAssetsCache != nil {
-		return entryPointAssetsCache, nil
+func GetWebAssets(ctx context.Context, cfg *setting.Cfg, license licensing.Licensing) (*dtos.EntryPointAssets, error) {
+	entryPointAssetsCacheMu.RLock()
+	ret := entryPointAssetsCache
+	entryPointAssetsCacheMu.RUnlock()
+
+	if cfg.Env != setting.Dev && ret != nil {
+		return ret, nil
+	}
+	entryPointAssetsCacheMu.Lock()
+	defer entryPointAssetsCacheMu.Unlock()
+
+	var err error
+	var result *dtos.EntryPointAssets
+
+	cdn := "" // "https://grafana-assets.grafana.net/grafana/10.3.0-64123/"
+	if cdn != "" {
+		result, err = readWebAssetsFromCDN(ctx, cdn)
 	}
 
-	result, err := readWebAssets(filepath.Join(cfg.StaticRootPath, "build", "assets-manifest.json"))
-	entryPointAssetsCache = result
+	if result == nil {
+		result, err = readWebAssetsFromFile(filepath.Join(cfg.StaticRootPath, "build", "assets-manifest.json"))
+		if err == nil {
+			cdn, _ = cfg.GetContentDeliveryURL(license.ContentDeliveryPrefix())
+			if cdn != "" {
+				result.SetContentDeliveryURL(cdn)
+			}
+		}
+	}
 
+	entryPointAssetsCache = result
 	return entryPointAssetsCache, err
 }
 
-func readWebAssets(manifestpath string) (*dtos.EntryPointAssets, error) {
+func readWebAssetsFromFile(manifestpath string) (*dtos.EntryPointAssets, error) {
 	//nolint:gosec
-	bytes, err := os.ReadFile(manifestpath)
+	f, err := os.Open(manifestpath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load assets-manifest.json %w", err)
 	}
+	defer func() {
+		_ = f.Close()
+	}()
+	return readWebAssets(f)
+}
 
-	manifest := map[string]ManifestInfo{}
-	err = json.Unmarshal(bytes, &manifest)
+func readWebAssetsFromCDN(ctx context.Context, baseURL string) (*dtos.EntryPointAssets, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"public/build/assets-manifest.json", nil)
 	if err != nil {
+		return nil, err
+	}
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
+	dto, err := readWebAssets(response.Body)
+	if err == nil {
+		dto.SetContentDeliveryURL(baseURL)
+	}
+	return dto, err
+}
+
+func readWebAssets(r io.Reader) (*dtos.EntryPointAssets, error) {
+	manifest := map[string]ManifestInfo{}
+	if err := json.NewDecoder(r).Decode(&manifest); err != nil {
 		return nil, fmt.Errorf("failed to read assets-manifest.json %w", err)
 	}
 
@@ -84,8 +138,8 @@ func readWebAssets(manifestpath string) (*dtos.EntryPointAssets, error) {
 	}
 
 	return &dtos.EntryPointAssets{
-		JSFiles:  entryPointJSAssets,
-		CSSDark:  entryPoints.Dark.Assets.CSS[0],
-		CSSLight: entryPoints.Light.Assets.CSS[0],
+		JSFiles: entryPointJSAssets,
+		Dark:    entryPoints.Dark.Assets.CSS[0],
+		Light:   entryPoints.Light.Assets.CSS[0],
 	}, nil
 }

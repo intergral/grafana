@@ -1,7 +1,7 @@
 import { map } from 'rxjs/operators';
 
 import { guessFieldTypeForField } from '../../dataframe/processDataFrame';
-import { getFieldDisplayName } from '../../field';
+import { getFieldDisplayName } from '../../field/fieldState';
 import { KeyValue } from '../../types/data';
 import { DataFrame, Field, FieldType } from '../../types/dataFrame';
 import { DataTransformerInfo, FieldMatcher, MatcherConfig } from '../../types/transformations';
@@ -46,8 +46,8 @@ export const reduceTransformer: DataTransformerInfo<ReduceTransformerOptions> = 
         const matcher = options.fields
           ? getFieldMatcher(options.fields)
           : options.includeTimeField && options.mode === ReduceTransformerMode.ReduceFields
-          ? alwaysFieldMatcher
-          : notTimeFieldMatcher;
+            ? alwaysFieldMatcher
+            : notTimeFieldMatcher;
 
         // Collapse all matching fields into a single row
         if (options.mode === ReduceTransformerMode.ReduceFields) {
@@ -64,7 +64,7 @@ export const reduceTransformer: DataTransformerInfo<ReduceTransformerOptions> = 
 /**
  * @internal only exported for testing
  */
-export function reduceSeriesToRows(
+function reduceSeriesToRows(
   data: DataFrame[],
   matcher: FieldMatcher,
   reducerId: ReducerID[],
@@ -122,7 +122,7 @@ export function reduceSeriesToRows(
       if (labelsToFields) {
         names[i] = field.name;
         if (field.labels) {
-          for (const key of Object.keys(field.labels)) {
+          for (const key in field.labels) {
             labels[key][i] = field.labels[key];
           }
         }
@@ -132,7 +132,12 @@ export function reduceSeriesToRows(
 
       for (const info of calculators) {
         const v = results[info.id];
-        calcs[info.id][i] = v;
+        if (v === null) {
+          // NaN ensures proper row index, null results in shift
+          calcs[info.id][i] = NaN;
+        } else {
+          calcs[info.id][i] = v;
+        }
       }
     }
 
@@ -156,7 +161,7 @@ export function reduceSeriesToRows(
   return mergeResults(processed);
 }
 
-export function getDistinctLabelKeys(frames: DataFrame[]): string[] {
+function getDistinctLabelKeys(frames: DataFrame[]): string[] {
   const keys = new Set<string>();
   for (const frame of frames) {
     for (const field of frame.fields) {
@@ -173,7 +178,7 @@ export function getDistinctLabelKeys(frames: DataFrame[]): string[] {
 /**
  * @internal only exported for testing
  */
-export function mergeResults(data: DataFrame[]): DataFrame | undefined {
+function mergeResults(data: DataFrame[]): DataFrame | undefined {
   if (!data?.length) {
     return undefined;
   }
@@ -211,7 +216,6 @@ export function reduceFields(data: DataFrame[], matcher: FieldMatcher, reducerId
   const calculators = fieldReducers.list(reducerId);
   const reducers = calculators.map((c) => c.id);
   const processed: DataFrame[] = [];
-
   for (const series of data) {
     const fields: Field[] = [];
     for (const field of series.fields) {
@@ -224,6 +228,7 @@ export function reduceFields(data: DataFrame[], matcher: FieldMatcher, reducerId
           const value = results[reducer];
           const copy = {
             ...field,
+            type: getFieldType(reducer, field),
             values: [value],
           };
           copy.state = undefined;
@@ -247,4 +252,19 @@ export function reduceFields(data: DataFrame[], matcher: FieldMatcher, reducerId
   }
 
   return processed;
+}
+
+function getFieldType(reducer: string, field: Field) {
+  switch (reducer) {
+    case ReducerID.allValues:
+    case ReducerID.uniqueValues:
+      return FieldType.other;
+    case ReducerID.first:
+    case ReducerID.firstNotNull:
+    case ReducerID.last:
+    case ReducerID.lastNotNull:
+      return field.type;
+    default:
+      return FieldType.number;
+  }
 }

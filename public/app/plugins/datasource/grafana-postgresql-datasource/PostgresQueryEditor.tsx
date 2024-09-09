@@ -1,10 +1,5 @@
-import React from 'react';
-
 import { QueryEditorProps } from '@grafana/data';
-import { SqlQueryEditor } from 'app/features/plugins/sql/components/QueryEditor';
-import { SQLOptions, SQLQuery } from 'app/features/plugins/sql/types';
-
-import { QueryHeaderProps } from '../../../features/plugins/sql/components/QueryHeader';
+import { SqlQueryEditor, SQLOptions, SQLQuery, QueryHeaderProps } from '@grafana/sql';
 
 import { PostgresDatasource } from './datasource';
 

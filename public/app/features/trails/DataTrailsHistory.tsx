@@ -1,39 +1,67 @@
 import { css, cx } from '@emotion/css';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { getTimeZoneInfo, GrafanaTheme2, InternalTimeZones, TIME_FORMAT } from '@grafana/data';
+import { convertRawToRange } from '@grafana/data/src/datetime/rangeutil';
 import {
-  SceneObjectState,
-  SceneObjectBase,
+  getUrlSyncManager,
   SceneComponentProps,
-  SceneVariableValueChangedEvent,
+  SceneObjectBase,
+  SceneObjectState,
   SceneObjectStateChangedEvent,
+  SceneObjectUrlValue,
+  SceneObjectUrlValues,
   SceneTimeRange,
   sceneUtils,
+  SceneVariableValueChangedEvent,
 } from '@grafana/scenes';
-import { useStyles2, Tooltip, Stack } from '@grafana/ui';
+import { Stack, Tooltip, useStyles2 } from '@grafana/ui';
 
-import { DataTrail, DataTrailState } from './DataTrail';
+import { DataTrail, DataTrailState, getTopSceneFor } from './DataTrail';
+import { SerializedTrailHistory } from './TrailStore/TrailStore';
+import { reportExploreMetrics } from './interactions';
 import { VAR_FILTERS } from './shared';
-import { getTrailFor } from './utils';
+import { getTrailFor, isSceneTimeRangeState } from './utils';
 
 export interface DataTrailsHistoryState extends SceneObjectState {
   currentStep: number;
   steps: DataTrailHistoryStep[];
+  filtersApplied: string[];
 }
+
+export function isDataTrailsHistoryState(state: SceneObjectState): state is DataTrailsHistoryState {
+  return 'currentStep' in state && 'steps' in state;
+}
+
+export function isDataTrailHistoryFilter(filter?: SceneObjectUrlValue): filter is string[] {
+  return !!filter;
+}
+
+const isString = (value: unknown): value is string => typeof value === 'string';
 
 export interface DataTrailHistoryStep {
   description: string;
+  detail: string;
   type: TrailStepType;
   trailState: DataTrailState;
   parentIndex: number;
 }
 
-export type TrailStepType = 'filters' | 'time' | 'metric' | 'start';
+export type TrailStepType = 'filters' | 'time' | 'metric' | 'start' | 'metric_page';
+
+const filterSubst = ` $2 `;
+const filterPipeRegex = /(\|)(=|=~|!=|>|<|!~)(\|)/g;
+const stepDescriptionMap: Record<TrailStepType, string> = {
+  start: 'Start of history',
+  metric: 'Metric selected:',
+  metric_page: 'Metric select page',
+  filters: 'Filter applied:',
+  time: 'Time range changed:',
+};
 
 export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
   public constructor(state: Partial<DataTrailsHistoryState>) {
-    super({ steps: state.steps ?? [], currentStep: state.currentStep ?? 0 });
+    super({ steps: state.steps ?? [], currentStep: state.currentStep ?? 0, filtersApplied: [] });
 
     this.addActivationHandler(this._onActivate.bind(this));
   }
@@ -44,7 +72,24 @@ export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
     const trail = getTrailFor(this);
 
     if (this.state.steps.length === 0) {
+      // We always want to ensure in initial 'start' step
       this.addTrailStep(trail, 'start');
+
+      if (trail.state.metric) {
+        // But if our current trail has a metric, we want to remove it and the topScene,
+        // so that the "start" step always displays a metric select screen.
+
+        // So we remove the metric and update the topscene for the "start" step
+        const { metric, ...startState } = trail.state;
+        startState.topScene = getTopSceneFor(undefined);
+        this.state.steps[0].trailState = startState;
+
+        // But must add a secondary step to represent the selection of the metric
+        // for this restored trail state
+        this.addTrailStep(trail, 'metric', trail.state.metric);
+      } else {
+        this.addTrailStep(trail, 'metric_page');
+      }
     }
 
     trail.subscribeToState((newState, oldState) => {
@@ -54,26 +99,47 @@ export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
           this.state.steps[0].trailState = sceneUtils.cloneSceneObjectState(oldState, { history: this });
         }
 
-        if (newState.metric) {
-          this.addTrailStep(trail, 'metric');
+        if (!newState.metric) {
+          this.addTrailStep(trail, 'metric_page');
+        } else {
+          this.addTrailStep(trail, 'metric', newState.metric);
         }
       }
     });
 
     trail.subscribeToEvent(SceneVariableValueChangedEvent, (evt) => {
       if (evt.payload.state.name === VAR_FILTERS) {
-        this.addTrailStep(trail, 'filters');
+        const filtersApplied = this.state.filtersApplied;
+        const urlState = getUrlSyncManager().getUrlState(trail);
+        this.addTrailStep(trail, 'filters', parseFilterTooltip(urlState, filtersApplied));
+        this.setState({ filtersApplied });
       }
     });
 
     trail.subscribeToEvent(SceneObjectStateChangedEvent, (evt) => {
       if (evt.payload.changedObject instanceof SceneTimeRange) {
-        this.addTrailStep(trail, 'time');
+        const { prevState, newState } = evt.payload;
+
+        if (isSceneTimeRangeState(prevState) && isSceneTimeRangeState(newState)) {
+          if (prevState.from === newState.from && prevState.to === newState.to) {
+            return;
+          }
+
+          this.addTrailStep(
+            trail,
+            'time',
+            parseTimeTooltip({
+              from: newState.from,
+              to: newState.to,
+              timeZone: newState.timeZone,
+            })
+          );
+        }
       }
     });
   }
 
-  public addTrailStep(trail: DataTrail, type: TrailStepType) {
+  public addTrailStep(trail: DataTrail, type: TrailStepType, detail = '') {
     if (this.stepTransitionInProgress) {
       // Do not add trail steps when step transition is in progress
       return;
@@ -87,8 +153,49 @@ export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
       steps: [
         ...this.state.steps,
         {
-          description: 'Test',
           type,
+          detail,
+          description: stepDescriptionMap[type],
+          trailState: sceneUtils.cloneSceneObjectState(trail.state, { history: this }),
+          parentIndex,
+        },
+      ],
+    });
+  }
+
+  public addTrailStepFromStorage(trail: DataTrail, step: SerializedTrailHistory) {
+    if (this.stepTransitionInProgress) {
+      // Do not add trail steps when step transition is in progress
+      return;
+    }
+
+    const type = step.type;
+    const stepIndex = this.state.steps.length;
+    const parentIndex = type === 'start' ? -1 : this.state.currentStep;
+    const filtersApplied = this.state.filtersApplied;
+    let detail = '';
+
+    switch (step.type) {
+      case 'metric':
+        detail = step.urlValues.metric?.toString() ?? '';
+        break;
+      case 'filters':
+        detail = parseFilterTooltip(step.urlValues, filtersApplied);
+        break;
+      case 'time':
+        detail = parseTimeTooltip(step.urlValues);
+        break;
+    }
+
+    this.setState({
+      filtersApplied,
+      currentStep: stepIndex,
+      steps: [
+        ...this.state.steps,
+        {
+          type,
+          detail,
+          description: stepDescriptionMap[type],
           trailState: sceneUtils.cloneSceneObjectState(trail.state, { history: this }),
           parentIndex,
         },
@@ -97,18 +204,29 @@ export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
   }
 
   public goBackToStep(stepIndex: number) {
-    this.stepTransitionInProgress = true;
+    if (stepIndex === this.state.currentStep) {
+      return;
+    }
 
+    const step = this.state.steps[stepIndex];
+    const type = step.type === 'metric' && step.trailState.metric === undefined ? 'metric-clear' : step.type;
+
+    reportExploreMetrics('history_step_clicked', { type, step: stepIndex, numberOfSteps: this.state.steps.length });
+
+    this.stepTransitionInProgress = true;
     this.setState({ currentStep: stepIndex });
 
+    getTrailFor(this).restoreFromHistoryStep(step.trailState);
+
+    // The URL will update
     this.stepTransitionInProgress = false;
   }
 
   renderStepTooltip(step: DataTrailHistoryStep) {
     return (
       <Stack direction="column">
-        <div>{step.type}</div>
-        {step.type === 'metric' && <div>{step.trailState.metric}</div>}
+        <div>{step.description}</div>
+        {step.detail !== '' && <div>{step.detail}</div>}
       </Stack>
     );
   }
@@ -119,10 +237,15 @@ export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
 
     const { ancestry, alternatePredecessorStyle } = useMemo(() => {
       const ancestry = new Set<number>();
+
       let cursor = currentStep;
       while (cursor >= 0) {
+        const step = steps[cursor];
+        if (!step) {
+          break;
+        }
         ancestry.add(cursor);
-        cursor = steps[cursor].parentIndex;
+        cursor = step.parentIndex;
       }
 
       const alternatePredecessorStyle = new Map<number, string>();
@@ -139,33 +262,79 @@ export class DataTrailHistory extends SceneObjectBase<DataTrailsHistoryState> {
 
     return (
       <div className={styles.container}>
-        <div className={styles.heading}>Trail</div>
-        {steps.map((step, index) => (
-          <Tooltip content={() => model.renderStepTooltip(step)} key={index}>
-            <button
-              className={cx(
-                // Base for all steps
-                styles.step,
-                // Specifics per step type
-                styles.stepTypes[step.type],
-                // To highlight selected step
-                model.state.currentStep === index ? styles.stepSelected : '',
-                // To alter the look of steps with distant non-directly preceding parent
-                alternatePredecessorStyle.get(index) ?? '',
-                // To remove direct link for steps that don't have a direct parent
-                index !== step.parentIndex + 1 ? styles.stepOmitsDirectLeftLink : '',
-                // To remove the direct parent link on the start node as well
-                index === 0 ? styles.stepOmitsDirectLeftLink : '',
-                // To darken steps that aren't the current step's ancesters
-                !ancestry.has(index) ? styles.stepIsNotAncestorOfCurrent : ''
-              )}
-              onClick={() => model.goBackToStep(index)}
-            ></button>
-          </Tooltip>
-        ))}
+        <div className={styles.heading}>History</div>
+        {steps.map((step, index) => {
+          let stepType = step.type;
+
+          if (stepType === 'metric' && step.trailState.metric === undefined) {
+            // If we're resetting the metric, we want it to look like a start node
+            stepType = 'start';
+          }
+
+          return (
+            <Tooltip content={() => model.renderStepTooltip(step)} key={index}>
+              <button
+                className={cx(
+                  // Base for all steps
+                  styles.step,
+                  // Specifics per step type
+                  styles.stepTypes[stepType],
+                  // To highlight selected step
+                  currentStep === index ? styles.stepSelected : '',
+                  // To alter the look of steps with distant non-directly preceding parent
+                  alternatePredecessorStyle.get(index) ?? '',
+                  // To remove direct link for steps that don't have a direct parent
+                  index !== step.parentIndex + 1 ? styles.stepOmitsDirectLeftLink : '',
+                  // To remove the direct parent link on the start node as well
+                  index === 0 ? styles.stepOmitsDirectLeftLink : '',
+                  // To darken steps that aren't the current step's ancesters
+                  !ancestry.has(index) ? styles.stepIsNotAncestorOfCurrent : ''
+                )}
+                onClick={() => model.goBackToStep(index)}
+              ></button>
+            </Tooltip>
+          );
+        })}
       </div>
     );
   };
+}
+
+export function parseTimeTooltip(urlValues: SceneObjectUrlValues): string {
+  if (!isSceneTimeRangeState(urlValues)) {
+    return '';
+  }
+
+  const range = convertRawToRange({
+    from: urlValues.from,
+    to: urlValues.to,
+  });
+
+  const zone = isString(urlValues.timeZone) ? urlValues.timeZone : InternalTimeZones.localBrowserTime;
+  const tzInfo = getTimeZoneInfo(zone, Date.now());
+
+  const from = range.from.subtract(tzInfo?.offsetInMins ?? 0, 'minute').format(TIME_FORMAT);
+  const to = range.to.subtract(tzInfo?.offsetInMins ?? 0, 'minute').format(TIME_FORMAT);
+
+  return `${from} - ${to}`;
+}
+
+export function parseFilterTooltip(urlValues: SceneObjectUrlValues, filtersApplied: string[]): string {
+  let detail = '';
+  const varFilters = urlValues['var-filters'];
+  if (isDataTrailHistoryFilter(varFilters)) {
+    detail =
+      varFilters.filter((f) => {
+        if (f !== '' && !filtersApplied.includes(f)) {
+          filtersApplied.push(f);
+          return true;
+        }
+        return false;
+      })[0] ?? '';
+  }
+  // filters saved as key|operator|value
+  // we need to remove pipes (|)
+  return detail.replace(filterPipeRegex, filterSubst);
 }
 
 function getStyles(theme: GrafanaTheme2) {
@@ -238,6 +407,7 @@ function getStyles(theme: GrafanaTheme2) {
       start: generateStepTypeStyle(visTheme.getColorByName('green')),
       filters: generateStepTypeStyle(visTheme.getColorByName('purple')),
       metric: generateStepTypeStyle(visTheme.getColorByName('orange')),
+      metric_page: generateStepTypeStyle(visTheme.getColorByName('orange')),
       time: generateStepTypeStyle(theme.colors.primary.main),
     },
   };

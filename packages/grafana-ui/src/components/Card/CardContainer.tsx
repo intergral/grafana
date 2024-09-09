@@ -1,5 +1,6 @@
 import { css, cx } from '@emotion/css';
-import React, { HTMLAttributes } from 'react';
+import { HTMLAttributes } from 'react';
+import * as React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 
@@ -70,7 +71,8 @@ export const getCardContainerStyles = (
   theme: GrafanaTheme2,
   disabled = false,
   disableHover = false,
-  isSelected?: boolean
+  isSelected?: boolean,
+  isCompact?: boolean
 ) => {
   const isSelectable = isSelected !== undefined;
 
@@ -79,7 +81,7 @@ export const getCardContainerStyles = (
       display: 'grid',
       position: 'relative',
       gridTemplateColumns: 'auto 1fr auto',
-      gridTemplateRows: 'auto auto 1fr auto',
+      gridTemplateRows: '1fr auto auto auto',
       gridAutoColumns: '1fr',
       gridAutoFlow: 'row',
       gridTemplateAreas: `
@@ -88,14 +90,16 @@ export const getCardContainerStyles = (
         "Figure Description Tags"
         "Figure Actions Secondary"`,
       width: '100%',
-      padding: theme.spacing(2),
+      padding: theme.spacing(isCompact ? 1 : 2),
       background: theme.colors.background.secondary,
       borderRadius: theme.shape.radius.default,
       marginBottom: '8px',
       pointerEvents: disabled ? 'none' : 'auto',
-      transition: theme.transitions.create(['background-color', 'box-shadow', 'border-color', 'color'], {
-        duration: theme.transitions.duration.short,
-      }),
+      [theme.transitions.handleMotion('no-preference', 'reduce')]: {
+        transition: theme.transitions.create(['background-color', 'box-shadow', 'border-color', 'color'], {
+          duration: theme.transitions.duration.short,
+        }),
+      },
 
       ...(!disableHover && {
         '&:hover': {
@@ -122,9 +126,11 @@ export const getCardContainerStyles = (
       position: 'relative',
       pointerEvents: disabled ? 'none' : 'auto',
       marginBottom: theme.spacing(1),
-      transition: theme.transitions.create(['background-color', 'box-shadow', 'border-color', 'color'], {
-        duration: theme.transitions.duration.short,
-      }),
+      [theme.transitions.handleMotion('no-preference', 'reduce')]: {
+        transition: theme.transitions.create(['background-color', 'box-shadow', 'border-color', 'color'], {
+          duration: theme.transitions.duration.short,
+        }),
+      },
 
       ...(!disableHover && {
         '&:hover': {

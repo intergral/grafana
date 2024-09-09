@@ -1,4 +1,5 @@
-import React, { PureComponent } from 'react';
+import { PureComponent } from 'react';
+import * as React from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 
 import {
@@ -36,7 +37,7 @@ import {
   selectIsWaitingForData,
   setSupplementaryQueryEnabled,
 } from '../state/query';
-import { updateTimeRange } from '../state/time';
+import { updateTimeRange, loadMoreLogs } from '../state/time';
 import { LiveTailControls } from '../useLiveTailControls';
 import { getFieldLinksForExplore } from '../utils/links';
 
@@ -58,8 +59,9 @@ interface LogsContainerProps extends PropsFromRedux {
   splitOpenFn: SplitOpen;
   scrollElement?: HTMLDivElement;
   isFilterLabelActive: (key: string, value: string, refId?: string) => Promise<boolean>;
-  onClickFilterValue: (value: string, refId?: string) => void;
-  onClickFilterOutValue: (value: string, refId?: string) => void;
+  onClickFilterString: (value: string, refId?: string) => void;
+  onClickFilterOutString: (value: string, refId?: string) => void;
+  onPinLineCallback?: () => void;
 }
 
 type DataSourceInstance =
@@ -140,6 +142,11 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
     updateTimeRange({ exploreId, absoluteRange });
   };
 
+  loadMoreLogs = (absoluteRange: AbsoluteTimeRange) => {
+    const { exploreId, loadMoreLogs } = this.props;
+    loadMoreLogs({ exploreId, absoluteRange });
+  };
+
   private getQuery(
     logsQueries: DataQuery[] | undefined,
     row: LogRowModel,
@@ -172,7 +179,11 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
     return query ? ds.getLogRowContext(row, options, query) : Promise.resolve([]);
   };
 
-  getLogRowContextQuery = async (row: LogRowModel, options?: LogRowContextOptions): Promise<DataQuery | null> => {
+  getLogRowContextQuery = async (
+    row: LogRowModel,
+    options?: LogRowContextOptions,
+    cacheFilters = true
+  ): Promise<DataQuery | null> => {
     const { logsQueries } = this.props;
 
     if (!row.dataFrame.refId || !this.state.dsInstances[row.dataFrame.refId]) {
@@ -185,7 +196,9 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
     }
 
     const query = this.getQuery(logsQueries, row, ds);
-    return query && ds.getLogRowContextQuery ? ds.getLogRowContextQuery(row, options, query) : Promise.resolve(null);
+    return query && ds.getLogRowContextQuery
+      ? ds.getLogRowContextQuery(row, options, query, cacheFilters)
+      : Promise.resolve(null);
   };
 
   getLogRowContextUi = (row: LogRowModel, runContextQuery?: () => void): React.ReactNode => {
@@ -238,6 +251,14 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
     );
   };
 
+  addResultsToCache = () => {
+    this.props.addResultsToCache(this.props.exploreId);
+  };
+
+  clearCache = () => {
+    this.props.clearCache(this.props.exploreId);
+  };
+
   render() {
     const {
       loading,
@@ -261,10 +282,9 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
       splitOpenFn,
       isLive,
       exploreId,
-      addResultsToCache,
-      clearCache,
       logsVolume,
       scrollElement,
+      onPinLineCallback,
     } = this.props;
 
     if (!logRows) {
@@ -310,6 +330,7 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
             loadingState={loadingState}
             loadLogsVolumeData={() => loadSupplementaryQueryData(exploreId, SupplementaryQueryType.LogsVolume)}
             onChangeTime={this.onChangeTime}
+            loadMoreLogs={this.loadMoreLogs}
             onClickFilterLabel={this.logDetailsFilterAvailable() ? onClickFilterLabel : undefined}
             onClickFilterOutLabel={this.logDetailsFilterAvailable() ? onClickFilterOutLabel : undefined}
             onStartScanning={onStartScanning}
@@ -324,16 +345,17 @@ class LogsContainer extends PureComponent<LogsContainerProps, LogsContainerState
             getRowContextQuery={this.getLogRowContextQuery}
             getLogRowContextUi={this.getLogRowContextUi}
             getFieldLinks={this.getFieldLinks}
-            addResultsToCache={() => addResultsToCache(exploreId)}
-            clearCache={() => clearCache(exploreId)}
+            addResultsToCache={this.addResultsToCache}
+            clearCache={this.clearCache}
             eventBus={this.props.eventBus}
             panelState={this.props.panelState}
             logsFrames={this.props.logsFrames}
             scrollElement={scrollElement}
             isFilterLabelActive={this.logDetailsFilterAvailable() ? this.props.isFilterLabelActive : undefined}
             range={range}
-            onClickFilterValue={this.filterValueAvailable() ? this.props.onClickFilterValue : undefined}
-            onClickFilterOutValue={this.filterOutValueAvailable() ? this.props.onClickFilterOutValue : undefined}
+            onPinLineCallback={onPinLineCallback}
+            onClickFilterString={this.filterValueAvailable() ? this.props.onClickFilterString : undefined}
+            onClickFilterOutString={this.filterOutValueAvailable() ? this.props.onClickFilterOutString : undefined}
           />
         </LogsCrossFadeTransition>
       </>
@@ -383,6 +405,7 @@ function mapStateToProps(state: StoreState, { exploreId }: { exploreId: string }
 
 const mapDispatchToProps = {
   updateTimeRange,
+  loadMoreLogs,
   addResultsToCache,
   clearCache,
   loadSupplementaryQueryData,

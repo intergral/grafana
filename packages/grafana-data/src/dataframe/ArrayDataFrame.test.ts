@@ -1,4 +1,4 @@
-import { DataFrame } from '../types';
+import { DataFrame } from '../types/dataFrame';
 
 import { ArrayDataFrame, arrayToDataFrame } from './ArrayDataFrame';
 import { toDataFrameDTO } from './processDataFrame';
@@ -98,6 +98,46 @@ describe('Array DataFrame', () => {
           },
         ],
         "length": 3,
+      }
+    `);
+  });
+
+  test('Handles first null value', () => {
+    const f = arrayToDataFrame([null, { id: 'abc' }]);
+    expect(f).toMatchInlineSnapshot(`
+      {
+        "fields": [
+          {
+            "config": {},
+            "name": "id",
+            "type": "string",
+            "values": [
+              null,
+              "abc",
+            ],
+          },
+        ],
+        "length": 2,
+      }
+    `);
+  });
+
+  test('Handles first undefined value', () => {
+    const f = arrayToDataFrame([undefined, { id: 'abc' }]);
+    expect(f).toMatchInlineSnapshot(`
+      {
+        "fields": [
+          {
+            "config": {},
+            "name": "id",
+            "type": "string",
+            "values": [
+              undefined,
+              "abc",
+            ],
+          },
+        ],
+        "length": 2,
       }
     `);
   });
