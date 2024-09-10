@@ -1,10 +1,11 @@
-import { css } from '@emotion/css';
-import { memo } from 'react';
+import React from "react";
 
-import { GrafanaTheme2, LinkTarget } from '@grafana/data';
+import {LinkTarget } from '@grafana/data';
 import { config } from '@grafana/runtime';
-import { Icon, IconName, useStyles2 } from '@grafana/ui';
+import {IconName} from '@grafana/ui';
 import { t } from 'app/core/internationalization';
+
+
 
 export interface FooterLink {
   target: LinkTarget;
@@ -99,58 +100,8 @@ export interface Props {
   hideEdition?: boolean;
 }
 
-export const Footer = React.memo(({ customLinks, hideEdition }: Props) => {
+export const Footer = React.memo(({ }: Props) => {
   return <footer className="footer"></footer>;
 });
 
 Footer.displayName = 'Footer';
-
-function FooterItem({ item }: { item: FooterLink }) {
-  const content = item.url ? (
-    <a href={item.url} target={item.target} rel="noopener noreferrer" id={item.id}>
-      {item.text}
-    </a>
-  ) : (
-    item.text
-  );
-
-  return (
-    <>
-      {item.icon && <Icon name={item.icon} />} {content}
-    </>
-  );
-}
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  footer: css({
-    ...theme.typography.bodySmall,
-    color: theme.colors.text.primary,
-    display: 'block',
-    padding: theme.spacing(2, 0),
-    position: 'relative',
-    width: '98%',
-
-    'a:hover': {
-      color: theme.colors.text.maxContrast,
-      textDecoration: 'underline',
-    },
-
-    [theme.breakpoints.down('md')]: {
-      display: 'none',
-    },
-  }),
-  list: css({
-    listStyle: 'none',
-  }),
-  listItem: css({
-    display: 'inline-block',
-    '&:after': {
-      content: "' | '",
-      padding: theme.spacing(0, 1),
-    },
-    '&:last-child:after': {
-      content: "''",
-      paddingLeft: 0,
-    },
-  }),
-});

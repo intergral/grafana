@@ -199,7 +199,7 @@ func (hs *HTTPServer) getFrontendSettings(c *contextmodel.ReqContext) (*dtos.Fro
 		ProfileEnabled:                      hs.Cfg.ProfileEnabled,
 		NewsFeedEnabled:                     hs.Cfg.NewsFeedEnabled,
 		QueryHistoryEnabled:                 hs.Cfg.QueryHistoryEnabled,
-		KioskMode:                           setting.KioskMode,
+		KioskMode:                           hs.Cfg.KioskMode,
 		GoogleAnalyticsId:                   hs.Cfg.GoogleAnalyticsID,
 		GoogleAnalytics4Id:                  hs.Cfg.GoogleAnalytics4ID,
 		GoogleAnalytics4SendManualPageViews: hs.Cfg.GoogleAnalytics4SendManualPageViews,
