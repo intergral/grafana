@@ -21,17 +21,16 @@ import (
 	"time"
 
 	"github.com/gobwas/glob"
-	"github.com/prometheus/common/model"
-	"gopkg.in/ini.v1"
-
 	"github.com/grafana/grafana-aws-sdk/pkg/awsds"
 	"github.com/grafana/grafana-azure-sdk-go/v2/azsettings"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
+	"github.com/prometheus/common/model"
 
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/util"
 	"github.com/grafana/grafana/pkg/util/osutil"
+	"gopkg.in/ini.v1"
 )
 
 type Scheme string
@@ -504,6 +503,9 @@ type Cfg struct {
 	// Explore UI
 	ExploreEnabled           bool
 	ExploreDefaultTimeOffset string
+
+	//kiosk mode
+	KioskMode string
 
 	// Help UI
 	HelpEnabled bool
@@ -1172,7 +1174,7 @@ func (cfg *Cfg) parseINIFile(iniFile *ini.File) error {
 	}
 
 	kiosk := iniFile.Section("kiosk")
-	KioskMode = valueAsString(kiosk, "mode", "off")
+	cfg.KioskMode = valueAsString(kiosk, "mode", "off")
 
 	help := iniFile.Section("help")
 	cfg.HelpEnabled = help.Key("enabled").MustBool(true)
