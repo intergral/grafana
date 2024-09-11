@@ -318,6 +318,7 @@ func (s *UserSync) createUser(ctx context.Context, id *authn.Identity) (*user.Us
 		Login:        id.Login,
 		Email:        id.Email,
 		Name:         id.Name,
+		OrgName:      id.OrgName,
 		IsAdmin:      isAdmin,
 		SkipOrgSetup: len(id.OrgRoles) > 0,
 	})

@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Server with Debug" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="grafana-new" />
+    <working_directory value="$PROJECT_DIR$" />
+    <parameters value="server -packaging=dev cfg:app_mode=development" />
+    <kind value="PACKAGE" />
+    <package value="github.com/grafana/grafana/pkg/cmd/grafana" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/pkg/cmd/grafana/main.go" />
+    <method v="2" />
+  </configuration>
+</component>

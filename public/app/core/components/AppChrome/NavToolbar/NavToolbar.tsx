@@ -9,6 +9,7 @@ import { t } from 'app/core/internationalization';
 import { HOME_NAV_ID } from 'app/core/reducers/navModel';
 import { useSelector } from 'app/types';
 
+import {contextSrv} from "../../../services/context_srv";
 import { Breadcrumbs } from '../../Breadcrumbs/Breadcrumbs';
 import { buildBreadcrumbs } from '../../Breadcrumbs/utils';
 import { TOP_BAR_LEVEL_HEIGHT } from '../types';
@@ -39,12 +40,30 @@ export function NavToolbar({
   const homeNav = useSelector((state) => state.navIndex)[HOME_NAV_ID];
   const styles = useStyles2(getStyles);
   const breadcrumbs = buildBreadcrumbs(sectionNav, pageNav, homeNav);
+  const { orgId } = contextSrv.user;
 
   return (
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
-      <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
+      {orgId === 1 ?
+      <div className={styles.menuButton}>
+        <IconButton
+          id={TOGGLE_BUTTON_ID}
+          name="bars"
+          tooltip={
+            state.megaMenu === 'closed' || (state.megaMenu === 'docked' && isTooSmallForDockedMenu)
+              ? t('navigation.toolbar.open-menu', 'Open menu')
+              : t('navigation.toolbar.close-menu', 'Close menu')
+          }
+          tooltipPlacement="bottom"
+          size="xl"
+          onClick={onToggleMegaMenu}
+          data-testid={Components.NavBar.Toggle.button}
+        />
+      </div> : ''}
+      <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper}/>
       <div className={styles.actions}>
         {actions}
+        {actions && <NavToolbarSeparator/>}
         {searchBarHidden && (
           <ToolbarButton
             onClick={onToggleKioskMode}
@@ -53,6 +72,13 @@ export function NavToolbar({
             icon="monitor"
           />
         )}
+        <ToolbarButton
+          onClick={onToggleSearchBar}
+          narrow
+          title={t('navigation.toolbar.toggle-search-bar', 'Toggle top search bar')}
+        >
+          <Icon name={searchBarHidden ? 'angle-down' : 'angle-up'} size="xl"/>
+        </ToolbarButton>
       </div>
     </div>
   );
