@@ -434,7 +434,7 @@ describe('getPanelMenu()', () => {
       expect(moreSubMenu).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            text: 'New alert rule',
+            text: 'Copy',
           }),
         ])
       );
