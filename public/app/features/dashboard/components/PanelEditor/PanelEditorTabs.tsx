@@ -62,17 +62,7 @@ export const PanelEditorTabs = memo(({ panel, dashboard, tabs, onChangeTab }: Pa
       <TabsBar className={styles.tabBar} hideBorder>
         {tabs.map((tab) => {
           if (tab.id === PanelEditorTabId.Alert && alertingEnabled) {
-            return (
-              <PanelAlertTab
-                key={tab.id}
-                label={tab.text}
-                active={tab.active}
-                onChangeTab={() => onChangeTab(tab)}
-                icon={toIconName(tab.icon)}
-                panel={panel}
-                dashboard={dashboard}
-              />
-            );
+            return null;
           }
           return (
             <Tab
