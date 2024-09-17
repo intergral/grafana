@@ -28,7 +28,7 @@ export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
   const { orgId } = contextSrv.user;
-  const searchBarHidden = orgId === 1 ? state.searchBarHidden || state.kioskMode === KioskMode.TV || (hideSearchBar ?? true) : false;
+  const searchBarHidden = orgId === 1 ? state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true) : false;
   const theme = useTheme2();
   const styles = useStyles2(getStyles, searchBarHidden);
 
