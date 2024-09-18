@@ -12,8 +12,6 @@ import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
 import { KioskMode } from 'app/types';
 
-import {contextSrv} from "../../services/context_srv";
-
 import { AppChromeMenu } from './AppChromeMenu';
 import { DOCKED_LOCAL_STORAGE_KEY, DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY } from './AppChromeService';
 import { MegaMenu } from './MegaMenu/MegaMenu';
@@ -27,8 +25,7 @@ export interface Props extends PropsWithChildren<{hideSearchBar?: boolean}> {}
 export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
-  const { orgId } = contextSrv.user;
-  const searchBarHidden = orgId === 1 ? state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true) : false;
+  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true);
   const theme = useTheme2();
   const styles = useStyles2(getStyles, searchBarHidden);
 
