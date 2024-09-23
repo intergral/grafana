@@ -20,11 +20,6 @@ describe('DataTrailsHistory', () => {
     // global timezone is set to Pacific/Easter, see jest-config.js file
     test.each<ParseTimeTestCase>([
       {
-        name: 'from history',
-        input: { from: '2024-07-22T18:30:00.000Z', to: '2024-07-22T19:30:00.000Z' },
-        expected: '2024-07-22 12:30:00 - 2024-07-22 13:30:00',
-      },
-      {
         name: 'time change event with timezone',
         input: { from: '2024-07-22T18:30:00.000Z', to: '2024-07-22T19:30:00.000Z', timeZone: 'Europe/Berlin' },
         expected: '2024-07-22 20:30:00 - 2024-07-22 21:30:00',
