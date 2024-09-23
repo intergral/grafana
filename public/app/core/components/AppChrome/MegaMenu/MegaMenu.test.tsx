@@ -5,7 +5,7 @@ import { TestProvider } from 'test/helpers/TestProvider';
 import { getGrafanaContextMock } from 'test/mocks/getGrafanaContextMock';
 
 import { NavModelItem } from '@grafana/data';
-import { selectors } from '@grafana/e2e-selectors';
+// import { selectors } from '@grafana/e2e-selectors';
 import { locationService } from '@grafana/runtime';
 
 import { MegaMenu } from './MegaMenu';
