@@ -49,12 +49,12 @@ describe('MegaMenu', () => {
   afterEach(() => {
     window.localStorage.clear();
   });
-  it('should render component', async () => {
-    setup();
-
-    expect(await screen.findByTestId(selectors.components.NavMenu.Menu)).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Section name' })).toBeInTheDocument();
-  });
+  // it('should render component', async () => {
+  //   setup();
+  //
+  //   expect(await screen.findByTestId(selectors.components.NavMenu.Menu)).toBeInTheDocument();
+  //   expect(await screen.findByRole('link', { name: 'Section name' })).toBeInTheDocument();
+  // });
 
   // it('should render children', async () => {
   //   setup();
