@@ -60,6 +60,8 @@ Once you've added the Graphite data source, you can [configure it](#configure-th
 
 {{< docs/play title="Graphite: Sample Website Dashboard" url="https://play.grafana.org/d/000000003/" >}}
 
+{{< docs/play title="Graphite: Sample Website Dashboard" url="https://play.grafana.org/d/000000003/" >}}
+
 ## Configure the data source
 
 To configure basic settings for the data source, complete the following steps:

@@ -257,6 +257,15 @@ func (i *Identity) IsAuthenticatedBy(providers ...string) bool {
 	return false
 }
 
+func (i *Identity) IsAuthenticatedBy(providers ...string) bool {
+	for _, p := range providers {
+		if i.AuthenticatedBy == p {
+			return true
+		}
+	}
+	return false
+}
+
 func (i *Identity) IsNil() bool {
 	return i == nil
 }

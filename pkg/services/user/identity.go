@@ -301,6 +301,15 @@ func (u *SignedInUser) IsAuthenticatedBy(providers ...string) bool {
 	return false
 }
 
+func (u *SignedInUser) IsAuthenticatedBy(providers ...string) bool {
+	for _, p := range providers {
+		if u.AuthenticatedBy == p {
+			return true
+		}
+	}
+	return false
+}
+
 // FIXME: remove this method once all services are using an interface
 func (u *SignedInUser) IsNil() bool {
 	return u == nil

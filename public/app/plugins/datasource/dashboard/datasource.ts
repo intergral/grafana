@@ -33,6 +33,10 @@ export class DashboardDatasource extends DataSourceApi<DashboardQuery> {
       throw new Error('Dashboard data source cannot be used with Mixed data source.');
     }
 
+    if (options.requestId.indexOf('mixed') > -1) {
+      throw new Error('Dashboard data source cannot be used with Mixed data source.');
+    }
+
     if (!scene) {
       throw new Error('Can only be called from a scene');
     }
