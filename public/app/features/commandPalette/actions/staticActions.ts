@@ -71,33 +71,7 @@ function navTreeToActions(navTree: NavModelItem[], parents: NavModelItem[] = [])
 }
 
 export default (navBarTree: NavModelItem[], extensionActions: CommandPaletteAction[]): CommandPaletteAction[] => {
-  const globalActions: CommandPaletteAction[] = [
-    {
-      id: 'preferences/theme',
-      name: t('command-palette.action.change-theme', 'Change theme...'),
-      keywords: 'interface color dark light',
-      section: t('command-palette.section.preferences', 'Preferences'),
-      priority: PREFERENCES_PRIORITY,
-    },
-    {
-      id: 'preferences/dark-theme',
-      name: t('command-palette.action.dark-theme', 'Dark'),
-      keywords: 'dark theme',
-      perform: () => changeTheme('dark'),
-      parent: 'preferences/theme',
-      priority: PREFERENCES_PRIORITY,
-    },
-    {
-      id: 'preferences/light-theme',
-      name: t('command-palette.action.light-theme', 'Light'),
-      keywords: 'light theme',
-      perform: () => changeTheme('light'),
-      parent: 'preferences/theme',
-      priority: PREFERENCES_PRIORITY,
-    },
-  ];
-
   const navBarActions = navTreeToActions(navBarTree);
 
-  return [...globalActions, ...extensionActions, ...navBarActions];
+  return [...navBarActions];
 };

@@ -505,6 +505,9 @@ type Cfg struct {
 	ExploreEnabled           bool
 	ExploreDefaultTimeOffset string
 
+	//kiosk mode
+	KioskMode string
+
 	// Help UI
 	HelpEnabled bool
 
@@ -1170,6 +1173,9 @@ func (cfg *Cfg) parseINIFile(iniFile *ini.File) error {
 	} else {
 		cfg.ExploreDefaultTimeOffset = exploreDefaultTimeOffset
 	}
+
+	kiosk := iniFile.Section("kiosk")
+	cfg.KioskMode = valueAsString(kiosk, "mode", "off")
 
 	help := iniFile.Section("help")
 	cfg.HelpEnabled = help.Key("enabled").MustBool(true)
