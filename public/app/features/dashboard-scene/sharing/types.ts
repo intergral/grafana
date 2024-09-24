@@ -2,8 +2,6 @@ import { SceneObject, SceneObjectRef, SceneObjectState, VizPanel } from '@grafan
 
 import { DashboardScene } from '../scene/DashboardScene';
 
-import { DashboardScene } from '../scene/DashboardScene';
-
 export interface ModalSceneObjectLike {
   onDismiss: () => void;
 }
