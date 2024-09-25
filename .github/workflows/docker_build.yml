@@ -48,4 +48,4 @@ jobs:
             COMMIT_SHA=${{ github.sha }}
             BUILD_BRANCH=main
           push: true
-          tags: intergral/grafana:${{ github.event.pull_request.head.ref }}
+          tags: intergral/grafana:${{ github.ref_name }}
