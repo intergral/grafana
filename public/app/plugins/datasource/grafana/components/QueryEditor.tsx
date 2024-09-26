@@ -39,8 +39,6 @@ import { SearchQuery } from 'app/features/search/service';
 import { GrafanaDatasource } from '../datasource';
 import { defaultQuery, GrafanaQuery, GrafanaQueryType } from '../types';
 
-import SearchEditor from './SearchEditor';
-
 interface Props extends QueryEditorProps<GrafanaDatasource, GrafanaQuery>, Themeable2 {}
 
 const labelWidth = 12;
