@@ -9,6 +9,7 @@ import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
 import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
+import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
 import { KioskMode } from 'app/types';
 
 import { AppChromeMenu } from './AppChromeMenu';
@@ -19,12 +20,12 @@ import { ReturnToPrevious } from './ReturnToPrevious/ReturnToPrevious';
 import { TopSearchBar } from './TopBar/TopSearchBar';
 import { TOP_BAR_LEVEL_HEIGHT } from './types';
 
-export interface Props extends PropsWithChildren<{}> {}
+export interface Props extends PropsWithChildren<{hideSearchBar?: boolean}> {}
 
-export function AppChrome({ children }: Props) {
+export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
-  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV;
+  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true);
   const theme = useTheme2();
   const styles = useStyles2(getStyles, searchBarHidden);
 
@@ -42,6 +43,8 @@ export function AppChrome({ children }: Props) {
       }
     },
   });
+
+  useOpspilotMetadata();
 
   const contentClass = cx({
     [styles.content]: true,
