@@ -7,6 +7,7 @@ import { config, locationSearchToObject, locationService } from '@grafana/runtim
 import { useStyles2, LinkButton, useTheme2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
+import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
 import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards, useScopesDashboardsState } from 'app/features/scopes';
@@ -21,12 +22,12 @@ import { SingleTopBar } from './TopBar/SingleTopBar';
 import { TopSearchBar } from './TopBar/TopSearchBar';
 import { TOP_BAR_LEVEL_HEIGHT } from './types';
 
-export interface Props extends PropsWithChildren<{}> {}
+export interface Props extends PropsWithChildren<{hideSearchBar?: boolean}> {}
 
-export function AppChrome({ children }: Props) {
+export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
-  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV;
+  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true);
   const theme = useTheme2();
   const styles = useStyles2(getStyles, searchBarHidden);
 
@@ -47,6 +48,8 @@ export function AppChrome({ children }: Props) {
       }
     },
   });
+
+  useOpspilotMetadata();
 
   const contentClass = cx({
     [styles.content]: true,

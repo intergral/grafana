@@ -167,15 +167,16 @@ type FrontendSettingsDTO struct {
 	LiveEnabled        bool                             `json:"liveEnabled"`
 	AutoAssignOrg      bool                             `json:"autoAssignOrg"`
 
-	VerifyEmailEnabled  bool `json:"verifyEmailEnabled"`
-	SigV4AuthEnabled    bool `json:"sigV4AuthEnabled"`
-	AzureAuthEnabled    bool `json:"azureAuthEnabled"`
-	RbacEnabled         bool `json:"rbacEnabled"`
-	ExploreEnabled      bool `json:"exploreEnabled"`
-	HelpEnabled         bool `json:"helpEnabled"`
-	ProfileEnabled      bool `json:"profileEnabled"`
-	NewsFeedEnabled     bool `json:"newsFeedEnabled"`
-	QueryHistoryEnabled bool `json:"queryHistoryEnabled"`
+	VerifyEmailEnabled  bool   `json:"verifyEmailEnabled"`
+	SigV4AuthEnabled    bool   `json:"sigV4AuthEnabled"`
+	AzureAuthEnabled    bool   `json:"azureAuthEnabled"`
+	RbacEnabled         bool   `json:"rbacEnabled"`
+	ExploreEnabled      bool   `json:"exploreEnabled"`
+	KioskMode           string `json:"kioskMode"`
+	HelpEnabled         bool   `json:"helpEnabled"`
+	ProfileEnabled      bool   `json:"profileEnabled"`
+	NewsFeedEnabled     bool   `json:"newsFeedEnabled"`
+	QueryHistoryEnabled bool   `json:"queryHistoryEnabled"`
 
 	GoogleAnalyticsId                   string `json:"googleAnalyticsId"`
 	GoogleAnalytics4Id                  string `json:"googleAnalytics4Id"`
