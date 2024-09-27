@@ -4,6 +4,12 @@ This is a modified version of Grafana used by Intergral on FusionReactor Cloud p
 
 ## Update process
 
+The update process for Grafana can be complex. If we are updating a new major oor minor version e.g. there is a new
+maintenance branch for the version like v11.2.x. Then we have to reapply our changes mostly manually. If it is a micro
+update e.g. v11.2.3, and we have a v11.2.x branch then we can just do a merge.
+
+## Major update path
+
 To update this project when a new version of [Grafana](https://github.com/grafana/grafana) is released follow these
 steps:
 
@@ -25,29 +31,45 @@ steps:
 git fetch grafana
 ```
 
-4. Create a new branch for the new update
+4. Create a new branch for the grafana maintenance branch
 
 ```bash
-git checkout -b update_v10_4 tags/v10.4.1
+git checkout -b v11.2.x grafana/v11.2.x
 ```
 
-5. Push branch to create PR
+5. Push branch to act as our maintenance branch - this is where we will merge into and tag from to release our changes
 
 ```bash
-git push -u orign updaate_v10_4
+git push -u orign v11.2.x
 ```
 
-6. Create PR in Github
-7. ReMerge our changes from origin/main - (I recommend using IDE to perform this action)
+6. Now create a new branch for us to work from
 ```bash
-git pull origin main --no-rebase
+git branch -b update_v11_2_x origin/v11.2.x
 ```
-![ide_merge.png](ide_merge_screenshot.png)
 
-It will be necessary to manually resolve the conflicts.
-
-The above steps will create a new branch with a PR with all the changes from the old version to the new version. It is
-then necessary to check for custom changes on the main branch made by us.
+7. Now we have to apply our changes to this branch. To do this the easiest way to is to create a patch from `our_changes` branch and apply then to this branch.
+   8. Create a patch
+   ```bash
+    # Checkout the branch with our changes on it
+    git checkout origin/our_changes
+    # Create a patch from our first commit to HEAD
+    git format-patch cb1b5eae81f089fe039495895da8c298d665d618..HEAD --stdout > our_changes.patch
+    # Go back to the branch we want to apply the changes to
+    git checkout update_v11_2_x
+   ```
+   9. Apply the patch
+   ```bash
+   # This will apply as many of our changes as it could. It will create a .rej file for any change it could not apply
+   git apply our_changes.patch --reject
+   ```
+   10. Now review the output and ensure that all the changes have been applied dealing with any .rej files
+   11. Ensure that all the original workflows are removed and that only our workflow files are included
+   12. Push the changes and create an PR from your new branch to the target maintenance branch e.g. `update_v11_2_x` -> `v11.2.x`
+13. Review PR, test and make any additional changes
+14. Once happy merge and tag from the maintenance branch
+15. We now need to ensure that any additional changes are copied to the `our_changes` branch. This should NOT use merge or rebase.
+   
 
 ## Known changes
 
