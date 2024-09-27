@@ -1,19 +1,19 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
-set -o errexit
-set -o nounset
-set -o pipefail
+set -e
+set -u
 
-REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
+REPO_ROOT=$(dirname "$0")/../..
+echo $REPO_ROOT
 
 for mod in $(go run scripts/go-workspace/main.go list-submodules --path "${REPO_ROOT}/go.work"); do
-    pushd "${mod}"
+    cd "${mod}"
     echo "Running go mod tidy in ${mod}"
     go mod tidy || true
-    popd
+    cd - > /dev/null
 done
 
-pushd "${REPO_ROOT}"
+cd "${REPO_ROOT}"
 echo "running go mod download"
 go mod download
 
