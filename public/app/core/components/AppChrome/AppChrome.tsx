@@ -1,9 +1,9 @@
 import { css, cx } from '@emotion/css';
 import classNames from 'classnames';
-import { PropsWithChildren, useEffect } from 'react';
+import {PropsWithChildren, useEffect, useState} from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import { config, locationSearchToObject, locationService } from '@grafana/runtime';
+import {config, getBackendSrv, locationSearchToObject, locationService} from '@grafana/runtime';
 import { useStyles2, LinkButton, useTheme2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
@@ -11,6 +11,8 @@ import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
 import { KioskMode } from 'app/types';
+
+import { useIntercom } from '../../../intergral/intercom';
 
 import { AppChromeMenu } from './AppChromeMenu';
 import { DOCKED_LOCAL_STORAGE_KEY, DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY } from './AppChromeService';
@@ -28,6 +30,41 @@ export function AppChrome({ children, hideSearchBar }: Props) {
   const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true);
   const theme = useTheme2();
   const styles = useStyles2(getStyles, searchBarHidden);
+
+  const hideIntercomStyle = css`
+  #intercom-container {
+    display: none !important;
+  }
+`;
+
+  // Add state for user info
+  const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
+
+  // Fetch user info
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        console.log('Fetching user info in AppChrome...');
+        const userInfo = await getBackendSrv().get('/api/user');
+        console.log('User info received in AppChrome:', userInfo);
+        setUser(userInfo);
+      } catch (error) {
+        console.error('Failed to fetch user info in AppChrome:', error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  // Use the Intercom hook
+  useIntercom(user?.name || '', user?.email || '');
+
+  useEffect(() => {
+    document.body.classList.add(hideIntercomStyle);
+    return () => {
+      document.body.classList.remove(hideIntercomStyle);
+    };
+  }, [hideIntercomStyle]);
 
   const dockedMenuBreakpoint = theme.breakpoints.values.xl;
   const dockedMenuLocalStorageState = store.getBool(DOCKED_LOCAL_STORAGE_KEY, true);
