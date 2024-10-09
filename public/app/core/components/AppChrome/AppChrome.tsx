@@ -1,12 +1,13 @@
 import { css, cx } from '@emotion/css';
 import classNames from 'classnames';
-import {PropsWithChildren, useEffect, useState} from 'react';
+import {PropsWithChildren, useEffect} from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import {config, getBackendSrv, locationSearchToObject, locationService} from '@grafana/runtime';
+import {config, locationSearchToObject, locationService} from '@grafana/runtime';
 import { useStyles2, LinkButton, useTheme2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
+import { contextSrv } from 'app/core/services/context_srv';
 import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
@@ -37,27 +38,14 @@ export function AppChrome({ children, hideSearchBar }: Props) {
   }
 `;
 
-  // Add state for user info
-  const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
-
   // Fetch user info
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        console.log('Fetching user info in AppChrome...');
-        const userInfo = await getBackendSrv().get('/api/user');
-        console.log('User info received in AppChrome:', userInfo);
-        setUser(userInfo);
-      } catch (error) {
-        console.error('Failed to fetch user info in AppChrome:', error);
-      }
-    };
-
-    fetchUser();
-  }, []);
+  const user = {
+    name: contextSrv.user?.name || '',
+    email: contextSrv.user?.email || '',
+  };
 
   // Use the Intercom hook
-  useIntercom(user?.name || '', user?.email || '');
+  useIntercom(user.name, user.email);
 
   useEffect(() => {
     document.body.classList.add(hideIntercomStyle);
