@@ -1,9 +1,9 @@
 import { css, cx } from '@emotion/css';
 import classNames from 'classnames';
-import {PropsWithChildren, useEffect} from 'react';
+import { PropsWithChildren, useEffect } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import {config, locationSearchToObject, locationService} from '@grafana/runtime';
+import { config, locationSearchToObject, locationService } from '@grafana/runtime';
 import { useStyles2, LinkButton, useTheme2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
@@ -180,13 +180,13 @@ const getStyles = (theme: GrafanaTheme2, searchBarHidden: boolean) => {
       },
       config.featureToggles.bodyScrolling
         ? {
-            position: 'fixed',
-            height: `calc(100% - ${searchBarHidden ? TOP_BAR_LEVEL_HEIGHT : TOP_BAR_LEVEL_HEIGHT * 2}px)`,
-            zIndex: 1,
-          }
+          position: 'fixed',
+          height: `calc(100% - ${searchBarHidden ? TOP_BAR_LEVEL_HEIGHT : TOP_BAR_LEVEL_HEIGHT * 2}px)`,
+          zIndex: 1,
+        }
         : {
-            zIndex: theme.zIndex.navbarFixed,
-          }
+          zIndex: theme.zIndex.navbarFixed,
+        }
     ),
     topNav: css({
       display: 'flex',
