@@ -18,14 +18,14 @@ export function useIntercom(userName: string, userEmail: string) {
     // Intercom setup function
     const setupIntercom = () => {
       (function() {
-        var w = window as any;
-        var ic = w.Intercom;
+        let w = window as any;
+        let ic = w.Intercom;
         if (typeof ic === "function") {
           ic('reattach_activator');
           ic('update', w.intercomSettings);
         } else {
-          var d = document;
-          var i = function() {
+          let d = document;
+          let i = function () {
             (i as any).c(arguments);
           };
           (i as any).q = [];
@@ -33,12 +33,12 @@ export function useIntercom(userName: string, userEmail: string) {
             (i as any).q.push(args);
           };
           w.Intercom = i;
-          var l = function() {
-            var s = d.createElement('script');
+          let l = function () {
+            let s = d.createElement('script');
             s.type = 'text/javascript';
             s.async = true;
             s.src = 'https://widget.intercom.io/widget/ok1wowgi';
-            var x = d.getElementsByTagName('script')[0];
+            let x = d.getElementsByTagName('script')[0];
             x.parentNode?.insertBefore(s, x);
           };
           if (document.readyState === 'complete') {
