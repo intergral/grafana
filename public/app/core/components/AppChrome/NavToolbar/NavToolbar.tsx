@@ -40,8 +40,10 @@ export function NavToolbar({
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
       <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
       <div className={styles.actions}>
-        <div className={styles.commandPalette}>
-          <TopSearchBarCommandPaletteTrigger/>
+        <div className={styles.centerWrapper}>
+          <div className={styles.searchWrapper}>
+            <TopSearchBarCommandPaletteTrigger/>
+          </div>
         </div>
         {actions}
         {searchBarHidden && (
@@ -68,8 +70,9 @@ const getStyles = (theme: GrafanaTheme2) => {
     }),
     pageToolbar: css({
       height: TOP_BAR_LEVEL_HEIGHT,
-      display: 'flex',
-      padding: theme.spacing(0, 1, 0, 2),
+      display: 'grid',
+      gridTemplateColumns: 'auto 1fr auto', // This creates a three-column layout
+      padding: theme.spacing(0, 2),
       alignItems: 'center',
       borderBottom: `1px solid ${theme.colors.border.weak}`,
     }),
@@ -77,16 +80,6 @@ const getStyles = (theme: GrafanaTheme2) => {
       display: 'flex',
       alignItems: 'center',
       marginRight: theme.spacing(1),
-    }),
-    commandPalette: css({
-      width: '100%',
-      maxWidth: '550px',
-      display: 'flex',
-      alignItems: 'center',
-
-      [theme.breakpoints.down('sm')]: {
-        maxWidth: 'none',
-      },
     }),
     actions: css({
       label: 'NavToolbar-actions',
@@ -102,6 +95,19 @@ const getStyles = (theme: GrafanaTheme2) => {
       '.body-drawer-open &': {
         display: 'none',
       },
+    }),
+    searchWrapper: css({
+      display: 'flex',
+      justifyContent: 'center', // Center the search bar
+      width: '100%',
+      maxWidth: '550px', // Adjust as needed
+      margin: '0 auto', // Center the wrapper itself
+    }),
+    centerWrapper: css({
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
     }),
   };
 };
