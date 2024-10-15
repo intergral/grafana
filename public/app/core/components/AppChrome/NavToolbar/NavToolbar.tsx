@@ -10,6 +10,7 @@ import { useSelector } from 'app/types';
 
 import { Breadcrumbs } from '../../Breadcrumbs/Breadcrumbs';
 import { buildBreadcrumbs } from '../../Breadcrumbs/utils';
+import { TopSearchBarCommandPaletteTrigger } from '../TopBar/TopSearchBarCommandPaletteTrigger';
 import { TOP_BAR_LEVEL_HEIGHT } from '../types';
 
 export const TOGGLE_BUTTON_ID = 'mega-menu-toggle';
@@ -39,6 +40,9 @@ export function NavToolbar({
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
       <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
       <div className={styles.actions}>
+        <div className={styles.commandPalette}>
+          <TopSearchBarCommandPaletteTrigger/>
+        </div>
         {actions}
         {searchBarHidden && (
           <ToolbarButton
@@ -73,6 +77,16 @@ const getStyles = (theme: GrafanaTheme2) => {
       display: 'flex',
       alignItems: 'center',
       marginRight: theme.spacing(1),
+    }),
+    commandPalette: css({
+      width: '100%',
+      maxWidth: '550px',
+      display: 'flex',
+      alignItems: 'center',
+
+      [theme.breakpoints.down('sm')]: {
+        maxWidth: 'none',
+      },
     }),
     actions: css({
       label: 'NavToolbar-actions',
