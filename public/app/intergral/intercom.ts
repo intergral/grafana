@@ -39,7 +39,8 @@ export function useIntercom(userName: string, userEmail: string) {
             s.async = true;
             s.src = 'https://widget.intercom.io/widget/ok1wowgi';
             let x = d.getElementsByTagName('script')[0];
-            x.parentNode?.insertBefore(s, x);
+            let parent = x?.parentNode || document.body
+            parent.insertBefore(s, x || null);
           };
           if (document.readyState === 'complete') {
             l();
