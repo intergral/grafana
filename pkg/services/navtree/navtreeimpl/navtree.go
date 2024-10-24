@@ -132,33 +132,6 @@ func (s *ServiceImpl) GetNavTree(c *contextmodel.ReqContext, prefs *pref.Prefere
 		})
 	}
 
-	if s.cfg.ProfileEnabled && c.IsSignedIn {
-		treeRoot.AddSection(s.getProfileNode(c))
-	}
-
-	_, uaIsDisabledForOrg := s.cfg.UnifiedAlerting.DisabledOrgs[c.SignedInUser.GetOrgID()]
-	uaVisibleForOrg := s.cfg.UnifiedAlerting.IsEnabled() && !uaIsDisabledForOrg
-
-	if uaVisibleForOrg {
-		if alertingSection := s.buildAlertNavLinks(c); alertingSection != nil {
-			treeRoot.AddSection(alertingSection)
-		}
-	}
-
-	if connectionsSection := s.buildDataConnectionsNavLink(c); connectionsSection != nil {
-		treeRoot.AddSection(connectionsSection)
-	}
-
-	orgAdminNode, err := s.getAdminNode(c)
-
-	if orgAdminNode != nil && len(orgAdminNode.Children) > 0 {
-		treeRoot.AddSection(orgAdminNode)
-	} else if err != nil {
-		return nil, err
-	}
-
-	s.addHelpLinks(treeRoot, c)
-
 	if err := s.addAppLinks(treeRoot, c); err != nil {
 		return nil, err
 	}
