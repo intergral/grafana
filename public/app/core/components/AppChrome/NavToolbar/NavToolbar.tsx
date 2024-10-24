@@ -10,6 +10,7 @@ import { useSelector } from 'app/types';
 
 import { Breadcrumbs } from '../../Breadcrumbs/Breadcrumbs';
 import { buildBreadcrumbs } from '../../Breadcrumbs/utils';
+import { TopSearchBarCommandPaletteTrigger } from '../TopBar/TopSearchBarCommandPaletteTrigger';
 import { TOP_BAR_LEVEL_HEIGHT } from '../types';
 
 export const TOGGLE_BUTTON_ID = 'mega-menu-toggle';
@@ -39,6 +40,11 @@ export function NavToolbar({
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
       <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
       <div className={styles.actions}>
+        <div className={styles.centerWrapper}>
+          <div className={styles.searchWrapper}>
+            <TopSearchBarCommandPaletteTrigger/>
+          </div>
+        </div>
         {actions}
         {searchBarHidden && (
           <ToolbarButton
@@ -64,8 +70,9 @@ const getStyles = (theme: GrafanaTheme2) => {
     }),
     pageToolbar: css({
       height: TOP_BAR_LEVEL_HEIGHT,
-      display: 'flex',
-      padding: theme.spacing(0, 1, 0, 2),
+      display: 'grid',
+      gridTemplateColumns: 'auto 1fr auto', // This creates a three-column layout
+      padding: theme.spacing(0, 2),
       alignItems: 'center',
       borderBottom: `1px solid ${theme.colors.border.weak}`,
     }),
@@ -88,6 +95,19 @@ const getStyles = (theme: GrafanaTheme2) => {
       '.body-drawer-open &': {
         display: 'none',
       },
+    }),
+    searchWrapper: css({
+      display: 'flex',
+      justifyContent: 'center', // Center the search bar
+      width: '100%',
+      maxWidth: '550px', // Adjust as needed
+      margin: '0 auto', // Center the wrapper itself
+    }),
+    centerWrapper: css({
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
     }),
   };
 };
