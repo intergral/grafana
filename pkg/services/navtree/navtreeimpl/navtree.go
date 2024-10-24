@@ -21,7 +21,6 @@ import (
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginstore"
 	pref "github.com/grafana/grafana/pkg/services/preference"
 	"github.com/grafana/grafana/pkg/services/star"
-	"github.com/grafana/grafana/pkg/services/supportbundles/supportbundlesimpl"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -201,44 +200,6 @@ func (s *ServiceImpl) getHomeNode(c *contextmodel.ReqContext, prefs *pref.Prefer
 		SortWeight: navtree.WeightHome,
 	}
 	return homeNode
-}
-
-func isSupportBundlesEnabled(s *ServiceImpl) bool {
-	return s.cfg.SectionWithEnvOverrides("support_bundles").Key("enabled").MustBool(true)
-}
-
-func (s *ServiceImpl) addHelpLinks(treeRoot *navtree.NavTreeRoot, c *contextmodel.ReqContext) {
-	if s.cfg.HelpEnabled {
-		// The version subtitle is set later by NavTree.ApplyHelpVersion
-		helpNode := &navtree.NavLink{
-			Text:       "Help",
-			Id:         "help",
-			Url:        "#",
-			Icon:       "question-circle",
-			SortWeight: navtree.WeightHelp,
-			Children:   []*navtree.NavLink{},
-		}
-
-		treeRoot.AddSection(helpNode)
-
-		hasAccess := ac.HasAccess(s.accessControl, c)
-		supportBundleAccess := ac.EvalAny(
-			ac.EvalPermission(supportbundlesimpl.ActionRead),
-			ac.EvalPermission(supportbundlesimpl.ActionCreate),
-		)
-
-		if isSupportBundlesEnabled(s) && hasAccess(supportBundleAccess) {
-			supportBundleNode := &navtree.NavLink{
-				Text:       "Support bundles",
-				Id:         "support-bundles",
-				Url:        "/support-bundles",
-				Icon:       "wrench",
-				SortWeight: navtree.WeightHelp,
-			}
-
-			helpNode.Children = append(helpNode.Children, supportBundleNode)
-		}
-	}
 }
 
 func (s *ServiceImpl) getProfileNode(c *contextmodel.ReqContext) *navtree.NavLink {
