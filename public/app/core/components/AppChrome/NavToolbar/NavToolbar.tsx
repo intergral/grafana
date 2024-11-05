@@ -3,8 +3,8 @@ import * as React from 'react';
 
 import { GrafanaTheme2, NavModelItem } from '@grafana/data';
 import { Components } from '@grafana/e2e-selectors';
-import { ToolbarButton, useStyles2 } from '@grafana/ui';
-import { t } from 'app/core/internationalization';
+import { useStyles2 } from '@grafana/ui';
+
 import { HOME_NAV_ID } from 'app/core/reducers/navModel';
 import { useSelector } from 'app/types';
 
@@ -46,14 +46,6 @@ export function NavToolbar({
           </div>
         </div>
         {actions}
-        {searchBarHidden && (
-          <ToolbarButton
-            onClick={onToggleKioskMode}
-            narrow
-            title={t('navigation.toolbar.enable-kiosk', 'Enable kiosk mode')}
-            icon="monitor"
-          />
-        )}
       </div>
     </div>
   );
