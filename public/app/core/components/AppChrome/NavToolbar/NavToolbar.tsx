@@ -4,7 +4,6 @@ import * as React from 'react';
 import { GrafanaTheme2, NavModelItem } from '@grafana/data';
 import { Components } from '@grafana/e2e-selectors';
 import { useStyles2 } from '@grafana/ui';
-
 import { HOME_NAV_ID } from 'app/core/reducers/navModel';
 import { useSelector } from 'app/types';
 
@@ -38,13 +37,13 @@ export function NavToolbar({
 
   return (
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
-      <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
-      <div className={styles.actions}>
-        <div className={styles.centerWrapper}>
-          <div className={styles.searchWrapper}>
-            <TopSearchBarCommandPaletteTrigger/>
-          </div>
+      <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper}/>
+      <div className={styles.centerWrapper}>
+        <div className={styles.searchWrapper}>
+          <TopSearchBarCommandPaletteTrigger/>
         </div>
+      </div>
+      <div className={styles.actions}>
         {actions}
       </div>
     </div>
@@ -85,7 +84,9 @@ const getStyles = (theme: GrafanaTheme2) => {
       minWidth: 0,
 
       '.body-drawer-open &': {
-        display: 'none',
+        [theme.breakpoints.down('md')]: {
+          display: 'none',
+        }
       },
     }),
     searchWrapper: css({
