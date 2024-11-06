@@ -3,13 +3,13 @@ import * as React from 'react';
 
 import { GrafanaTheme2, NavModelItem } from '@grafana/data';
 import { Components } from '@grafana/e2e-selectors';
-import { ToolbarButton, useStyles2 } from '@grafana/ui';
-import { t } from 'app/core/internationalization';
+import { useStyles2 } from '@grafana/ui';
 import { HOME_NAV_ID } from 'app/core/reducers/navModel';
 import { useSelector } from 'app/types';
 
 import { Breadcrumbs } from '../../Breadcrumbs/Breadcrumbs';
 import { buildBreadcrumbs } from '../../Breadcrumbs/utils';
+import { TopSearchBarCommandPaletteTrigger } from '../TopBar/TopSearchBarCommandPaletteTrigger';
 import { TOP_BAR_LEVEL_HEIGHT } from '../types';
 
 export const TOGGLE_BUTTON_ID = 'mega-menu-toggle';
@@ -37,17 +37,14 @@ export function NavToolbar({
 
   return (
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
-      <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
+      <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper}/>
+      <div className={styles.centerWrapper}>
+        <div className={styles.searchWrapper}>
+          <TopSearchBarCommandPaletteTrigger/>
+        </div>
+      </div>
       <div className={styles.actions}>
         {actions}
-        {searchBarHidden && (
-          <ToolbarButton
-            onClick={onToggleKioskMode}
-            narrow
-            title={t('navigation.toolbar.enable-kiosk', 'Enable kiosk mode')}
-            icon="monitor"
-          />
-        )}
       </div>
     </div>
   );
@@ -64,8 +61,9 @@ const getStyles = (theme: GrafanaTheme2) => {
     }),
     pageToolbar: css({
       height: TOP_BAR_LEVEL_HEIGHT,
-      display: 'flex',
-      padding: theme.spacing(0, 1, 0, 2),
+      display: 'grid',
+      gridTemplateColumns: 'auto 1fr auto', // This creates a three-column layout
+      padding: theme.spacing(0, 2),
       alignItems: 'center',
       borderBottom: `1px solid ${theme.colors.border.weak}`,
     }),
@@ -86,8 +84,23 @@ const getStyles = (theme: GrafanaTheme2) => {
       minWidth: 0,
 
       '.body-drawer-open &': {
-        display: 'none',
+        [theme.breakpoints.down('md')]: {
+          display: 'none',
+        }
       },
+    }),
+    searchWrapper: css({
+      display: 'flex',
+      justifyContent: 'center', // Center the search bar
+      width: '100%',
+      maxWidth: '550px', // Adjust as needed
+      margin: '0 auto', // Center the wrapper itself
+    }),
+    centerWrapper: css({
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
     }),
   };
 };
