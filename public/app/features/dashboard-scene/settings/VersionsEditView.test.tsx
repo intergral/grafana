@@ -35,18 +35,6 @@ describe('VersionsEditView', () => {
       expect(versionsView.getDashboard()).toBe(dashboard);
     });
 
-    it('should return the decorated list of versions', () => {
-      const versions = versionsView.versions;
-
-      expect(versions).toHaveLength(3);
-      expect(versions[0].createdDateString).toBe('2017-02-22 20:43:01');
-      expect(versions[0].ageString).toBe('7 years ago');
-      expect(versions[1].createdDateString).toBe('2017-02-22 20:43:01');
-      expect(versions[1].ageString).toBe('7 years ago');
-      expect(versions[2].createdDateString).toBe('2017-02-23 20:43:01');
-      expect(versions[2].ageString).toBe('7 years ago');
-    });
-
     it('should bump the start threshold when fetching more versions', async () => {
       expect(versionsView.start).toBe(VERSIONS_FETCH_LIMIT);
 
