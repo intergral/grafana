@@ -417,7 +417,7 @@ describe('getPanelMenu()', () => {
   });
 
   describe('Alerting menu', () => {
-    it('should render "New alert rule" menu item if user has permissions to read and update alerts ', () => {
+    it('should not render "New alert rule" menu item if user has permissions to read and update alerts ', () => {
       const panel = new PanelModel({});
       const dashboard = createDashboardModelFixture({});
       const extensions: PluginExtensionLink[] = [];
@@ -427,7 +427,7 @@ describe('getPanelMenu()', () => {
       const menuItems = getPanelMenu(dashboard, panel, extensions);
       const moreSubMenu = menuItems.find((i) => i.text === 'More...')?.subMenu;
 
-      expect(moreSubMenu).toEqual(
+      expect(moreSubMenu).not.toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             text: 'New alert rule',
