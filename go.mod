@@ -186,10 +186,10 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // @grafana/alerting-backend
 	gopkg.in/mail.v2 v2.3.1 // @grafana/grafana-backend-group
 	gopkg.in/yaml.v3 v3.0.1 // @grafana/alerting-backend
-	k8s.io/api v0.31.1 // @grafana/grafana-app-platform-squad
-	k8s.io/apimachinery v0.31.1 // @grafana/grafana-app-platform-squad
+	k8s.io/api v0.31.3 // @grafana/grafana-app-platform-squad
+	k8s.io/apimachinery v0.31.3 // @grafana/grafana-app-platform-squad
 	k8s.io/apiserver v0.31.1 // @grafana/grafana-app-platform-squad
-	k8s.io/client-go v0.31.1 // @grafana/grafana-app-platform-squad
+	k8s.io/client-go v0.31.3 // @grafana/grafana-app-platform-squad
 	k8s.io/component-base v0.31.1 // @grafana/grafana-app-platform-squad
 	k8s.io/klog/v2 v2.130.1 // @grafana/grafana-app-platform-squad
 	k8s.io/kube-aggregator v0.31.1 // @grafana/grafana-app-platform-squad
@@ -467,10 +467,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 )
 
-require (
-	github.com/getkin/kin-openapi v0.127.0 // @grafana/grafana-app-platform-squad
-	github.com/grafana/grafana/apps/playlist v0.0.0-20240917082838-e2bce38a7990 // @grafana/grafana-app-platform-squad
-)
+require github.com/getkin/kin-openapi v0.127.0 // @grafana/grafana-app-platform-squad
 
 require github.com/jmespath-community/go-jmespath v1.1.1 // @grafana/identity-access-team
 
@@ -480,6 +477,7 @@ require (
 	github.com/dolthub/maphash v0.1.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/grafana/grafana-app-sdk v0.19.0 // indirect
+	github.com/grafana/grafana/apps/playlist v0.0.0-20240917082838-e2bce38a7990 // indirect
 	github.com/grafana/grafana/pkg/semconv v0.0.0-20240808213237-f4d2e064f435 // indirect
 	github.com/grafana/sqlds/v4 v4.1.0 // indirect
 	github.com/maypok86/otter v1.2.2 // indirect
