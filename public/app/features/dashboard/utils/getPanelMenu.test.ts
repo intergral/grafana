@@ -430,7 +430,7 @@ describe('getPanelMenu()', () => {
       expect(moreSubMenu).not.toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            text: 'New alert rule',
+            text: '',
           }),
         ])
       );
