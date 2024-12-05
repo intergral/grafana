@@ -38,11 +38,11 @@ describe('MegaMenu', () => {
   afterEach(() => {
     window.localStorage.clear();
   });
-  it('should not render component', async () => {
+  it('should render component', async () => {
     setup();
 
-    expect(await screen.queryByTestId(selectors.components.NavMenu.Menu)).not.toBeInTheDocument();
-    expect(await screen.queryByRole('link', { name: 'Section name' })).not.toBeInTheDocument();
+    expect(await screen.queryByTestId(selectors.components.NavMenu.Menu)).toBeInTheDocument();
+    expect(await screen.queryByRole('link', { name: 'Section name' })).toBeInTheDocument();
   });
 
   it('should filter out profile', async () => {
