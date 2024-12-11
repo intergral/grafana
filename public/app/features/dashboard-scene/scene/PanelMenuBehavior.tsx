@@ -6,7 +6,6 @@ import {
   PanelPlugin,
   PluginExtensionPanelContext,
   PluginExtensionPoints,
-  urlUtil,
 } from '@grafana/data';
 import { config, getPluginLinkExtensions, locationService } from '@grafana/runtime';
 import { LocalValueVariable, sceneGraph, SceneGridRow, VizPanel, VizPanelMenu } from '@grafana/scenes';
@@ -14,7 +13,6 @@ import { DataQuery, OptionsWithLegend } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
 import { t } from 'app/core/internationalization';
 import { contextSrv } from 'app/core/services/context_srv';
-import { scenesPanelToRuleFormValues } from 'app/features/alerting/unified/utils/rule-form';
 import { shareDashboardType } from 'app/features/dashboard/components/ShareModal/utils';
 import { InspectTab } from 'app/features/inspector/types';
 import { getScenePanelLinksSupplier } from 'app/features/panel/panellinks/linkSuppliers';
@@ -214,11 +212,6 @@ export function panelMenuBehavior(menu: VizPanelMenu, isRepeat = false) {
       }
     }
 
-    moreSubMenu.push({
-      text: t('panel.header-menu.new-alert-rule', `New alert rule`),
-      iconClassName: 'bell',
-      onClick: (e) => onCreateAlert(panel),
-    });
 
     if (hasLegendOptions(panel.state.options) && !isEditingPanel) {
       moreSubMenu.push({
@@ -481,14 +474,6 @@ export function onRemovePanel(dashboard: DashboardScene, panel: VizPanel) {
   );
 }
 
-const onCreateAlert = async (panel: VizPanel) => {
-  const formValues = await scenesPanelToRuleFormValues(panel);
-  const ruleFormUrl = urlUtil.renderUrl('/alerting/new', {
-    defaults: JSON.stringify(formValues),
-    returnTo: location.pathname + location.search,
-  });
-  locationService.push(ruleFormUrl);
-};
 
 export function toggleVizPanelLegend(vizPanel: VizPanel): void {
   const options = vizPanel.state.options;
