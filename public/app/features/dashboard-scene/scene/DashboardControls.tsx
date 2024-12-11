@@ -43,10 +43,6 @@ export class DashboardControls extends SceneObjectBase<DashboardControlsState> {
     keys: ['_dash.hideTimePicker', '_dash.hideVariables', '_dash.hideLinks'],
   });
 
-  /**
-   * We want the hideXX url keys to only sync one way (url => state) on init
-   * We don't want these flags to be added to URL.
-   */
   getUrlState() {
     return {};
   }
@@ -54,9 +50,6 @@ export class DashboardControls extends SceneObjectBase<DashboardControlsState> {
   updateFromUrl(values: SceneObjectUrlValues) {
     const { hideTimeControls, hideVariableControls, hideLinksControls } = this.state;
     const isEnabledViaUrl = (key: string) => values[key] === 'true' || values[key] === '';
-
-    // Only allow hiding, never "unhiding" from url
-    // Becasue this should really only change on first init it's fine to do multiple setState here
 
     if (!hideTimeControls && isEnabledViaUrl('_dash.hideTimePicker')) {
       this.setState({ hideTimeControls: true });
@@ -94,9 +87,6 @@ export class DashboardControls extends SceneObjectBase<DashboardControlsState> {
     });
   }
 
-  /**
-   * Links can include all variables so we need to re-render when any change
-   */
   private _onAnyVariableChanged(): void {
     const dashboard = getDashboardSceneFor(this);
     if (dashboard.state.links?.length > 0) {
@@ -158,9 +148,10 @@ function getStyles(theme: GrafanaTheme2) {
       gap: theme.spacing(1),
       flexDirection: 'row',
       flexWrap: 'nowrap',
-      position: 'relative',
       width: '100%',
-      marginLeft: 'auto',
+      margin: 0,
+      padding: theme.spacing(1, 2),
+      backgroundColor: theme.colors.background.primary,
       [theme.breakpoints.down('sm')]: {
         flexDirection: 'column-reverse',
         alignItems: 'stretch',

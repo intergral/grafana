@@ -3,7 +3,6 @@ import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom-v5-compat';
 
 import { GrafanaTheme2, PageLayoutType } from '@grafana/data';
-import { config, useChromeHeaderHeight } from '@grafana/runtime';
 import { SceneComponentProps } from '@grafana/scenes';
 import { useStyles2 } from '@grafana/ui';
 import { TOP_BAR_LEVEL_HEIGHT } from 'app/core/components/AppChrome/types';
@@ -15,15 +14,13 @@ import DashboardEmpty from 'app/features/dashboard/dashgrid/DashboardEmpty';
 import { useSelector } from 'app/types';
 
 import { DashboardScene } from './DashboardScene';
-import { NavToolbarActions, ToolbarActions } from './NavToolbarActions';
+import { NavToolbarActions } from './NavToolbarActions';
 import { PanelSearchLayout } from './PanelSearchLayout';
-import { DashboardAngularDeprecationBanner } from './angular/DashboardAngularDeprecationBanner';
 
 export function DashboardSceneRenderer({ model }: SceneComponentProps<DashboardScene>) {
   const { controls, overlay, editview, editPanel, isEmpty, meta, viewPanelScene, panelSearch, panelsPerRow } =
     model.useState();
-  const headerHeight = useChromeHeaderHeight();
-  const styles = useStyles2(getStyles, headerHeight ?? 0);
+  const styles = useStyles2(getStyles);
   const location = useLocation();
   const navIndex = useSelector((state) => state.navIndex);
   const pageNav = model.getPageNav(location, navIndex);
@@ -31,16 +28,13 @@ export function DashboardSceneRenderer({ model }: SceneComponentProps<DashboardS
   const navModel = getNavModel(navIndex, 'dashboards/browse');
   const hasControls = controls?.hasControls();
   const isSettingsOpen = editview !== undefined;
-  const isSingleTopNav = config.featureToggles.singleTopNav;
 
-  // Remember scroll pos when going into view panel, edit panel or settings
   useMemo(() => {
     if (viewPanelScene || isSettingsOpen || editPanel) {
       model.rememberScrollPos();
     }
   }, [isSettingsOpen, editPanel, viewPanelScene, model]);
 
-  // Restore scroll pos when coming back
   useEffect(() => {
     if (!viewPanelScene && !isSettingsOpen && !editPanel) {
       model.restoreScrollPos();
@@ -56,21 +50,19 @@ export function DashboardSceneRenderer({ model }: SceneComponentProps<DashboardS
     );
   }
 
+  const notFound = meta.dashboardNotFound && <EntityNotFound entity="Dashboard" />;
+
   const emptyState = (
-    <DashboardEmpty dashboard={model} canCreate={!!model.state.meta.canEdit} key="dashboard-empty-state" />
+    <DashboardEmpty dashboard={model} canCreate={!!model.state.meta.canEdit} />
   );
 
   const withPanels = (
-    <div className={cx(styles.body, !hasControls && styles.bodyWithoutControls)} key="dashboard-panels">
+    <div className={cx(styles.body, !hasControls && styles.bodyWithoutControls)}>
       <bodyToRender.Component model={bodyToRender} />
     </div>
   );
 
-  const notFound = meta.dashboardNotFound && <EntityNotFound entity="Dashboard" key="dashboard-not-found" />;
-
-  const angularBanner = <DashboardAngularDeprecationBanner dashboard={model} key="angular-deprecation-banner" />;
-
-  let body: React.ReactNode = [angularBanner, withPanels];
+  let body: React.ReactNode = [withPanels];
 
   if (notFound) {
     body = [notFound];
@@ -81,23 +73,18 @@ export function DashboardSceneRenderer({ model }: SceneComponentProps<DashboardS
   }
 
   return (
-    <Page
-      navModel={navModel}
-      pageNav={pageNav}
-      layout={PageLayoutType.Custom}
-      toolbar={isSingleTopNav ? <ToolbarActions dashboard={model} /> : undefined}
-    >
+    <Page navModel={navModel} pageNav={pageNav} layout={PageLayoutType.Custom}>
       {editPanel && <editPanel.Component model={editPanel} />}
       {!editPanel && (
         <NativeScrollbar divId="page-scrollbar" onSetScrollRef={model.onSetScrollRef}>
           <div className={cx(styles.pageContainer, hasControls && styles.pageContainerWithControls)}>
-            {!isSingleTopNav && <NavToolbarActions dashboard={model} />}
+            <NavToolbarActions dashboard={model} />
             {controls && (
               <div className={styles.controlsWrapper}>
                 <controls.Component model={controls} />
               </div>
             )}
-            <div className={cx(styles.canvasContent)}>{body}</div>
+            <div className={styles.canvasContent}>{body}</div>
           </div>
         </NativeScrollbar>
       )}
@@ -106,19 +93,16 @@ export function DashboardSceneRenderer({ model }: SceneComponentProps<DashboardS
   );
 }
 
-function getStyles(theme: GrafanaTheme2, headerHeight: number) {
+function getStyles(theme: GrafanaTheme2) {
   return {
     pageContainer: css({
       display: 'grid',
-      gridTemplateAreas: `
-  "panels"`,
-      gridTemplateColumns: `1fr`,
+      gridTemplateAreas: `"panels"`,
+      gridTemplateColumns: '1fr',
       gridTemplateRows: '1fr',
       flexGrow: 1,
-      [theme.breakpoints.down('sm')]: {
-        display: 'flex',
-        flexDirection: 'column',
-      },
+      marginTop: 0,
+      backgroundColor: theme.colors.background.primary,
     }),
     pageContainerWithControls: css({
       gridTemplateAreas: `
@@ -129,22 +113,16 @@ function getStyles(theme: GrafanaTheme2, headerHeight: number) {
     controlsWrapper: css({
       display: 'flex',
       flexDirection: 'column',
-      flexGrow: 0,
       gridArea: 'controls',
-      padding: theme.spacing(2),
-      ':empty': {
-        display: 'none',
-      },
-      // Make controls sticky on larger screens (> mobile)
-      [theme.breakpoints.up('md')]: {
-        position: 'sticky',
-        zIndex: theme.zIndex.activePanel,
-        background: theme.colors.background.canvas,
-        top: config.featureToggles.singleTopNav ? headerHeight + TOP_BAR_LEVEL_HEIGHT : headerHeight,
-      },
+      padding: 0,
+      margin: 0,
+      position: 'sticky',
+      top: TOP_BAR_LEVEL_HEIGHT,
+      zIndex: theme.zIndex.navbarFixed - 1,
+      borderBottom: `1px solid ${theme.colors.border.weak}`,
+      backgroundColor: theme.colors.background.primary,
     }),
     canvasContent: css({
-      label: 'canvas-content',
       display: 'flex',
       flexDirection: 'column',
       padding: theme.spacing(0.5, 2),
@@ -154,7 +132,6 @@ function getStyles(theme: GrafanaTheme2, headerHeight: number) {
       minWidth: 0,
     }),
     body: css({
-      label: 'body',
       flexGrow: 1,
       display: 'flex',
       gap: '8px',
