@@ -113,9 +113,8 @@ describe('panelMenuBehavior', () => {
     expect(menu.state.items?.[3].text).toBe('More...');
     expect(menu.state.items?.[3].subMenu).toBeDefined();
 
-    expect(menu.state.items?.[3].subMenu?.length).toBe(2);
-    expect(menu.state.items?.[3].subMenu?.[0].text).toBe('New alert rule');
-    expect(menu.state.items?.[3].subMenu?.[1].text).toBe('Get help');
+    expect(menu.state.items?.[3].subMenu?.length).toBe(1);
+    expect(menu.state.items?.[3].subMenu?.[0].text).toBe('Get help');
   });
 
   describe('when extending panel menu from plugins', () => {
