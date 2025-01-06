@@ -37,7 +37,6 @@ describe('Selector', () => {
 
     await act(async () => {
       await scopesSelectorScene?.fetchBaseNodes();
-      await new Promise(resolve => setTimeout(resolve, 0));
     });
   });
 
