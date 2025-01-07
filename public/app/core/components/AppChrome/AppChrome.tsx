@@ -1,9 +1,9 @@
 import { css, cx } from '@emotion/css';
 import classNames from 'classnames';
-import { PropsWithChildren, useEffect } from 'react';
+import {PropsWithChildren, useEffect} from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import { config, locationSearchToObject, locationService } from '@grafana/runtime';
+import {config, locationSearchToObject, locationService} from '@grafana/runtime';
 import { useStyles2, LinkButton, useTheme2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryChange } from 'app/core/hooks/useMediaQueryChange';
@@ -11,6 +11,10 @@ import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards, useScopesDashboardsState } from 'app/features/scopes';
 import { KioskMode } from 'app/types';
+
+import {useIntercom} from "../../../intergral/intercom";
+import {useOpspilotMetadata} from "../../../intergral/useOpspilotMetadata";
+import {contextSrv} from "../../services/context_srv";
 
 import { AppChromeMenu } from './AppChromeMenu';
 import { DOCKED_LOCAL_STORAGE_KEY, DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY } from './AppChromeService';
@@ -21,14 +25,37 @@ import { SingleTopBar } from './TopBar/SingleTopBar';
 import { TopSearchBar } from './TopBar/TopSearchBar';
 import { TOP_BAR_LEVEL_HEIGHT } from './types';
 
-export interface Props extends PropsWithChildren<{}> {}
 
-export function AppChrome({ children }: Props) {
+export interface Props extends PropsWithChildren<{hideSearchBar?: boolean}> {}
+
+export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
-  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV;
+  const searchBarHidden = state.searchBarHidden || state.kioskMode === KioskMode.TV || state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true);
   const theme = useTheme2();
   const styles = useStyles2(getStyles, searchBarHidden);
+
+  const hideIntercomStyle = css`
+  #intercom-container {
+    display: none !important;
+  }
+`;
+
+  // Fetch user info
+  const user = {
+    name: contextSrv.user?.name || '',
+    email: contextSrv.user?.email || '',
+  };
+
+  // Use the Intercom hook
+  useIntercom(user.name, user.email);
+
+  useEffect(() => {
+    document.body.classList.add(hideIntercomStyle);
+    return () => {
+      document.body.classList.remove(hideIntercomStyle);
+    };
+  }, [hideIntercomStyle]);
 
   const dockedMenuBreakpoint = theme.breakpoints.values.xl;
   const dockedMenuLocalStorageState = store.getBool(DOCKED_LOCAL_STORAGE_KEY, true);
@@ -47,6 +74,8 @@ export function AppChrome({ children }: Props) {
       }
     },
   });
+
+  useOpspilotMetadata();
 
   const contentClass = cx({
     [styles.content]: true,

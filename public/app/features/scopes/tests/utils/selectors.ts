@@ -35,7 +35,11 @@ export const querySelectorApply = () => screen.queryByTestId(selectors.selector.
 export const getSelectorApply = () => screen.getByTestId(selectors.selector.apply);
 export const getSelectorCancel = () => screen.getByTestId(selectors.selector.cancel);
 
-export const getDashboardsExpand = () => screen.getByTestId(selectors.dashboards.expand);
+// In selectors.ts, modify getDashboardsExpand
+export const getDashboardsExpand = () =>
+  screen.getByRole('button', {
+    name: /expand dashboards|collapse dashboards/i
+  });
 export const queryDashboardsContainer = () => screen.queryByTestId(selectors.dashboards.container);
 export const queryDashboardsSearch = () => screen.queryByTestId(selectors.dashboards.search);
 export const getDashboardsSearch = () => screen.getByTestId<HTMLInputElement>(selectors.dashboards.search);

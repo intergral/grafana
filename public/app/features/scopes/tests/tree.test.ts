@@ -53,6 +53,7 @@ describe('Tree', () => {
   beforeAll(() => {
     config.featureToggles.scopeFilters = true;
     config.featureToggles.groupByVariable = true;
+    config.featureToggles.singleTopNav = true;
   });
 
   beforeEach(() => {

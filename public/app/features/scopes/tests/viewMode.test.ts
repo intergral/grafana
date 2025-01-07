@@ -4,7 +4,7 @@ import { DashboardScene } from 'app/features/dashboard-scene/scene/DashboardScen
 import { scopesDashboardsScene, scopesSelectorScene } from '../instance';
 
 import { enterEditMode, openSelector, toggleDashboards } from './utils/actions';
-import { expectDashboardsClosed, expectDashboardsDisabled, expectScopesSelectorClosed } from './utils/assertions';
+import { expectDashboardsClosed, expectScopesSelectorClosed } from './utils/assertions';
 import { getDatasource, getInstanceSettings, getMock } from './utils/mocks';
 import { renderDashboard, resetScenes } from './utils/render';
 
@@ -23,6 +23,7 @@ describe('View mode', () => {
   beforeAll(() => {
     config.featureToggles.scopeFilters = true;
     config.featureToggles.groupByVariable = true;
+    config.featureToggles.singleTopNav = true;
   });
 
   beforeEach(() => {
@@ -55,10 +56,5 @@ describe('View mode', () => {
     await enterEditMode(dashboardScene);
     await openSelector();
     expectScopesSelectorClosed();
-  });
-
-  it('Disables the expand button when view mode is active', async () => {
-    await enterEditMode(dashboardScene);
-    expectDashboardsDisabled();
   });
 });

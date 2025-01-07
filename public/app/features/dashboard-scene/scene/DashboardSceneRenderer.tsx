@@ -110,8 +110,7 @@ function getStyles(theme: GrafanaTheme2, headerHeight: number) {
   return {
     pageContainer: css({
       display: 'grid',
-      gridTemplateAreas: `
-  "panels"`,
+      gridTemplateAreas: `"panels"`,
       gridTemplateColumns: `1fr`,
       gridTemplateRows: '1fr',
       flexGrow: 1,
@@ -125,23 +124,21 @@ function getStyles(theme: GrafanaTheme2, headerHeight: number) {
         "controls"
         "panels"`,
       gridTemplateRows: 'auto 1fr',
+      paddingTop: 0,
     }),
     controlsWrapper: css({
       display: 'flex',
       flexDirection: 'column',
       flexGrow: 0,
       gridArea: 'controls',
-      padding: theme.spacing(2),
-      ':empty': {
-        display: 'none',
-      },
-      // Make controls sticky on larger screens (> mobile)
-      [theme.breakpoints.up('md')]: {
-        position: 'sticky',
-        zIndex: theme.zIndex.activePanel,
-        background: theme.colors.background.canvas,
-        top: config.featureToggles.singleTopNav ? headerHeight + TOP_BAR_LEVEL_HEIGHT : headerHeight,
-      },
+      background: theme.colors.background.canvas,
+      marginBottom: '8px',
+      marginTop: 0,
+      position: 'sticky',
+      top: TOP_BAR_LEVEL_HEIGHT,
+      zIndex: theme.zIndex.navbarFixed - 1,
+      borderBottom: `1px solid ${theme.colors.border.weak}`,
+      padding: theme.spacing(1, 2), // Matches breadcrumbs padding
     }),
     canvasContent: css({
       label: 'canvas-content',
@@ -152,6 +149,8 @@ function getStyles(theme: GrafanaTheme2, headerHeight: number) {
       gridArea: 'panels',
       flexGrow: 1,
       minWidth: 0,
+      position: 'relative',
+      zIndex: 0,
     }),
     body: css({
       label: 'body',
