@@ -97,8 +97,7 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
     async (
       profilesDataSourceSettings: DataSourceInstanceSettings<DataSourceJsonData>,
       traceToProfilesOptions: TraceToProfilesOptions,
-      span: TraceSpan,
-      isOldFusionReactorSpan: boolean
+      span: TraceSpan
     ) => {
       let labelSelector = '{}';
       if (traceToProfilesOptions.customQuery && traceToProfilesOptions.query) {
@@ -146,9 +145,16 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
       if (flameGraph && flameGraph.length > 0) {
         setTraceFlameGraphs({ ...traceFlameGraphs, [profileTagValue]: flameGraph });
       }
-    },
-    [getTimeRangeForProfile, profileTagValue, setTraceFlameGraphs, timeZone, traceDuration, traceFlameGraphs, traceName]
-  );
+    }, [
+      getTimeRangeForProfile,
+      profileTagValue,
+      setTraceFlameGraphs, 
+      timeZone, 
+      traceDuration, 
+      traceFlameGraphs,
+      traceName, 
+      isOldFusionReactorSpan
+  ]);
 
   useEffect(() => {
     if (!Object.keys(traceFlameGraphs).includes(profileTagValue)) {
@@ -157,7 +163,7 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
         profilesDataSourceSettings = getDatasourceSrv().getInstanceSettings(traceToProfilesOptions.datasourceUid);
       }
       if (traceToProfilesOptions && profilesDataSourceSettings) {
-        queryFlameGraph(profilesDataSourceSettings, traceToProfilesOptions, span, isOldFusionReactorSpan);
+        queryFlameGraph(profilesDataSourceSettings, traceToProfilesOptions, span);
       }
     }
   }, [
