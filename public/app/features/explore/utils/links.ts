@@ -24,6 +24,7 @@ import { getTemplateSrv, reportInteraction, VariableInterpolation } from '@grafa
 import { DataQuery } from '@grafana/schema';
 import { contextSrv } from 'app/core/services/context_srv';
 import { getTransformationVars } from 'app/features/correlations/transformations';
+import { RelatedProfilesTitle } from 'app/plugins/datasource/tempo/resultTransformer';
 import { ExploreItemState } from 'app/types/explore';
 
 import { getLinkSrv } from '../../panel/panellinks/link_srv';
@@ -109,6 +110,8 @@ export const getFieldLinksForExplore = (options: {
   dataFrame?: DataFrame;
   // if not provided, field.config.links are used
   linksToProcess?: DataLink[];
+  // spans from older FR agents require different processing for profiles links
+  isOldFusionReactorSpan?: boolean;
 }): ExploreFieldLinkModel[] => {
   const { field, vars, splitOpenFn, range, rowIndex, dataFrame } = options;
   const scopedVars: ScopedVars = { ...(vars || {}) };
@@ -159,6 +162,10 @@ export const getFieldLinksForExplore = (options: {
     });
 
     const fieldLinks = links.map((link) => {
+      // Remove span selector as profiles from older FR agents don't have span info.
+      if (options.isOldFusionReactorSpan && link.internal && link.title === RelatedProfilesTitle) {
+        link.internal.query.spanSelector = undefined;
+      }
       let internalLinkSpecificVars: ScopedVars = {};
       if (link.meta?.transformations) {
         link.meta?.transformations.forEach((transformation) => {

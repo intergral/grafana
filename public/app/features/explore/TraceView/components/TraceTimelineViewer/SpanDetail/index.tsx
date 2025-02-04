@@ -32,7 +32,11 @@ import { TimeZone } from '@grafana/schema';
 import { DataLinkButton, Divider, Icon, TextArea, useStyles2 } from '@grafana/ui';
 import { RelatedProfilesTitle } from '@grafana-plugins/tempo/resultTransformer';
 
-import { pyroscopeProfileIdTagKey } from '../../../createSpanLink';
+import {
+  pyroscopeProfileIdTagKey, 
+  fusionReactorProfileIdTagKey, 
+  fusionReactorInstrumentationLibraryName
+} from '../../../createSpanLink';
 import { autoColor } from '../../Theme';
 import LabeledList from '../../common/LabeledList';
 import { KIND, LIBRARY_NAME, LIBRARY_VERSION, STATUS, STATUS_MESSAGE, TRACE_STATE } from '../../constants/span';
@@ -434,18 +438,41 @@ export default function SpanDetail(props: SpanDetailProps) {
             createFocusSpanLink={createFocusSpanLink}
           />
         )}
-        {span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey) && (
-          <SpanFlameGraph
-            span={span}
-            timeZone={timeZone}
-            traceFlameGraphs={traceFlameGraphs}
-            setTraceFlameGraphs={setTraceFlameGraphs}
-            traceToProfilesOptions={traceToProfilesOptions}
-            setRedrawListView={setRedrawListView}
-            traceDuration={traceDuration}
-            traceName={traceName}
-          />
-        )}
+        {(() => {
+          if (span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey)) {
+            return (
+              <SpanFlameGraph
+                span={span}
+                timeZone={timeZone}
+                traceFlameGraphs={traceFlameGraphs}
+                setTraceFlameGraphs={setTraceFlameGraphs}
+                traceToProfilesOptions={traceToProfilesOptions}
+                setRedrawListView={setRedrawListView}
+                traceDuration={traceDuration}
+                traceName={traceName}
+                isOldFusionReactorSpan={false}
+              />
+            );
+          } else if (
+            span.instrumentationLibraryName === fusionReactorInstrumentationLibraryName &&
+            span.tags.some((tag) => tag.key === fusionReactorProfileIdTagKey)
+          ) {
+            return (
+              <SpanFlameGraph
+                span={span}
+                timeZone={timeZone}
+                traceFlameGraphs={traceFlameGraphs}
+                setTraceFlameGraphs={setTraceFlameGraphs}
+                traceToProfilesOptions={traceToProfilesOptions}
+                setRedrawListView={setRedrawListView}
+                traceDuration={traceDuration}
+                traceName={traceName}
+                isOldFusionReactorSpan={true}
+              />
+            );
+          }
+          return null;
+        })()}
         <small className={styles.debugInfo}>
           {/* TODO: fix keyboard a11y */}
           {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}

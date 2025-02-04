@@ -88,6 +88,13 @@ export function createSpanLinkFactory({
         const hasConfiguredPyroscopeDS = profilesDataSourceSettings?.type === 'grafana-pyroscope-datasource';
         const hasPyroscopeProfile = span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey);
         const shouldCreatePyroscopeLink = hasConfiguredPyroscopeDS && hasPyroscopeProfile;
+        // If it's a span from an older FusionReactor agent, with an FR profile,
+        // we want to create a link to Pyroscope without the span selector as the profile doesn't have span info.
+        const shouldCreatePyroscopeLinkForFR = 
+          !shouldCreatePyroscopeLink && hasConfiguredPyroscopeDS &&
+          span.instrumentationLibraryName === fusionReactorInstrumentationLibraryName &&
+          span.tags.some((tag) => tag.key === fusionReactorProfileIdTagKey);
+        const shouldCreateProfilesLink = shouldCreatePyroscopeLink || shouldCreatePyroscopeLinkForFR;
 
         let links: ExploreFieldLinkModel[] = [];
         fields.forEach((field) => {
@@ -95,9 +102,10 @@ export function createSpanLinkFactory({
             field,
             rowIndex: span.dataFrameRowIndex!,
             splitOpenFn,
-            range: getTimeRangeFromSpan(span, undefined, undefined, shouldCreatePyroscopeLink),
+            range: getTimeRangeFromSpan(span, undefined, undefined, shouldCreateProfilesLink),
             dataFrame,
             vars: scopedVars,
+            isOldFusionReactorSpan: shouldCreatePyroscopeLinkForFR,
           });
           links = links.concat(fieldLinksForExplore);
         });
@@ -109,7 +117,7 @@ export function createSpanLinkFactory({
             onClick: link.onClick,
             content: <Icon name="link" title={link.title || 'Link'} />,
             field: link.origin,
-            type: shouldCreatePyroscopeLink ? SpanLinkType.Profiles : SpanLinkType.Unknown,
+            type: shouldCreateProfilesLink ? SpanLinkType.Profiles : SpanLinkType.Unknown,
             target: link.target,
           };
         });
@@ -138,6 +146,8 @@ const formatDefaultKeys = (keys: string[]) => {
 const defaultKeys = formatDefaultKeys(['cluster', 'hostname', 'namespace', 'pod', 'service.name', 'service.namespace']);
 export const defaultProfilingKeys = formatDefaultKeys(['service.name', 'service.namespace']);
 export const pyroscopeProfileIdTagKey = 'pyroscope.profile.id';
+export const fusionReactorProfileIdTagKey = 'pid';
+export const fusionReactorInstrumentationLibraryName = 'FusionReactor';
 export const feO11yTagKey = 'gf.feo11y.app.id';
 
 function legacyCreateSpanLinkFactory(
