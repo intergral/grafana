@@ -37,6 +37,13 @@ export const MegaMenu = memo(
     const [patchPreferences] = usePatchUserPreferencesMutation();
     const pinnedItems = usePinnedItems();
 
+    useEffect(() => {
+      if (window.matchMedia(`(min-width: 1200px)`).matches) {
+        chrome.setMegaMenuDocked(true);
+        chrome.setMegaMenuOpen(true);
+      }
+    }, [chrome]);
+
     // Remove profile + help from tree
     const navItems = navTree
       .filter((item) => item.id !== 'profile' && item.id !== 'help')

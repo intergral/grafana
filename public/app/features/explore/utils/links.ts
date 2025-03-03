@@ -111,6 +111,8 @@ export const getFieldLinksForExplore = (options: {
   dataFrame?: DataFrame;
   // if not provided, field.config.links are used
   linksToProcess?: DataLink[];
+  // spans from older FR agents require different processing for profiles links
+  isOldFusionReactorSpan?: boolean;
 }): ExploreFieldLinkModel[] => {
   const { field, vars, splitOpenFn, range, rowIndex, dataFrame } = options;
   const scopedVars: ScopedVars = { ...(vars || {}) };
@@ -173,6 +175,10 @@ export const getFieldLinksForExplore = (options: {
     });
 
     const fieldLinks = links.map((link) => {
+      // Remove span selector as profiles from older FR agents don't have span info.
+      if (options.isOldFusionReactorSpan && link.internal && link.title === RelatedProfilesTitle) {
+        link.internal.query.spanSelector = undefined;
+      }
       let internalLinkSpecificVars: ScopedVars = {};
       if (link.meta?.transformations) {
         link.meta?.transformations.forEach((transformation) => {

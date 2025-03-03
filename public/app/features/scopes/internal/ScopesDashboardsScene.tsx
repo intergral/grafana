@@ -16,11 +16,8 @@ import { filterFolders, groupDashboards } from './utils';
 
 export interface ScopesDashboardsSceneState extends SceneObjectState {
   selector: SceneObjectRef<ScopesSelectorScene> | null;
-  // by keeping a track of the raw response, it's much easier to check if we got any dashboards for the currently selected scopes
   dashboards: ScopeDashboardBinding[];
-  // this is a grouping in folders of the `dashboards` property. it is used for filtering the dashboards and folders when the search query changes
   folders: SuggestedDashboardsFoldersMap;
-  // a filtered version of the `folders` property. this prevents a lot of unnecessary parsings in React renders
   filteredFolders: SuggestedDashboardsFoldersMap;
   forScopeNames: string[];
   isLoading: boolean;
@@ -192,6 +189,7 @@ export function ScopesDashboardsSceneRenderer({ model }: SceneComponentProps<Sco
           className={cx(styles.container, styles.noResultsContainer)}
           data-testid="scopes-dashboards-notFoundNoScopes"
         >
+          {toggleButton}
           <Trans i18nKey="scopes.dashboards.noResultsNoScopes">No scopes selected</Trans>
         </div>
       );
@@ -201,6 +199,7 @@ export function ScopesDashboardsSceneRenderer({ model }: SceneComponentProps<Sco
           className={cx(styles.container, styles.noResultsContainer)}
           data-testid="scopes-dashboards-notFoundForScope"
         >
+          {toggleButton}
           <Trans i18nKey="scopes.dashboards.noResultsForScopes">No dashboards found for the selected scopes</Trans>
         </div>
       );
@@ -209,11 +208,14 @@ export function ScopesDashboardsSceneRenderer({ model }: SceneComponentProps<Sco
 
   return (
     <div className={styles.container} data-testid="scopes-dashboards-container">
-      <ScopesDashboardsTreeSearch
-        disabled={isLoading}
-        query={searchQuery}
-        onChange={(value) => model.changeSearchQuery(value)}
-      />
+      <div className={styles.header}>
+        {toggleButton}
+        <ScopesDashboardsTreeSearch
+          disabled={isLoading}
+          query={searchQuery}
+          onChange={(value) => model.changeSearchQuery(value)}
+        />
+      </div>
 
       {isLoading ? (
         <LoadingPlaceholder
@@ -270,6 +272,11 @@ const getStyles = (theme: GrafanaTheme2) => {
     }),
     loadingIndicator: css({
       alignSelf: 'center',
+    }),
+    header: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
     }),
   };
 };

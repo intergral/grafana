@@ -80,6 +80,7 @@ export class GrafanaBootConfig implements GrafanaConfig {
   angularSupportEnabled = false;
   authProxyEnabled = false;
   exploreEnabled = false;
+  kioskMode = 'off';
   queryHistoryEnabled = false;
   helpEnabled = false;
   profileEnabled = false;

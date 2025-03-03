@@ -6,7 +6,6 @@ import {
   PanelPlugin,
   PluginExtensionPanelContext,
   PluginExtensionPoints,
-  urlUtil,
 } from '@grafana/data';
 import { config, getPluginLinkExtensions, locationService } from '@grafana/runtime';
 import { LocalValueVariable, sceneGraph, SceneGridRow, VizPanel, VizPanelMenu } from '@grafana/scenes';

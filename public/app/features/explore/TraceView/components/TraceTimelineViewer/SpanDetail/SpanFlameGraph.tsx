@@ -40,6 +40,7 @@ export type SpanFlameGraphProps = {
   setRedrawListView: (redraw: {}) => void;
   traceDuration: number;
   traceName: string;
+  isOldFusionReactorSpan: boolean;
 };
 
 export default function SpanFlameGraph(props: SpanFlameGraphProps) {
@@ -52,11 +53,15 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
     setRedrawListView,
     traceDuration,
     traceName,
+    isOldFusionReactorSpan,
   } = props;
   const [sizeRef, { height: containerHeight }] = useMeasure<HTMLDivElement>();
   const styles = useStyles2(getStyles);
 
-  const profileTag = span.tags.filter((tag) => tag.key === pyroscopeProfileIdTagKey);
+  // Spans from older FR agents don't have the pyroscope tag.
+  // fusionReactorProfileIdTagKey is an array value - filtering for txnId returns the required value as a string.
+  const filterKey = isOldFusionReactorSpan ? 'txnId' : pyroscopeProfileIdTagKey;
+  const profileTag = span.tags.filter((tag) => tag.key === filterKey);
   const profileTagValue = profileTag.length > 0 ? profileTag[0].value : undefined;
 
   const getTimeRangeForProfile = useCallback(() => {
@@ -110,6 +115,7 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
         labelSelector = `{${getFormattedTags(span, tags)}}`;
       }
 
+      // Need to remove spanSelector as profiles from older FR agents don't have span info.
       const request = {
         requestId: 'span-flamegraph-requestId',
         interval: '2s',
@@ -125,7 +131,7 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
             groupBy: [],
             profileTypeId: traceToProfilesOptions.profileTypeId ?? '',
             queryType: 'profile' as const,
-            spanSelector: [profileTagValue],
+            spanSelector: !isOldFusionReactorSpan ? [profileTagValue]: undefined,
             refId: 'span-flamegraph-refId',
             datasource: {
               type: profilesDataSourceSettings.type,
@@ -139,9 +145,16 @@ export default function SpanFlameGraph(props: SpanFlameGraphProps) {
       if (flameGraph && flameGraph.length > 0) {
         setTraceFlameGraphs({ ...traceFlameGraphs, [profileTagValue]: flameGraph });
       }
-    },
-    [getTimeRangeForProfile, profileTagValue, setTraceFlameGraphs, timeZone, traceDuration, traceFlameGraphs, traceName]
-  );
+    }, [
+      getTimeRangeForProfile,
+      profileTagValue,
+      setTraceFlameGraphs, 
+      timeZone, 
+      traceDuration, 
+      traceFlameGraphs,
+      traceName, 
+      isOldFusionReactorSpan
+  ]);
 
   useEffect(() => {
     if (!Object.keys(traceFlameGraphs).includes(profileTagValue)) {
