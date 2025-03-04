@@ -28,7 +28,6 @@ describe('View mode', () => {
   beforeAll(() => {
     config.featureToggles.scopeFilters = true;
     config.featureToggles.groupByVariable = true;
-    config.featureToggles.singleTopNav = true;
   });
 
   beforeEach(() => {
