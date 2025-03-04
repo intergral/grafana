@@ -35,6 +35,7 @@ export function AppChrome({ children, hideSearchBar }: Props) {
   const theme = useTheme2();
   const styles = useStyles2(getStyles, Boolean(state.actions), searchBarHidden);
 
+  // eslint-disable-next-line @emotion/syntax-preference
   const hideIntercomStyle = css`
   #intercom-container {
     display: none !important;
