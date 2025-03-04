@@ -73,7 +73,7 @@ COPY pkg/storage/unified/resource/go.* pkg/storage/unified/resource/
 COPY pkg/storage/unified/apistore/go.* pkg/storage/unified/apistore/
 COPY pkg/semconv/go.* pkg/semconv/
 COPY pkg/aggregator/go.* pkg/aggregator/
-COPY apps/playlist/go.* apps/playlist/
+COPY apps/playlist apps/playlist
 COPY apps/investigation/go.* apps/investigation/
 COPY apps apps
 COPY kindsv2 kindsv2

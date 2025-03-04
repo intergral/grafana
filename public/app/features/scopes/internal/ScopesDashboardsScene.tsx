@@ -4,7 +4,7 @@ import { finalize, from, Subscription } from 'rxjs';
 
 import { GrafanaTheme2, ScopeDashboardBinding } from '@grafana/data';
 import { SceneComponentProps, SceneObjectBase, SceneObjectRef, SceneObjectState } from '@grafana/scenes';
-import { Button, LoadingPlaceholder, ScrollContainer, useStyles2 } from '@grafana/ui';
+import {Button, IconButton, LoadingPlaceholder, ScrollContainer, useStyles2} from '@grafana/ui';
 import { t, Trans } from 'app/core/internationalization';
 
 import { ScopesDashboardsTree } from './ScopesDashboardsTree';
@@ -178,8 +178,20 @@ export function ScopesDashboardsSceneRenderer({ model }: SceneComponentProps<Sco
 
   const styles = useStyles2(getStyles);
 
-  if (!isEnabled || !isPanelOpened || isReadOnly) {
+  const toggleButton = (
+    <IconButton
+      name={isPanelOpened ? 'angle-down' : 'angle-right'}
+      tooltip={isPanelOpened ? 'Collapse dashboards' : 'Expand dashboards'}
+      data-testid="scopes-dashboards-expand"
+      onClick={() => model.togglePanel()}/>
+  );
+
+  if (!isEnabled || isReadOnly) {
     return null;
+  }
+
+  if (!isPanelOpened) {
+    return toggleButton;
   }
 
   if (!isLoading) {

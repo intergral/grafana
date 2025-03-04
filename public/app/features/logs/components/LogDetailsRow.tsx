@@ -24,6 +24,7 @@ import {
   Tooltip,
   withTheme2,
 } from '@grafana/ui';
+import { OpspilotDataLinkButton } from 'app/intergral/OpspilotDataLinkButton';
 
 import { logRowToSingleRowDataFrame } from '../logsModel';
 import { getLabelTypeFromRow } from '../utils';

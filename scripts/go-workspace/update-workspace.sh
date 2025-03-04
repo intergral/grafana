@@ -1,24 +1,23 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-set -o errexit
-set -o nounset
-set -o pipefail
+# Exit immediately if a command exits with a non-zero status
+# Treat unset variables as an error
+# Make pipelines return non-zero status if any command fails
 
-REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
+REPO_ROOT=$(dirname "$0")/../..
 
-pushd "${REPO_ROOT}"
+cd "${REPO_ROOT}"
 echo "running go work sync"
 go work sync
-popd
+cd - > /dev/null
 
 for mod in $(go run scripts/go-workspace/main.go list-submodules --path "${REPO_ROOT}/go.work"); do
-    pushd "${mod}"
+    cd "${mod}"
     echo "Running go mod tidy in ${mod}"
     go mod tidy || true
-    popd
+    cd - > /dev/null
 done
 
-pushd "${REPO_ROOT}"
+cd "${REPO_ROOT}"
 echo "running go mod download"
 go mod download
-popd

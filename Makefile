@@ -181,7 +181,7 @@ gen-jsonnet:
 .PHONY: update-workspace
 update-workspace: gen-go
 	@echo "updating workspace"
-	bash scripts/go-workspace/update-workspace.sh
+	sh scripts/go-workspace/update-workspace.sh
 
 .PHONY: build-go
 build-go: gen-go update-workspace ## Build all Go binaries.

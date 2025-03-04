@@ -18,6 +18,7 @@
  * @public
  */
 export interface FeatureToggles {
+  singleTopNav: boolean;
   disableEnvelopeEncryption?: boolean;
   ['live-service-web-worker']?: boolean;
   queryOverLive?: boolean;

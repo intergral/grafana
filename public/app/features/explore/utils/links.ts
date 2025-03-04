@@ -25,6 +25,7 @@ import { getTemplateSrv, reportInteraction, VariableInterpolation } from '@grafa
 import { DataQuery } from '@grafana/schema';
 import { contextSrv } from 'app/core/services/context_srv';
 import { getTransformationVars } from 'app/features/correlations/transformations';
+import { RelatedProfilesTitle } from 'app/plugins/datasource/tempo/resultTransformer';
 import { parseDataplaneLogsFrame } from 'app/features/logs/logsFrame';
 import { ExploreItemState } from 'app/types/explore';
 
