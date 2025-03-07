@@ -84,7 +84,6 @@ export function AppChrome({ children, hideSearchBar }: Props) {
   const contentClass = cx({
     [styles.content]: true,
     [styles.contentChromeless]: state.chromeless,
-    [styles.contentNoSearchBar]: searchBarHidden,
   });
 
   const handleMegaMenu = () => {
@@ -180,9 +179,6 @@ const getStyles = (theme: GrafanaTheme2, hasActions: boolean, searchBarHidden: b
     }),
     contentChromeless: css({
       paddingTop: 0,
-    }),
-    contentNoSearchBar: css({
-      paddingTop: TOP_BAR_LEVEL_HEIGHT,
     }),
     dockedMegaMenu: css({
       background: theme.colors.background.primary,
