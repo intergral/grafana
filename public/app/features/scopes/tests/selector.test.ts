@@ -25,7 +25,6 @@ describe('Selector', () => {
   let dashboardScene: DashboardScene;
 
   beforeAll(() => {
-    config.featureToggles.singleTopNav = true;
     config.featureToggles.scopeFilters = true;
     config.featureToggles.groupByVariable = true;
   });
