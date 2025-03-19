@@ -61,6 +61,18 @@ func ProvideRegistryServiceSink(
 
 func (s *Service) Run(ctx context.Context) error {
 	s.log.Debug("initializing app registry")
+
+	// Check if REST config is available before attempting to initialize
+	// This handles the case when the apiserver is not properly initialized
+	// and prevents unclean exits during tests
+	restCfg := s.runner.GetRestConfig(ctx)
+	if restCfg == nil {
+		s.log.Warn("skipping app registry initialization - REST config is nil")
+		// Just wait until context is done instead of returning an error
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
 	if err := s.runner.Init(ctx); err != nil {
 		return err
 	}
