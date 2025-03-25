@@ -1,7 +1,10 @@
+import {act} from "@testing-library/react";
+
 import { config } from '@grafana/runtime';
 import { sceneGraph } from '@grafana/scenes';
 import { DashboardScene } from 'app/features/dashboard-scene/scene/DashboardScene';
 
+import {scopesSelectorScene} from "../instance";
 import { getClosestScopesFacade } from '../utils';
 
 import { applyScopes, cancelScopes, openSelector, selectResultCloud, updateScopes } from './utils/actions';
@@ -26,8 +29,14 @@ describe('Selector', () => {
     config.featureToggles.groupByVariable = true;
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     dashboardScene = renderDashboard();
+    // Enable the scope selector
+    scopesSelectorScene?.enable();
+
+    await act(async () => {
+      await scopesSelectorScene?.fetchBaseNodes();
+    });
   });
 
   afterEach(async () => {

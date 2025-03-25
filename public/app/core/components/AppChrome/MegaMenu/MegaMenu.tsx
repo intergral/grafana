@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import { DOMAttributes } from '@react-types/shared';
-import { memo, forwardRef, useCallback } from 'react';
+import {memo, forwardRef, useCallback, useEffect} from 'react';
 import { useLocation } from 'react-router-dom-v5-compat';
 
 import { GrafanaTheme2, NavModelItem } from '@grafana/data';
@@ -36,6 +36,13 @@ export const MegaMenu = memo(
     const state = chrome.useState();
     const [patchPreferences] = usePatchUserPreferencesMutation();
     const pinnedItems = usePinnedItems();
+
+    useEffect(() => {
+      if (window.matchMedia(`(min-width: 1200px)`).matches) {
+        chrome.setMegaMenuDocked(true);
+        chrome.setMegaMenuOpen(true);
+      }
+    }, [chrome]);
 
     // Remove profile + help from tree
     const navItems = navTree

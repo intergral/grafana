@@ -11,6 +11,11 @@ import { Trans } from 'app/core/internationalization';
 import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards, useScopesDashboardsState } from 'app/features/scopes';
+import { KioskMode } from 'app/types';
+
+import { useIntercom } from "../../../intergral/intercom";
+import { useOpspilotMetadata } from "../../../intergral/useOpspilotMetadata";
+import { contextSrv } from "../../services/context_srv";
 
 import { AppChromeMenu } from './AppChromeMenu';
 import { DOCKED_LOCAL_STORAGE_KEY, DOCKED_MENU_OPEN_LOCAL_STORAGE_KEY } from './AppChromeService';
@@ -21,13 +26,37 @@ import { SingleTopBar } from './TopBar/SingleTopBar';
 import { SingleTopBarActions } from './TopBar/SingleTopBarActions';
 import { TOP_BAR_LEVEL_HEIGHT } from './types';
 
-export interface Props extends PropsWithChildren<{}> {}
+export interface Props extends PropsWithChildren<{ hideSearchBar?: boolean }> {}
 
-export function AppChrome({ children }: Props) {
+export function AppChrome({ children, hideSearchBar }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
+  const searchBarHidden = state.kioskMode === KioskMode.Embed || (hideSearchBar ?? true);
   const theme = useTheme2();
-  const styles = useStyles2(getStyles, Boolean(state.actions));
+  const styles = useStyles2(getStyles, Boolean(state.actions), searchBarHidden);
+
+  // eslint-disable-next-line @emotion/syntax-preference
+  const hideIntercomStyle = css`
+  #intercom-container {
+    display: none !important;
+  }
+`;
+
+  // Fetch user info
+  const user = {
+    name: contextSrv.user?.name || '',
+    email: contextSrv.user?.email || '',
+  };
+
+  // Use the Intercom hook
+  useIntercom(user.name, user.email);
+
+  useEffect(() => {
+    document.body.classList.add(hideIntercomStyle);
+    return () => {
+      document.body.classList.remove(hideIntercomStyle);
+    };
+  }, [hideIntercomStyle]);
 
   const dockedMenuBreakpoint = theme.breakpoints.values.xl;
   const dockedMenuLocalStorageState = store.getBool(DOCKED_LOCAL_STORAGE_KEY, true);
@@ -47,6 +76,9 @@ export function AppChrome({ children }: Props) {
       }
     },
   });
+
+  useOpspilotMetadata();
+
   useMegaMenuFocusHelper(state.megaMenuOpen, state.megaMenuDocked);
 
   const contentClass = cx({
@@ -136,7 +168,7 @@ export function AppChrome({ children }: Props) {
   );
 }
 
-const getStyles = (theme: GrafanaTheme2, hasActions: boolean) => {
+const getStyles = (theme: GrafanaTheme2, hasActions: boolean, searchBarHidden: boolean) => {
   return {
     content: css({
       display: 'flex',

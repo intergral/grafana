@@ -123,6 +123,7 @@ export interface DashboardInitError {
 }
 
 export enum KioskMode {
+  Embed = 'embed',
   Full = 'full',
 }
 
