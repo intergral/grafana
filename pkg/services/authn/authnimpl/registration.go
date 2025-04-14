@@ -65,7 +65,7 @@ func ProvideRegistration(
 	}
 
 	if !cfg.DisableLogin {
-		grafana := clients.ProvideGrafana(cfg, userService)
+		grafana := clients.ProvideGrafana(cfg, userService, orgService)
 		proxyClients = append(proxyClients, grafana)
 		passwordClients = append(passwordClients, grafana)
 	}
