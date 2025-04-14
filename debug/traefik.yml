@@ -1,0 +1,24 @@
+http:
+  routers:
+    foo:
+      rule: Host(`grafana.localhost`)
+      service: foo
+      middlewares:
+        - auth
+
+  services:
+    foo:
+      loadBalancer:
+        servers:
+          - url: http://172.17.0.1:3000
+
+  middlewares:
+    auth:
+      forwardAuth:
+        address: "http://nginx-auth:3333/auth"
+        authResponseHeaders:
+          - "X-WEBAUTH-ORG"
+          - "X-WEBAUTH-USER"
+          - "X-WEBAUTH-NAME"
+          - "X-WEBAUTH-EMAIL"
+          - "X-WEBAUTH-ROLE"
