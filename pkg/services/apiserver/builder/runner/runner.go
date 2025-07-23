@@ -39,7 +39,11 @@ type APIGroupRunner struct {
 }
 
 func (r *APIGroupRunner) GetRestConfig(ctx context.Context) *rest.Config {
-	return r.config.RestConfigGetter(ctx)
+	config, err := r.config.RestConfigGetter(ctx)
+	if err != nil {
+		return nil
+	}
+	return config
 }
 
 func (r *APIGroupRunner) Run(ctx context.Context) error {
