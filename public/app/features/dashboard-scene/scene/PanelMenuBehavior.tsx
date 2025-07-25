@@ -8,19 +8,13 @@ import {
   PluginExtensionPanelContext,
   PluginExtensionPoints,
   PluginExtensionTypes,
-  urlUtil,
 } from '@grafana/data';
 import { config, locationService } from '@grafana/runtime';
 import { LocalValueVariable, sceneGraph, SceneGridRow, VizPanel, VizPanelMenu } from '@grafana/scenes';
 import { DataQuery, OptionsWithLegend } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
-import { createErrorNotification } from 'app/core/copy/appNotification';
 import { t } from 'app/core/internationalization';
-import { notifyApp } from 'app/core/reducers/appNotification';
 import { contextSrv } from 'app/core/services/context_srv';
-import { getMessageFromError } from 'app/core/utils/errors';
-import { getCreateAlertInMenuAvailability } from 'app/features/alerting/unified/utils/access-control';
-import { scenesPanelToRuleFormValues } from 'app/features/alerting/unified/utils/rule-form';
 import { getTrackingSource, shareDashboardType } from 'app/features/dashboard/components/ShareModal/utils';
 import { InspectTab } from 'app/features/inspector/types';
 import { getScenePanelLinksSupplier } from 'app/features/panel/panellinks/linkSuppliers';
@@ -28,7 +22,6 @@ import { createPluginExtensionsGetter } from 'app/features/plugins/extensions/ge
 import { pluginExtensionRegistries } from 'app/features/plugins/extensions/registry/setup';
 import { GetPluginExtensions } from 'app/features/plugins/extensions/types';
 import { createExtensionSubMenu } from 'app/features/plugins/extensions/utils';
-import { dispatch } from 'app/store/store';
 import { AccessControlAction } from 'app/types';
 import { ShowConfirmModalEvent } from 'app/types/events';
 
@@ -258,16 +251,6 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
           });
         }
       }
-    }
-
-    const isCreateAlertMenuOptionAvailable = getCreateAlertInMenuAvailability();
-
-    if (isCreateAlertMenuOptionAvailable) {
-      moreSubMenu.push({
-        text: t('panel.header-menu.new-alert-rule', `New alert rule`),
-        iconClassName: 'bell',
-        onClick: (e) => onCreateAlert(panel),
-      });
     }
 
     if (hasLegendOptions(panel.state.options) && !isEditingPanel) {
@@ -552,21 +535,6 @@ export function onRemovePanel(dashboard: DashboardScene, panel: VizPanel) {
     })
   );
 }
-
-const onCreateAlert = async (panel: VizPanel) => {
-  try {
-    const formValues = await scenesPanelToRuleFormValues(panel);
-    const ruleFormUrl = urlUtil.renderUrl('/alerting/new', {
-      defaults: JSON.stringify(formValues),
-      returnTo: location.pathname + location.search,
-    });
-    locationService.push(ruleFormUrl);
-  } catch (err) {
-    const message = `Error getting rule values from the panel: ${getMessageFromError(err)}`;
-    dispatch(notifyApp(createErrorNotification(message)));
-    return;
-  }
-};
 
 export function toggleVizPanelLegend(vizPanel: VizPanel): void {
   const options = vizPanel.state.options;
