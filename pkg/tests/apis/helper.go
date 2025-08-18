@@ -561,7 +561,6 @@ func (c *K8sTestHelper) createTestUsers(orgName string) OrgUsers {
 }
 
 func (c *K8sTestHelper) CreateOrg(name string) int64 {
-
 	oldAssing := c.env.Cfg.AutoAssignOrg
 	defer func() {
 		c.env.Cfg.AutoAssignOrg = oldAssing
@@ -614,6 +613,7 @@ func (c *K8sTestHelper) CreateUser(name string, orgName string, basicRole org.Ro
 
 	require.NoError(c.t, err)
 	if u.OrgID != orgId {
+		c.t.Logf("User assigned to org %d instead of expected %d", u.OrgID, orgId)
 		orgId = u.OrgID
 	}
 	require.True(c.t, u.ID > 0)
@@ -628,7 +628,7 @@ func (c *K8sTestHelper) CreateUser(name string, orgName string, basicRole org.Ro
 	require.NoError(c.t, err)
 	require.Equal(c.t, orgId, s.OrgID)
 	if s.OrgRole != basicRole {
-		c.t.Logf("Warning: user role is %s instead of expected %s", s.OrgRole, basicRole)
+		c.t.Logf("User role is %s instead of expected %s", s.OrgRole, basicRole)
 	}
 
 	idToken, idClaims, err := c.env.IDService.SignIdentity(context.Background(), s)
