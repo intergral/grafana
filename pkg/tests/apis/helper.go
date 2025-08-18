@@ -561,9 +561,6 @@ func (c *K8sTestHelper) createTestUsers(orgName string) OrgUsers {
 }
 
 func (c *K8sTestHelper) CreateOrg(name string) int64 {
-	if name == Org1 {
-		return 1
-	}
 
 	oldAssing := c.env.Cfg.AutoAssignOrg
 	defer func() {
