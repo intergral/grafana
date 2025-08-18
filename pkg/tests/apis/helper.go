@@ -631,7 +631,7 @@ func (c *K8sTestHelper) CreateUser(name string, orgName string, basicRole org.Ro
 	require.NoError(c.t, err)
 	require.Equal(c.t, orgId, s.OrgID)
 	if s.OrgRole != basicRole {
-		basicRole = s.OrgRole
+		c.t.Logf("Warning: user role is %s instead of expected %s", s.OrgRole, basicRole)
 	}
 
 	idToken, idClaims, err := c.env.IDService.SignIdentity(context.Background(), s)
