@@ -31,7 +31,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestIntegrationIdentity(t *testing.T) {
-	t.Skip("skipping IAM test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}

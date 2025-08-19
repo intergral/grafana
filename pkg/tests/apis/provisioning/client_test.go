@@ -13,7 +13,6 @@ import (
 
 // FIXME: do this tests make sense in their current form?
 func TestIntegrationProvisioning_Client(t *testing.T) {
-	t.Skip("skipping provisioning client test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}

@@ -23,7 +23,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestIntegrationSimpleQuery(t *testing.T) {
-	t.Skip("skipping query test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}

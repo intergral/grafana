@@ -28,7 +28,6 @@ import (
 )
 
 func TestIntegrationProvisioning_CreatingAndGetting(t *testing.T) {
-	t.Skip("skipping provisioning test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -205,7 +204,6 @@ func TestIntegrationProvisioning_FailInvalidSchema(t *testing.T) {
 }
 
 func TestIntegrationProvisioning_CreatingGitHubRepository(t *testing.T) {
-	t.Skip("skipping provisioning test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -335,7 +333,6 @@ func TestIntegrationProvisioning_CreatingGitHubRepository(t *testing.T) {
 }
 
 func TestIntegrationProvisioning_RunLocalRepository(t *testing.T) {
-	t.Skip("skipping provisioning test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -503,7 +500,6 @@ spec:
 }
 
 func TestIntegrationProvisioning_ImportAllPanelsFromLocalRepository(t *testing.T) {
-	t.Skip("skipping provisioning test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -573,7 +569,6 @@ func TestIntegrationProvisioning_ImportAllPanelsFromLocalRepository(t *testing.T
 }
 
 func TestProvisioning_ExportUnifiedToRepository(t *testing.T) {
-	t.Skip("skipping provisioning export test due to org validation issues")
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
