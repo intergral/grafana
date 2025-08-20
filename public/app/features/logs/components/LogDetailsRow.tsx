@@ -379,7 +379,7 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
                   }
                   return (
                     <span key={`${link.title}-${i}`}>
-                     {link.title === "OpsPilot AI" ? <OpspilotDataLinkButton link={link} /> :
+                      {link.title === "OpsPilot AI" ? <OpspilotDataLinkButton link={link} /> :
                       <DataLinkButton
                         buttonProps={{
                           // Show tooltip message if max number of pinned lines has been reached
