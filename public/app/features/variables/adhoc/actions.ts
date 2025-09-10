@@ -2,6 +2,7 @@ import { cloneDeep } from 'lodash';
 
 import { AdHocVariableFilter, AdHocVariableModel, DataSourceRef } from '@grafana/data';
 import { getDatasourceSrv } from 'app/features/plugins/datasource_srv';
+import { getTemplateSrv } from 'app/features/templating/template_srv';
 import { StoreState, ThunkResult } from 'app/types';
 
 import { changeVariableEditorExtended } from '../editor/reducer';
@@ -107,7 +108,13 @@ export const changeVariableDatasource = (
       )
     );
 
-    const ds = await getDatasourceSrv().get(datasource);
+    // Resolve template variables in datasource reference
+    let resolvedDatasource = datasource;
+    if (datasource && typeof datasource === 'object' && datasource.uid && datasource.uid.startsWith('${')) {
+      const resolvedUid = getTemplateSrv().replace(datasource.uid);
+      resolvedDatasource = { ...datasource, uid: resolvedUid };
+    }
+    const ds = await getDatasourceSrv().get(resolvedDatasource);
 
     // TS TODO: ds is not typed to be optional - is this check unnecessary or is the type incorrect?
     const message = ds?.getTagKeys
