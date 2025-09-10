@@ -5,6 +5,7 @@ import { t } from '@grafana/i18n';
 import { Icon, SegmentAsync } from '@grafana/ui';
 
 import { getDatasourceSrv } from '../../../plugins/datasource_srv';
+import { getTemplateSrv } from '../../../templating/template_srv';
 
 interface Props {
   datasource: DataSourceRef;
@@ -66,7 +67,13 @@ const fetchFilterKeys = async (
   currentKey: string | null,
   allFilters: AdHocVariableFilter[]
 ): Promise<Array<SelectableValue<string>>> => {
-  const ds = await getDatasourceSrv().get(datasource);
+  // Resolve template variables in datasource reference
+  let resolvedDatasource = datasource;
+  if (datasource && typeof datasource === 'object' && datasource.uid && datasource.uid.startsWith('${')) {
+    const resolvedUid = getTemplateSrv().replace(datasource.uid);
+    resolvedDatasource = { ...datasource, uid: resolvedUid };
+  }
+  const ds = await getDatasourceSrv().get(resolvedDatasource);
 
   if (!ds || !ds.getTagKeys) {
     return [];

@@ -5,6 +5,7 @@ import { SegmentAsync, useStyles2 } from '@grafana/ui';
 import { getTimeSrv } from 'app/features/dashboard/services/TimeSrv';
 
 import { getDatasourceSrv } from '../../../plugins/datasource_srv';
+import { getTemplateSrv } from '../../../templating/template_srv';
 
 interface Props {
   datasource: DataSourceRef;
@@ -47,7 +48,13 @@ const fetchFilterValues = async (
   key: string,
   allFilters: AdHocVariableFilter[]
 ): Promise<Array<SelectableValue<string>>> => {
-  const ds = await getDatasourceSrv().get(datasource);
+  // Resolve template variables in datasource reference
+  let resolvedDatasource = datasource;
+  if (datasource && typeof datasource === 'object' && datasource.uid && datasource.uid.startsWith('${')) {
+    const resolvedUid = getTemplateSrv().replace(datasource.uid);
+    resolvedDatasource = { ...datasource, uid: resolvedUid };
+  }
+  const ds = await getDatasourceSrv().get(resolvedDatasource);
 
   if (!ds || !ds.getTagValues) {
     return [];
