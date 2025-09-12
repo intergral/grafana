@@ -304,14 +304,6 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
     const isMultiParsedValueWithNoContent =
       !singleVal && parsedValues != null && !parsedValues.every((val) => val === '');
 
-    // Check if this is an OpsPilot field without links and create synthetic link
-    const isOpsPilotField = parsedKeys?.[0] === "OpsPilot" && singleVal;
-    const syntheticOpsPilotLink = isOpsPilotField ? {
-      title: "OpsPilot AI",
-      href: parsedValues[0], // The log content
-      url: parsedValues[0]
-    } : null;
-
     const toggleFieldButton =
       displayedFields && parsedKeys != null && displayedFields.includes(parsedKeys[0]) ? (
         <IconButton
@@ -374,12 +366,6 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
               {singleVal ? parsedValues[0] : this.generateMultiVal(parsedValues, true)}
               {singleVal && this.generateClipboardButton(parsedValues[0])}
               <div className={cx((singleVal || isMultiParsedValueWithNoContent) && styles.adjoiningLinkButton)}>
-                {/* Render synthetic OpsPilot button for OpsPilot fields without formal links */}
-                {syntheticOpsPilotLink && (
-                  <span key="synthetic-opspilot">
-                    <OpspilotDataLinkButton link={syntheticOpsPilotLink} />
-                  </span>
-                )}
                 {links?.map((link, i) => {
                   if (link.onClick && onPinLine) {
                     const originalOnClick = link.onClick;
