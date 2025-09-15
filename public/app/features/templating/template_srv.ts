@@ -136,12 +136,14 @@ export class TemplateSrv implements BaseTemplateSrv {
   getAdhocFilters(datasourceName: string, skipDeprecationWarning?: boolean): AdHocVariableFilter[] {
     let filters: AdHocVariableFilter[] = [];
     let ds = getDataSourceSrv().getInstanceSettings(datasourceName);
+    console.log(ds);
 
     if (!ds) {
       return [];
     }
 
     if (!skipDeprecationWarning && !this._adhocFiltersDeprecationWarningLogged.get(ds.type)) {
+      console.log("DeprecationWarning")
       if (process.env.NODE_ENV !== 'test') {
         deprecationWarning(
           `DataSource ${ds.type}`,
@@ -154,10 +156,14 @@ export class TemplateSrv implements BaseTemplateSrv {
 
     for (const variable of this.getAdHocVariables()) {
       const variableUid = variable.datasource?.uid;
+      console.log("variableUid: ", variableUid);
 
       if (variableUid === ds.uid || variableUid === ds.name) {
+        console.log("variableUid If statment was true");
         filters = filters.concat(variable.filters);
+        console.log("Filters(postconcat): ", filters);
       } else if (variableUid?.indexOf('$') === 0) {
+        console.log("indexof$");
         if (this.replace(variableUid) === ds.uid) {
           filters = filters.concat(variable.filters);
         }
