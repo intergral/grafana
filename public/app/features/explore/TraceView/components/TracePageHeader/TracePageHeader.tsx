@@ -125,7 +125,7 @@ export const TracePageHeader = memo((props: TracePageHeaderProps) => {
       <div className={styles.titleRow}>
         {links && links.length > 0 && <ExternalLinks links={links} className={styles.TracePageHeaderBack} />}
         {title}
-        <TracePageActions traceId={trace.traceID} data={data} app={app} />
+        <TracePageActions traceId={trace.traceID} data={data} app={app} trace={trace} />
       </div>
 
       <div className={styles.subtitle}>
