@@ -12,6 +12,8 @@ import { useMediaQueryMinWidth } from 'app/core/hooks/useMediaQueryMinWidth';
 import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards } from 'app/features/scopes/dashboards/ScopesDashboards';
+import { OpsPilotBroadcastProvider } from 'app/intergral/OpsPilotBroadcastContext';
+import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
 
 import { AppChromeMenu } from './AppChromeMenu';
 import { AppChromeService, DOCKED_LOCAL_STORAGE_KEY } from './AppChromeService';
@@ -86,12 +88,13 @@ export function AppChrome({ children }: Props) {
   // We check chromeless twice here instead of having a separate path so {children}
   // doesn't get re-mounted when chromeless goes from true to false.
   return (
-    <div
-      id={floatingUtils.BOUNDARY_ELEMENT_ID}
-      className={classNames('main-view', {
-        'main-view--chrome-hidden': state.chromeless,
-      })}
-    >
+    <OpsPilotBroadcastProvider>
+      <div
+        id={floatingUtils.BOUNDARY_ELEMENT_ID}
+        className={classNames('main-view', {
+          'main-view--chrome-hidden': state.chromeless,
+        })}
+      >
       {!state.chromeless && (
         <>
           <LinkButton className={styles.skipLink} href="#pageContent">
@@ -159,6 +162,7 @@ export function AppChrome({ children }: Props) {
         <ReturnToPrevious href={state.returnToPrevious.href} title={state.returnToPrevious.title} />
       )}
     </div>
+    </OpsPilotBroadcastProvider>
   );
 }
 

@@ -33,7 +33,8 @@ import { t } from '@grafana/i18n';
 import { TraceToProfilesOptions } from '@grafana/o11y-ds-frontend';
 import { usePluginLinks } from '@grafana/runtime';
 import { TimeZone } from '@grafana/schema';
-import { Icon, useStyles2 } from '@grafana/ui';
+import { Divider, Icon, useStyles2 } from '@grafana/ui';
+import OpsPilotSpanButton from 'app/intergral/OpsPilotSpanButton';
 
 import { pyroscopeProfileIdTagKey } from '../../../createSpanLink';
 import { autoColor } from '../../Theme';
@@ -387,7 +388,11 @@ export default function SpanDetail(props: SpanDetailProps) {
         </div>
         <ShareSpanButton focusSpanLink={focusSpanLink} />
       </div>
-      <div className={styles.linkList}>{linksComponent}</div>
+      <div className={styles.linkList}>
+        {linksComponent}
+        <OpsPilotSpanButton span={span} />
+      </div>
+      <Divider spacing={1} />
       <div className={styles.content}>
         <div>
           <AccordianKeyValues
