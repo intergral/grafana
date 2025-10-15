@@ -87,12 +87,10 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
   );
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-      <Dropdown overlay={menu}>
-        <Button variant="primary" size="sm" icon="ai">
-          Ask OpsPilot
-        </Button>
-      </Dropdown>
-    </div>
+    <Dropdown overlay={menu}>
+      <Button variant="primary" size="sm" icon="ai">
+        Ask OpsPilot
+      </Button>
+    </Dropdown>
   );
 }
