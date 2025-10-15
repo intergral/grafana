@@ -1,4 +1,5 @@
 import { TraceKeyValuePair } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Button, Dropdown, Menu } from '@grafana/ui';
 
 import { TraceSpan } from '../features/explore/TraceView/components/types/trace';
@@ -90,12 +91,10 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
   );
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-      <Dropdown overlay={menu}>
-        <Button variant="primary" size="sm" icon="ai">
-          Ask OpsPilot
-        </Button>
-      </Dropdown>
-    </div>
+    <Dropdown overlay={menu}>
+      <Button variant="primary" size="sm" icon="ai">
+        {t('opspilot.span-button.ask-opspilot', 'Ask OpsPilot')}
+      </Button>
+    </Dropdown>
   );
 }
