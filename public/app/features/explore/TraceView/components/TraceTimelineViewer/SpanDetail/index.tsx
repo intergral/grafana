@@ -30,6 +30,7 @@ import { TraceToProfilesOptions } from '@grafana/o11y-ds-frontend';
 import { TimeZone } from '@grafana/schema';
 import { Divider, Icon, TextArea, useStyles2 } from '@grafana/ui';
 import { t, Trans } from 'app/core/internationalization';
+import OpsPilotSpanButton from 'app/intergral/OpsPilotSpanButton';
 
 import { pyroscopeProfileIdTagKey } from '../../../createSpanLink';
 import { autoColor } from '../../Theme';
@@ -312,7 +313,10 @@ export default function SpanDetail(props: SpanDetailProps) {
           <LabeledList className={styles.list} divider={true} items={overviewItems} />
         </div>
       </div>
-      <div className={styles.linkList}>{linksComponent}</div>
+      <div className={styles.linkList}>
+        {linksComponent}
+        <OpsPilotSpanButton span={span} />
+      </div>
       <Divider spacing={1} />
       <div>
         <div>
