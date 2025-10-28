@@ -1107,23 +1107,35 @@ export class LokiDatasource
    * @todo this.templateSrv.getAdhocFilters() is deprecated
    */
   addAdHocFilters(queryExpr: string, adhocFilters?: AdHocVariableFilter[]) {
+    console.log('[LOKI ADHOC] addAdHocFilters input expr:', queryExpr);
+
     if (!adhocFilters?.length) {
+      console.log('[LOKI ADHOC] No adhoc filters to apply');
       return queryExpr;
     }
 
     let expr = replaceVariables(queryExpr);
+    console.log('[LOKI ADHOC] After replaceVariables:', expr);
 
-    expr = adhocFilters.reduce((acc: string, filter: { key: string; operator: string; value: string }) => {
+    expr = adhocFilters.reduce((acc: string, filter: { key: string; operator: string; value: string }, index) => {
       const { key, operator } = filter;
       let { value } = filter;
+      const originalValue = value;
+
       if (!isRegexSelector(operator)) {
-        // We want to escape special characters in value for non-regex selectors to match the same char in the log line as the user types in the input
         value = escapeLabelValueInSelector(value, operator);
       }
-      return addLabelToQuery(acc, key, operator, value);
+
+      const result = addLabelToQuery(acc, key, operator, value);
+      console.log(`[LOKI ADHOC] Filter ${index + 1}: ${key} ${operator} "${originalValue}" -> "${value}"`);
+      console.log(`[LOKI ADHOC] Query: "${acc}" -> "${result}"`);
+
+      return result;
     }, expr);
 
-    return returnVariables(expr);
+    const final = returnVariables(expr);
+    console.log('[LOKI ADHOC] After returnVariables:', final);
+    return final;
   }
 
   /**
@@ -1144,6 +1156,15 @@ export class LokiDatasource
    * @returns A modified Loki query with template variables and ad hoc filters applied.
    */
   applyTemplateVariables(target: LokiQuery, scopedVars: ScopedVars, adhocFilters?: AdHocVariableFilter[]): LokiQuery {
+    console.log('[LOKI ADHOC] applyTemplateVariables called');
+    console.log('  - refId:', target.refId);
+    console.log('  - originalExpr:', target.expr);
+    console.log('  - adhocFilters count:', adhocFilters?.length || 0);
+    if (adhocFilters?.length) {
+      adhocFilters.forEach((f, i) => {
+        console.log(`  - filter ${i + 1}: ${f.key} ${f.operator} "${f.value}"`);
+      });
+    }
     // We want to interpolate these variables on backend because we support using them in
     // alerting/ML queries and we want to have consistent interpolation for all queries
     const { __auto, __interval, __interval_ms, __range, __range_s, __range_ms, ...rest } = scopedVars || {};
@@ -1160,10 +1181,16 @@ export class LokiDatasource
       },
     };
 
+    const exprAfterTemplateVars = this.templateSrv.replace(target.expr, variables, this.interpolateQueryExpr);
+    console.log('[LOKI ADHOC] After template vars:', exprAfterTemplateVars);
+
     const exprWithAdHoc = this.addAdHocFilters(
-      this.templateSrv.replace(target.expr, variables, this.interpolateQueryExpr),
+      exprAfterTemplateVars,
       adhocFilters
     );
+
+    console.log('[LOKI ADHOC] Final expr with adhoc:', exprWithAdHoc);
+    console.log('[LOKI ADHOC] Expression changed by adhoc filters:', exprAfterTemplateVars !== exprWithAdHoc);
 
     const step = this.templateSrv.replace(target.step, variables);
     const legendFormat = this.templateSrv.replace(target.legendFormat, variables);

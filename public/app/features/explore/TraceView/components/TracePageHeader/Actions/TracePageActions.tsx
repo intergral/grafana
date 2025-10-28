@@ -5,9 +5,11 @@ import { GrafanaTheme2, CoreApp, DataFrame } from '@grafana/data';
 import { reportInteraction } from '@grafana/runtime';
 import { Icon, useTheme2 } from '@grafana/ui';
 import { t, Trans } from 'app/core/internationalization';
+import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
 
 import { config } from '../../../../../../core/config';
 import { downloadTraceAsJson } from '../../../../../inspector/utils/download';
+import { Trace } from '../../types';
 
 import ActionButton from './ActionButton';
 
@@ -39,10 +41,11 @@ export type TracePageActionsProps = {
   traceId: string;
   data: DataFrame;
   app?: CoreApp;
+  trace?: Trace;
 };
 
 export default function TracePageActions(props: TracePageActionsProps) {
-  const { traceId, data, app } = props;
+  const { traceId, data, app, trace } = props;
   const theme = useTheme2();
   const styles = getStyles(theme);
   const [copyTraceIdClicked, setCopyTraceIdClicked] = useState(false);
@@ -84,7 +87,7 @@ export default function TracePageActions(props: TracePageActionsProps) {
           </a>
         </div>
       )}
-
+      <OpsPilotTraceButton trace={trace} />
       <ActionButton
         onClick={copyTraceId}
         ariaLabel={'Copy Trace ID'}

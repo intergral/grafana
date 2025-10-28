@@ -257,6 +257,7 @@ func TestIntegrationDashboardsAppV1(t *testing.T) {
 func TestIntegrationLegacySupport(t *testing.T) {
 	ctx := context.Background()
 	helper := apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
+		DisableAnonymous:     true,
 		EnableFeatureToggles: []string{
 			// NOTE: when using this feature toggle, the read is always v0!
 			// featuremgmt.FlagKubernetesClientDashboardsFolders

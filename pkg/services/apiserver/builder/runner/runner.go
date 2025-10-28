@@ -38,6 +38,14 @@ type APIGroupRunner struct {
 	initialized chan struct{}
 }
 
+func (r *APIGroupRunner) GetRestConfig(ctx context.Context) *rest.Config {
+	config, err := r.config.RestConfigGetter(ctx)
+	if err != nil {
+		return nil
+	}
+	return config
+}
+
 func (r *APIGroupRunner) Run(ctx context.Context) error {
 	<-r.initialized
 	runner := app.NewMultiRunner()

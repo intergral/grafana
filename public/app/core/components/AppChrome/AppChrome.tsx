@@ -12,6 +12,8 @@ import { Trans } from 'app/core/internationalization';
 import store from 'app/core/store';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards } from 'app/features/scopes/dashboards/ScopesDashboards';
+import { OpsPilotBroadcastProvider } from 'app/intergral/OpsPilotBroadcastContext';
+import { useOpspilotMetadata } from 'app/intergral/useOpspilotMetadata';
 
 import { AppChromeMenu } from './AppChromeMenu';
 import { AppChromeService, DOCKED_LOCAL_STORAGE_KEY } from './AppChromeService';
@@ -28,7 +30,6 @@ import { SingleTopBar } from './TopBar/SingleTopBar';
 import { getChromeHeaderLevelHeight, useChromeHeaderLevels } from './TopBar/useChromeHeaderHeight';
 
 export interface Props extends PropsWithChildren<{}> {}
-
 export function AppChrome({ children }: Props) {
   const { chrome } = useGrafana();
   const {
@@ -51,6 +52,7 @@ export function AppChrome({ children }: Props) {
   const contentSizeStyles = useStyles2(getContentSizeStyles, extensionSidebarWidth);
   const dragStyles = useStyles2(getDragStyles);
 
+  useOpspilotMetadata();
   useResponsiveDockedMegaMenu(chrome);
   useMegaMenuFocusHelper(state.megaMenuOpen, state.megaMenuDocked);
 
@@ -87,11 +89,12 @@ export function AppChrome({ children }: Props) {
   // We check chromeless twice here instead of having a separate path so {children}
   // doesn't get re-mounted when chromeless goes from true to false.
   return (
-    <div
-      className={classNames('main-view', {
-        'main-view--chrome-hidden': state.chromeless,
-      })}
-    >
+    <OpsPilotBroadcastProvider>
+      <div
+        className={classNames('main-view', {
+          'main-view--chrome-hidden': state.chromeless,
+        })}
+      >
       {!state.chromeless && (
         <>
           <LinkButton className={styles.skipLink} href="#pageContent">
@@ -157,6 +160,7 @@ export function AppChrome({ children }: Props) {
         <ReturnToPrevious href={state.returnToPrevious.href} title={state.returnToPrevious.title} />
       )}
     </div>
+    </OpsPilotBroadcastProvider>
   );
 }
 

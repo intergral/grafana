@@ -20,13 +20,16 @@ func NewReceiverClient(t *testing.T, user apis.User) *apis.TypedClient[v0alpha1_
 	client, err := dynamic.NewForConfig(user.NewRestConfig())
 	require.NoError(t, err)
 
+	// Use the user's namespace instead of hardcoded "default"
+	namespace := user.Identity.GetNamespace()
+
 	return &apis.TypedClient[v0alpha1_receiver.Receiver, v0alpha1_receiver.ReceiverList]{
 		Client: client.Resource(
 			schema.GroupVersionResource{
 				Group:    v0alpha1_receiver.Kind().Group(),
 				Version:  v0alpha1_receiver.Kind().Version(),
 				Resource: v0alpha1_receiver.Kind().Plural(),
-			}).Namespace("default"),
+			}).Namespace(namespace),
 	}
 }
 
@@ -36,13 +39,16 @@ func NewRoutingTreeClient(t *testing.T, user apis.User) *apis.TypedClient[v0alph
 	client, err := dynamic.NewForConfig(user.NewRestConfig())
 	require.NoError(t, err)
 
+	// Use the user's namespace instead of hardcoded "default"
+	namespace := user.Identity.GetNamespace()
+
 	return &apis.TypedClient[v0alpha1_routingtree.RoutingTree, v0alpha1_routingtree.RoutingTreeList]{
 		Client: client.Resource(
 			schema.GroupVersionResource{
 				Group:    v0alpha1_routingtree.Kind().Group(),
 				Version:  v0alpha1_routingtree.Kind().Version(),
 				Resource: v0alpha1_routingtree.Kind().Plural(),
-			}).Namespace("default"),
+			}).Namespace(namespace),
 	}
 }
 
@@ -52,13 +58,16 @@ func NewTemplateGroupClient(t *testing.T, user apis.User) *apis.TypedClient[v0al
 	client, err := dynamic.NewForConfig(user.NewRestConfig())
 	require.NoError(t, err)
 
+	// Use the user's namespace instead of hardcoded "default"
+	namespace := user.Identity.GetNamespace()
+
 	return &apis.TypedClient[v0alpha1_templategroup.TemplateGroup, v0alpha1_templategroup.TemplateGroupList]{
 		Client: client.Resource(
 			schema.GroupVersionResource{
 				Group:    v0alpha1_templategroup.Kind().Group(),
 				Version:  v0alpha1_templategroup.Kind().Version(),
 				Resource: v0alpha1_templategroup.Kind().Plural(),
-			}).Namespace("default"),
+			}).Namespace(namespace),
 	}
 }
 
@@ -68,12 +77,15 @@ func NewTimeIntervalClient(t *testing.T, user apis.User) *apis.TypedClient[v0alp
 	client, err := dynamic.NewForConfig(user.NewRestConfig())
 	require.NoError(t, err)
 
+	// Use the user's namespace instead of hardcoded "default"
+	namespace := user.Identity.GetNamespace()
+
 	return &apis.TypedClient[v0alpha1_timeinterval.TimeInterval, v0alpha1_timeinterval.TimeIntervalList]{
 		Client: client.Resource(
 			schema.GroupVersionResource{
 				Group:    v0alpha1_timeinterval.Kind().Group(),
 				Version:  v0alpha1_timeinterval.Kind().Version(),
 				Resource: v0alpha1_timeinterval.Kind().Plural(),
-			}).Namespace("default"),
+			}).Namespace(namespace),
 	}
 }
