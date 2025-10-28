@@ -20,9 +20,9 @@ export default function OpsPilotTraceButton({ trace }: OpsPilotTraceButtonProps)
       const broadcastIntegration = {
         content: opsPilotStringify(trace),
         content_type: 'trace',
-        content_source: 'grafana'
+        content_source: 'grafana',
       };
-      channel?.postMessage({ type: 'opspilot-host.integration', broadcastIntegration });
+      channel?.postMessage({ type: 'opspilot-host.integration', integration: broadcastIntegration });
     } catch (error) {
       console.error('Failed to analyze trace:', error);
     }
