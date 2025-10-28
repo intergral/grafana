@@ -37,9 +37,9 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
       const broadcastIntegration = {
         content: opsPilotStringify(content),
         content_type: contentType,
-        content_source: 'grafana'
+        content_source: 'grafana',
       };
-      channel?.postMessage({ type: 'opspilot-host.integration', broadcastIntegration });
+      channel?.postMessage({ type: 'opspilot-host.integration', integration: broadcastIntegration });
     } catch (error) {
       console.error('Failed to send OpsPilot broadcast:', error);
     }
