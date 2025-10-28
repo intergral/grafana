@@ -16,10 +16,10 @@ export function OpspilotDataLinkButton({ link, buttonProps }: DataLinkButtonProp
   const handleClick = () => {
     try {
       if (window.parent !== window) {
-        const fusionReactorIntegration = { content: link.href, content_type: 'log' };
-        window.parent.postMessage({ type: 'opspilot-slave.sendIntegration', fusionReactorIntegration }, '*');
+        // const fusionReactorIntegration = { content: link.href, content_type: 'log' };
+        // window.parent.postMessage({ type: 'opspilot-slave.sendIntegration', fusionReactorIntegration }, '*');
         const broadcastIntegration = { content: link.href, content_type: 'log', content_source: 'grafana' };
-        channel?.postMessage({ type: 'opspilot-host.integration', broadcastIntegration });
+        channel?.postMessage({ type: 'opspilot-host.integration', integration: broadcastIntegration });
       }
     } catch (error) {
       console.error('Failed to send OpsPilot broadcast:', error);
