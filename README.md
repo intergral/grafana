@@ -40,7 +40,7 @@ git checkout -b v11.2.x grafana/v11.2.x
 5. Push branch to act as our maintenance branch - this is where we will merge into and tag from to release our changes
 
 ```bash
-git push -u orign v11.2.x
+git push -u origin v11.2.x
 ```
 
 6. Now create a new branch for us to work from
@@ -48,11 +48,11 @@ git push -u orign v11.2.x
 git branch -b update_v11_2_x origin/v11.2.x
 ```
 
-7. Now we have to apply our changes to this branch. To do this the easiest way to is to create a patch from `our_changes` branch and apply then to this branch.
+7. Now we have to apply our changes to this branch. To do this the easiest way to is to create a patch from `previous version` branch and apply then to this branch.
    8. Create a patch
    ```bash
     # Checkout the branch with our changes on it
-    git checkout origin/our_changes
+    git checkout origin/v11.0.x
     # Create a patch from our first commit to HEAD
     git format-patch cb1b5eae81f089fe039495895da8c298d665d618..HEAD --stdout > our_changes.patch
     # Go back to the branch we want to apply the changes to
