@@ -156,6 +156,7 @@ func (s *ServiceImpl) GetNavTree(c *contextmodel.ReqContext, prefs *pref.Prefere
 	_, uaIsDisabledForOrg := s.cfg.UnifiedAlerting.DisabledOrgs[c.GetOrgID()]
 	uaVisibleForOrg := s.cfg.UnifiedAlerting.IsEnabled() && !uaIsDisabledForOrg
 
+	// GFN-45 Allow alerting in the navtree
 	if uaVisibleForOrg {
 		if alertingSection := s.buildAlertNavLinks(c); alertingSection != nil {
 			treeRoot.AddSection(alertingSection)
