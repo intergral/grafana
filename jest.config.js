@@ -32,6 +32,10 @@ module.exports = {
   transformIgnorePatterns: [
     `/node_modules/(?!${esModules})`, // exclude es modules to prevent TS complaining
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '\\.skip\\.test\\.(jsx?|tsx?)$',
+  ],
   moduleDirectories: ['public', 'node_modules'],
   roots: ['<rootDir>/public/app', '<rootDir>/public/test', '<rootDir>/packages', '<rootDir>/scripts/tests'],
   testRegex: '(\\.|/)(test)\\.(jsx?|tsx?)$',
