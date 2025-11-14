@@ -3,6 +3,8 @@ name: Build & Test UI
 on:
   push:
     branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
 
 
 concurrency:
