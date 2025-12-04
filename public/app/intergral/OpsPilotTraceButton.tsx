@@ -17,6 +17,9 @@ export default function OpsPilotTraceButton({ trace }: OpsPilotTraceButtonProps)
 
   const handleClick = () => {
     try {
+      trace.spans.forEach((span) => {
+        span.references = [];
+      });
       const broadcastIntegration = {
         content: opsPilotStringify(trace),
         content_type: 'trace',
