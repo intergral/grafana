@@ -34,6 +34,9 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
 
   const sendBroadcast = (content: object, contentType: string) => {
     try {
+      if ('references' in content) {
+        content.references = [];
+      }
       const broadcastIntegration = {
         content: opsPilotStringify(content),
         content_type: contentType,
