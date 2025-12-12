@@ -13,7 +13,7 @@ import { config, locationService } from '@grafana/runtime';
 import { LocalValueVariable, sceneGraph, SceneGridRow, VizPanel, VizPanelMenu } from '@grafana/scenes';
 import { DataQuery, OptionsWithLegend } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
-import { t } from 'app/core/internationalization';
+import { t } from '@grafana/i18n';
 import { contextSrv } from 'app/core/services/context_srv';
 import { getTrackingSource, shareDashboardType } from 'app/features/dashboard/components/ShareModal/utils';
 import { InspectTab } from 'app/features/inspector/types';
@@ -22,11 +22,10 @@ import { createPluginExtensionsGetter } from 'app/features/plugins/extensions/ge
 import { pluginExtensionRegistries } from 'app/features/plugins/extensions/registry/setup';
 import { GetPluginExtensions } from 'app/features/plugins/extensions/types';
 import { createExtensionSubMenu } from 'app/features/plugins/extensions/utils';
-import { AccessControlAction } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
 import { ShowConfirmModalEvent } from 'app/types/events';
 
 import { ShareDrawer } from '../sharing/ShareDrawer/ShareDrawer';
-import { ShareModal } from '../sharing/ShareModal';
 import { isInCloneChain } from '../utils/clone';
 import { DashboardInteractions } from '../utils/interactions';
 import { getEditPanelUrl, getInspectUrl, getViewPanelUrl, tryGetExploreUrlForPanel } from '../utils/urlBuilders';
@@ -175,7 +174,7 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
         text: t('panel.header-menu.share', 'Share'),
         iconClassName: 'share-alt',
         onClick: () => {
-          dashboard.showModal(new ShareModal({ panelRef: panel.getRef() }));
+          dashboard.showModal(new ShareDrawer({ panelRef: panel.getRef() }));
         },
         shortcut: 'p s',
       });
@@ -242,7 +241,7 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
             text: t('panel.header-menu.create-library-panel', `Create library panel`),
             onClick: () => {
               dashboard.showModal(
-                new ShareModal({
+                new ShareDrawer({
                   panelRef: panel.getRef(),
                   activeTab: shareDashboardType.libraryPanel,
                 })

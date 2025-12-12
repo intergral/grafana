@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { GrafanaTheme2, CoreApp, DataFrame } from '@grafana/data';
 import { reportInteraction } from '@grafana/runtime';
 import { Icon, useTheme2 } from '@grafana/ui';
-import { t, Trans } from 'app/core/internationalization';
+import { t, Trans } from '@grafana/i18n';
 import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
 
 import { config } from '../../../../../../core/config';
