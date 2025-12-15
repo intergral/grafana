@@ -148,8 +148,9 @@ func StartGrafanaEnv(t *testing.T, grafDir, cfgPath string) (string, *server.Tes
 		}
 	}()
 	t.Cleanup(func() {
-		// Add a timeout context for shutdown to prevent indefinite hangs
-		// Use 60s timeout to allow time for all background workers to stop
+		// Add a timeout context for shutdown to prevent indefinite hangs.
+		// 60s timeout allows background workers (Centrifuge, database connections, etc.) to stop cleanly.
+		// Without this timeout, tests would hang indefinitely waiting for worker cleanup.
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
