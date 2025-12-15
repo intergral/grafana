@@ -148,26 +148,51 @@ func StartGrafanaEnv(t *testing.T, grafDir, cfgPath string) (string, *server.Tes
 		}
 	}()
 	t.Cleanup(func() {
-		if err := env.Server.Shutdown(ctx, "test cleanup"); err != nil {
-			t.Error("Timed out waiting on server to shut down")
+		// Add a timeout context for shutdown to prevent indefinite hangs
+		// Use 60s timeout to allow time for all background workers to stop
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+
+		if err := env.Server.Shutdown(shutdownCtx, "test cleanup"); err != nil {
+			t.Error("Timed out waiting on server to shut down:", err)
 		}
 		if storage != nil {
 			storage.StopAsync()
 		}
 	})
 
-	// Wait for Grafana to be ready
+	// Wait for Grafana to be ready with timeout and retries
 	addr := listener.Addr().String()
-	resp, err := http.Get(fmt.Sprintf("http://%s/api/health", addr))
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	t.Cleanup(func() {
-		err := resp.Body.Close()
-		assert.NoError(t, err)
-	})
-	require.Equal(t, 200, resp.StatusCode)
+	healthURL := fmt.Sprintf("http://%s/api/health", addr)
 
-	t.Logf("Grafana is listening on %s", addr)
+	// Add startup timeout to prevent indefinite hangs
+	startupCtx, cancelStartup := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelStartup()
+
+	var resp *http.Response
+	healthCheckStart := time.Now()
+	for {
+		select {
+		case <-startupCtx.Done():
+			require.FailNow(t, "Grafana failed to start within 60 seconds")
+		default:
+			var err error
+			resp, err = http.Get(healthURL)
+			if err == nil && resp != nil && resp.StatusCode == 200 {
+				t.Cleanup(func() {
+					err := resp.Body.Close()
+					assert.NoError(t, err)
+				})
+				t.Logf("Grafana is listening on %s (started in %v)", addr, time.Since(healthCheckStart))
+				goto ready
+			}
+			if resp != nil {
+				resp.Body.Close()
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+ready:
 
 	return addr, env
 }
