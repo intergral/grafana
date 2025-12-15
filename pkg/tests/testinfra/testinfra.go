@@ -1,3 +1,4 @@
+// Package testinfra provides test infrastructure utilities.
 package testinfra
 
 import (
