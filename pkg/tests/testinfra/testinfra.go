@@ -177,7 +177,7 @@ func StartGrafanaEnv(t *testing.T, grafDir, cfgPath string) (string, *server.Tes
 			require.FailNow(t, "Grafana failed to start within 60 seconds")
 		default:
 			var err error
-			resp, err = http.Get(healthURL)
+			resp, err = http.Get(healthURL) // #nosec G107 - test environment making request to localhost
 			if err == nil && resp != nil && resp.StatusCode == 200 {
 				t.Cleanup(func() {
 					err := resp.Body.Close()
@@ -187,7 +187,7 @@ func StartGrafanaEnv(t *testing.T, grafDir, cfgPath string) (string, *server.Tes
 				goto ready
 			}
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close() // Best effort close, ignore error
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
