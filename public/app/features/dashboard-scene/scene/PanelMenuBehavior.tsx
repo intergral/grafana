@@ -9,11 +9,12 @@ import {
   PluginExtensionPoints,
   PluginExtensionTypes,
 } from '@grafana/data';
-import { t } from '@grafana/i18n';
 import { config, locationService } from '@grafana/runtime';
 import { LocalValueVariable, sceneGraph, SceneGridRow, VizPanel, VizPanelMenu } from '@grafana/scenes';
 import { DataQuery, OptionsWithLegend } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
+// eslint-disable-next-line import/order
+import { t } from '@grafana/i18n';
 import { contextSrv } from 'app/core/services/context_srv';
 import { getTrackingSource, shareDashboardType } from 'app/features/dashboard/components/ShareModal/utils';
 import { InspectTab } from 'app/features/inspector/types';
