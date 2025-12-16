@@ -136,14 +136,12 @@ export class TemplateSrv implements BaseTemplateSrv {
   getAdhocFilters(datasourceName: string, skipDeprecationWarning?: boolean): AdHocVariableFilter[] {
     let filters: AdHocVariableFilter[] = [];
     let ds = getDataSourceSrv().getInstanceSettings(datasourceName);
-    console.log(ds);
 
     if (!ds) {
       return [];
     }
 
     if (!skipDeprecationWarning && !this._adhocFiltersDeprecationWarningLogged.get(ds.type)) {
-      console.log("DeprecationWarning")
       if (process.env.NODE_ENV !== 'test') {
         deprecationWarning(
           `DataSource ${ds.type}`,
