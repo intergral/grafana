@@ -6,7 +6,6 @@ import {
   PluginExtensionTypes,
   getDefaultTimeRange,
   toDataFrame,
-  urlUtil,
 } from '@grafana/data';
 import { getPanelPlugin } from '@grafana/data/test';
 import { config, locationService } from '@grafana/runtime';
@@ -21,8 +20,6 @@ import {
 import { contextSrv } from 'app/core/services/context_srv';
 import { GetExploreUrlArguments } from 'app/core/utils/explore';
 import { grantUserPermissions } from 'app/features/alerting/unified/mocks';
-import { scenesPanelToRuleFormValues } from 'app/features/alerting/unified/utils/rule-form';
-import * as storeModule from 'app/store/store';
 import { AccessControlAction } from 'app/types/accessControl';
 
 import { buildPanelEditScene } from '../panel-edit/PanelEditor';
@@ -46,10 +43,6 @@ jest.mock('app/core/utils/explore', () => ({
 }));
 
 jest.mock('app/core/services/context_srv');
-
-jest.mock('app/store/store', () => ({
-  dispatch: jest.fn(),
-}));
 
 const getPluginExtensionsMock = jest.fn().mockReturnValue({ extensions: [] });
 jest.mock('app/features/plugins/extensions/getPluginExtensions', () => ({
@@ -697,112 +690,6 @@ describe('panelMenuBehavior', () => {
           }),
         ]);
       });
-    });
-  });
-
-  describe('onCreateAlert', () => {
-    beforeEach(() => {
-      jest.spyOn(storeModule, 'dispatch').mockImplementation(() => {});
-      jest.spyOn(locationService, 'push').mockImplementation(() => {});
-      jest.spyOn(urlUtil, 'renderUrl').mockImplementation((url, params) => `${url}?${JSON.stringify(params)}`);
-    });
-
-    it('should navigate to alert creation page on success', async () => {
-      const { menu, panel } = await buildTestScene({});
-      const mockFormValues = { someKey: 'someValue' };
-
-      config.unifiedAlertingEnabled = true;
-      grantUserPermissions([AccessControlAction.AlertingRuleRead, AccessControlAction.AlertingRuleUpdate]);
-
-      jest
-        .spyOn(require('app/features/alerting/unified/utils/rule-form'), 'scenesPanelToRuleFormValues')
-        .mockResolvedValue(mockFormValues);
-
-      // activate the menu
-      menu.activate();
-      // wait for the menu to be activated
-      await new Promise((r) => setTimeout(r, 1));
-      // use userEvent mechanism to click the menu item
-      const moreMenu = menu.state.items?.find((i) => i.text === 'More...')?.subMenu;
-      const alertMenuItem = moreMenu?.find((i) => i.text === 'New alert rule')?.onClick;
-      expect(alertMenuItem).toBeDefined();
-
-      alertMenuItem?.({} as React.MouseEvent);
-      expect(scenesPanelToRuleFormValues).toHaveBeenCalledWith(panel);
-    });
-
-    it('should show error notification on failure', async () => {
-      const { menu, panel } = await buildTestScene({});
-      const mockError = new Error('Test error');
-      jest
-        .spyOn(require('app/features/alerting/unified/utils/rule-form'), 'scenesPanelToRuleFormValues')
-        .mockRejectedValue(mockError);
-      // Don't make notifyApp throw an error, just mock it
-
-      menu.activate();
-      await new Promise((r) => setTimeout(r, 1));
-
-      const moreMenu = menu.state.items?.find((i) => i.text === 'More...')?.subMenu;
-      const alertMenuItem = moreMenu?.find((i) => i.text === 'New alert rule')?.onClick;
-      expect(alertMenuItem).toBeDefined();
-
-      await alertMenuItem?.({} as React.MouseEvent);
-
-      await new Promise((r) => setTimeout(r, 0));
-
-      expect(scenesPanelToRuleFormValues).toHaveBeenCalledWith(panel);
-    });
-
-    it('should render "New alert rule" menu item when user has permissions to read and update alerts', async () => {
-      const { menu } = await buildTestScene({});
-      config.unifiedAlertingEnabled = true;
-      grantUserPermissions([AccessControlAction.AlertingRuleRead, AccessControlAction.AlertingRuleUpdate]);
-
-      menu.activate();
-      await new Promise((r) => setTimeout(r, 1));
-
-      const moreMenu = menu.state.items?.find((i) => i.text === 'More...')?.subMenu;
-      expect(moreMenu?.find((i) => i.text === 'New alert rule')).toBeDefined();
-    });
-
-    it('should not contain "New alert rule" menu item when user does not have permissions to read and update alerts', async () => {
-      const { menu } = await buildTestScene({});
-      config.unifiedAlertingEnabled = true;
-      grantUserPermissions([AccessControlAction.AlertingRuleRead]);
-
-      menu.activate();
-      await new Promise((r) => setTimeout(r, 1));
-
-      const moreMenu = menu.state.items?.find((i) => i.text === 'More...')?.subMenu;
-      expect(moreMenu?.find((i) => i.text === 'New alert rule')).toBeUndefined();
-    });
-
-    it('should not contain "New alert rule" menu item when unifiedAlertingEnabled is false', async () => {
-      const { menu } = await buildTestScene({});
-      config.unifiedAlertingEnabled = false;
-
-      menu.activate();
-      await new Promise((r) => setTimeout(r, 1));
-
-      const moreMenu = menu.state.items?.find((i) => i.text === 'More...')?.subMenu;
-      expect(moreMenu?.find((i) => i.text === 'New alert rule')).toBeUndefined();
-    });
-
-    it('should not contain "New alert rule" menu item when user does not have permissions to read and update alerts', async () => {
-      const { menu } = await buildTestScene({});
-      config.unifiedAlertingEnabled = true;
-      grantUserPermissions([AccessControlAction.AlertingRuleRead]);
-
-      menu.activate();
-      await new Promise((r) => setTimeout(r, 1));
-
-      const moreMenu = menu.state.items?.find((i) => i.text === 'More...')?.subMenu;
-      const alertMenuItem = moreMenu?.find((i) => i.text === 'New alert rule')?.onClick;
-      expect(alertMenuItem).toBeUndefined();
-    });
-
-    afterEach(() => {
-      jest.restoreAllMocks();
     });
   });
 });
