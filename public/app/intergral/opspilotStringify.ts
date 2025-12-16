@@ -16,7 +16,7 @@ export function opsPilotStringify(obj: unknown): string {
     return spacedLabel.charAt(0).toUpperCase() + spacedLabel.slice(1);
   }
 
-  function formatValue(value: any, indent = 0): string {
+  function formatValue(value: unknown, indent = 0): string {
     // Handle null/undefined
     if (value === null || value === undefined) {
       return '';
@@ -36,7 +36,7 @@ export function opsPilotStringify(obj: unknown): string {
     return String(value);
   }
 
-  function formatArray(value: any[], indent: number): string {
+  function formatArray(value: unknown[], indent: number): string {
     if (value.length === 0) {
       return '';
     }
@@ -84,7 +84,7 @@ export function opsPilotStringify(obj: unknown): string {
     return '\n' + formattedItems.join('\n');
   }
 
-  function formatObject(value: Record<string, any>, indent: number): string {
+  function formatObject(value: Record<string, unknown>, indent: number): string {
     const indentStr = ' '.repeat(INDENT_SIZE).repeat(indent + 1);
     const objectLines: string[] = [];
 
@@ -102,7 +102,7 @@ export function opsPilotStringify(obj: unknown): string {
     return '\n' + objectLines.join('\n');
   }
 
-  function processObject(obj: any) {
+  function processObject(obj: Record<string, unknown>) {
     for (const [key, value] of Object.entries(obj)) {
       if (value && typeof value === 'object' && !Array.isArray(value)) {
         // Check if this object contains nested objects or only primitives

@@ -3,7 +3,11 @@ import { ButtonProps, Button } from '@grafana/ui';
 import { useOpsPilotBroadcast } from './OpsPilotBroadcastContext';
 
 type DataLinkButtonProps = {
-  link: any;
+  link: {
+    href: string;
+    target?: string;
+    title: string;
+  };
   buttonProps?: ButtonProps;
 };
 

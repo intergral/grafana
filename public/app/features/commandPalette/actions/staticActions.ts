@@ -1,7 +1,7 @@
 import { NavModelItem } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { enrichHelpItem } from 'app/core/components/AppChrome/MegaMenu/utils';
 import { performInviteUserClick, shouldRenderInviteUserButton } from 'app/core/components/InviteUserButton/utils';
-import { t } from '@grafana/i18n';
 
 import { CommandPaletteAction } from '../types';
 import { ACTIONS_PRIORITY, DEFAULT_PRIORITY } from '../values';

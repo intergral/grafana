@@ -1,3 +1,5 @@
+import { t } from '@grafana/i18n';
+
 import ActionButton from '../features/explore/TraceView/components/TracePageHeader/Actions/ActionButton';
 import { Trace } from '../features/explore/TraceView/components/types';
 
@@ -31,5 +33,12 @@ export default function OpsPilotTraceButton({ trace }: OpsPilotTraceButtonProps)
     }
   };
 
-  return <ActionButton onClick={handleClick} ariaLabel={'Analyze Trace'} label={'Analyze Trace'} icon={'ai'} />;
+  return (
+    <ActionButton
+      onClick={handleClick}
+      ariaLabel={t('opspilot.trace-button.aria-analyze-trace', 'Analyze Trace')}
+      label={t('opspilot.trace-button.label-analyze-trace', 'Analyze Trace')}
+      icon={'ai'}
+    />
+  );
 }

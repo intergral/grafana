@@ -2,9 +2,9 @@ import { css } from '@emotion/css';
 import { useState } from 'react';
 
 import { GrafanaTheme2, CoreApp, DataFrame } from '@grafana/data';
+import { t, Trans } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
 import { Icon, useTheme2 } from '@grafana/ui';
-import { t, Trans } from '@grafana/i18n';
 import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
 
 import { config } from '../../../../../../core/config';
@@ -90,13 +90,13 @@ export default function TracePageActions(props: TracePageActionsProps) {
       <OpsPilotTraceButton trace={trace} />
       <ActionButton
         onClick={copyTraceId}
-        ariaLabel={'Copy Trace ID'}
-        label={copyTraceIdClicked ? 'Copied!' : 'Trace ID'}
+        ariaLabel={t('explore.trace-page-actions.aria-copy-trace-id', 'Copy Trace ID')}
+        label={copyTraceIdClicked ? t('explore.trace-page-actions.label-copied', 'Copied!') : t('explore.trace-page-actions.label-trace-id', 'Trace ID')}
         icon={'copy'}
       />
       <ActionButton
         onClick={exportTrace}
-        ariaLabel={'Export Trace'}
+        ariaLabel={t('explore.trace-page-actions.aria-export-trace', 'Export Trace')}
         label={t('explore.trace-page-actions.label-export', 'Export')}
         icon={'save'}
       />

@@ -9,11 +9,11 @@ import {
   PluginExtensionPoints,
   PluginExtensionTypes,
 } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config, locationService } from '@grafana/runtime';
 import { LocalValueVariable, sceneGraph, SceneGridRow, VizPanel, VizPanelMenu } from '@grafana/scenes';
 import { DataQuery, OptionsWithLegend } from '@grafana/schema';
 import appEvents from 'app/core/app_events';
-import { t } from '@grafana/i18n';
 import { contextSrv } from 'app/core/services/context_srv';
 import { getTrackingSource, shareDashboardType } from 'app/features/dashboard/components/ShareModal/utils';
 import { InspectTab } from 'app/features/inspector/types';
@@ -310,7 +310,7 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
       // Add specific "Metrics drilldown" menu
       if (metricsDrilldownLinks.length > 0) {
         items.push({
-          text: 'Metrics drilldown',
+          text: t('panel-menu.metrics-drilldown', 'Metrics drilldown'),
           iconClassName: 'code-branch',
           type: 'submenu',
           subMenu: createExtensionSubMenu(metricsDrilldownLinks),
@@ -320,7 +320,7 @@ export function panelMenuBehavior(menu: VizPanelMenu) {
       // Add generic "Extensions" menu for other links
       if (otherLinks.length > 0) {
         items.push({
-          text: 'Extensions',
+          text: t('panel-menu.extensions', 'Extensions'),
           iconClassName: 'plug',
           type: 'submenu',
           subMenu: createExtensionSubMenu(otherLinks),
@@ -526,8 +526,8 @@ function createExtensionContext(panel: VizPanel, dashboard: DashboardScene): Plu
 export function onRemovePanel(dashboard: DashboardScene, panel: VizPanel) {
   appEvents.publish(
     new ShowConfirmModalEvent({
-      title: 'Remove panel',
-      text: 'Are you sure you want to remove this panel?',
+      title: t('panel-menu.remove-title', 'Remove panel'),
+      text: t('panel-menu.remove-text', 'Are you sure you want to remove this panel?'),
       icon: 'trash-alt',
       yesText: 'Remove',
       onConfirm: () => dashboard.removePanel(panel),

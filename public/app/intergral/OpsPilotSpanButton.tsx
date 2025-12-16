@@ -1,4 +1,5 @@
 import { TraceKeyValuePair } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { Button, Dropdown, Menu } from '@grafana/ui';
 
 import { TraceSpan } from '../features/explore/TraceView/components/types/trace';
@@ -79,12 +80,12 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
 
   const menu = (
     <Menu>
-      <Menu.Item label="Analyze Span" onClick={handleSpanClick} />
+      <Menu.Item label={t('opspilot.span-button.analyze-span', 'Analyze Span')} onClick={handleSpanClick} />
       {span.statusCode === 2 && span.tags.find((tag) => tag.key === 'reason') && (
-        <Menu.Item label="Analyze Error" onClick={handleErrorClick} />
+        <Menu.Item label={t('opspilot.span-button.analyze-error', 'Analyze Error')} onClick={handleErrorClick} />
       )}
       {span.tags.find((tag) => tag.key === 'flv')?.value === 'JDBCRequest' && (
-        <Menu.Item label="Analyze Query" onClick={handleJdbcClick} />
+        <Menu.Item label={t('opspilot.span-button.analyze-query', 'Analyze Query')} onClick={handleJdbcClick} />
       )}
     </Menu>
   );
@@ -93,7 +94,7 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
     <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
       <Dropdown overlay={menu}>
         <Button variant="primary" size="sm" icon="ai">
-          Ask OpsPilot
+          {t('opspilot.span-button.ask-opspilot', 'Ask OpsPilot')}
         </Button>
       </Dropdown>
     </div>
