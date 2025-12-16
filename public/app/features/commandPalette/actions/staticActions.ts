@@ -1,10 +1,16 @@
+import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
+
 import { NavModelItem } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { enrichHelpItem } from 'app/core/components/AppChrome/MegaMenu/utils';
 import { performInviteUserClick, shouldRenderInviteUserButton } from 'app/core/components/InviteUserButton/utils';
+import { StoreState } from 'app/types';
 
 import { CommandPaletteAction } from '../types';
 import { ACTIONS_PRIORITY, DEFAULT_PRIORITY } from '../values';
+
+import useExtensionActions from './useExtensionActions';
 
 // TODO: Clean this once ID is mandatory on nav items
 function idForNavItem(navItem: NavModelItem) {
@@ -68,6 +74,16 @@ function navTreeToActions(navTree: NavModelItem[], parents: NavModelItem[] = [])
   }
 
   return navActions;
+}
+
+export function useStaticActions(): CommandPaletteAction[] {
+  const navBarTree = useSelector((state: StoreState) => state.navBarTree);
+  const extensionActions = useExtensionActions();
+
+  return useMemo(() => {
+    const navBarActions = navTreeToActions(navBarTree);
+    return [...extensionActions, ...navBarActions];
+  }, [navBarTree, extensionActions]);
 }
 
 export default (navBarTree: NavModelItem[], extensionActions: CommandPaletteAction[]): CommandPaletteAction[] => {
