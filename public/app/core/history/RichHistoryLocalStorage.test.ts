@@ -124,7 +124,7 @@ describe('RichHistoryLocalStorage', () => {
         lastUsedDatasourceFilters: ['foobar'],
       };
       await storage.updateSettings(settings);
-      const storageSettings = storage.getSettings();
+      const storageSettings = await storage.getSettings();
 
       expect(settings).toMatchObject(storageSettings);
     });
