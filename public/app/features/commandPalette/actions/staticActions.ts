@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
-import { useSelector } from 'react-redux';
 
 import { NavModelItem } from '@grafana/data';
 import { t } from '@grafana/i18n';
-import { enrichHelpItem } from 'app/core/components/AppChrome/MegaMenu/utils';
+import { getEnrichedHelpItem } from 'app/core/components/AppChrome/MegaMenu/utils';
 import { performInviteUserClick, shouldRenderInviteUserButton } from 'app/core/components/InviteUserButton/utils';
-import { StoreState } from 'app/types';
+import { StoreState, useSelector } from 'app/types/store';
 
 import { CommandPaletteAction } from '../types';
 import { ACTIONS_PRIORITY, DEFAULT_PRIORITY } from '../values';
@@ -23,7 +22,7 @@ function navTreeToActions(navTree: NavModelItem[], parents: NavModelItem[] = [])
   for (let navItem of navTree) {
     // help node needs enriching with the frontend links
     if (navItem.id === 'help') {
-      navItem = enrichHelpItem({ ...navItem });
+      navItem = getEnrichedHelpItem({ ...navItem });
       delete navItem.url;
     }
     const { url, target, text, isCreateAction, children, onClick, keywords } = navItem;
