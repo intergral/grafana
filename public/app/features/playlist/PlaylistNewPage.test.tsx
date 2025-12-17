@@ -46,6 +46,7 @@ describe('PlaylistNewPage', () => {
   });
 
   describe('when submitted', () => {
+    // Skipped: flaky test - passes individually but fails in CI due to timing
     it.skip('then correct api should be called', async () => {
       const { backendSrvMock } = getTestContext();
 
