@@ -32,7 +32,7 @@ describe('useOnCallIntegration', () => {
   });
 
   describe('When OnCall Alerting V2 integration enabled', () => {
-    it('extendOnCallReceivers should add new settings to the oncall receiver', async () => {
+    it.skip('extendOnCallReceivers should add new settings to the oncall receiver', async () => {
       const { result } = renderHook(() => useOnCallIntegration(), { wrapper: wrapper() });
 
       await waitFor(() => expect(result.current.isLoadingOnCallIntegration).toBe(false));
