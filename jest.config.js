@@ -39,7 +39,6 @@ const esModules = [
 
 module.exports = {
   verbose: false,
-  forceExit: true,
   testEnvironment: 'jsdom',
   transform: {
     '^.+\\.(ts|tsx|js|jsx)$': [require.resolve('ts-jest')],
