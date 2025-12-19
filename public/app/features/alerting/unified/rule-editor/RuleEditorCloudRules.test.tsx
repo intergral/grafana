@@ -8,14 +8,14 @@ import { AccessControlAction } from 'app/types/accessControl';
 
 import { ExpressionEditorProps } from '../components/rule-editor/ExpressionEditor';
 import { setupMswServer } from '../mockApi';
-
-// CI verification: Confirming snapshot fix is reproducible
 import { grantUserPermissions } from '../mocks';
 import { GROUP_3, GROUP_4, NAMESPACE_2 } from '../mocks/mimirRulerApi';
 import { mimirDataSource } from '../mocks/server/configure';
 import { MIMIR_DATASOURCE_UID } from '../mocks/server/constants';
 import { captureRequests, serializeRequests } from '../mocks/server/events';
 import { setupPluginsExtensionsHook } from '../testSetup/plugins';
+
+// CI verification: Confirming snapshot fix is reproducible
 
 jest.mock('../components/rule-editor/ExpressionEditor', () => ({
   // eslint-disable-next-line react/display-name
