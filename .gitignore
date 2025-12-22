@@ -260,3 +260,6 @@ public/mockServiceWorker.js
 
 # Ignore grafana/hippocampus local cache folder
 .hippo
+
+# Claude local configuration files
+.claude/*.local.*
