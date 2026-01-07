@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef, PropsWithChildren } from 'react';
 
+import { useIframeNavigation } from './useIframeNavigation';
+import { useOpspilotMetadata } from './useOpspilotMetadata';
+
 interface OpsPilotBroadcastContextValue {
   channel: BroadcastChannel | null;
 }
@@ -20,6 +23,12 @@ export const OpsPilotBroadcastProvider: React.FC<PropsWithChildren> = ({ childre
       channelRef.current?.close();
     };
   }, []);
+
+  // Enable iframe navigation from parent window
+  useIframeNavigation();
+
+  // Handle OpsPilot metadata requests
+  useOpspilotMetadata();
 
   return (
     <OpsPilotBroadcastContext.Provider value={{ channel: channelRef.current }}>
