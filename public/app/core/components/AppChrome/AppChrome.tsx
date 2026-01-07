@@ -50,7 +50,6 @@ export function AppChrome({ children }: Props) {
   const contentSizeStyles = useStyles2(getContentSizeStyles, extensionSidebarWidth);
   const dragStyles = useStyles2(getDragStyles);
 
-  useOpspilotMetadata();
   useResponsiveDockedMegaMenu(chrome);
   useMegaMenuFocusHelper(state.megaMenuOpen, state.megaMenuDocked);
 
