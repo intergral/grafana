@@ -31,6 +31,12 @@ This is Intergral's fork of Grafana with custom features for OpsPilot integratio
 - **Files:** `public/app/features/explore/utils/links.ts`
 - **Feature:** Handle profiles from older FR agents without span info (isOldFusionReactorSpan parameter)
 
+### 5. Iframe Navigation Support
+- **Files:** `public/app/intergral/useIframeNavigation.ts`, `public/app/intergral/OpsPilotBroadcastContext.tsx`
+- **Feature:** Enable navigation via postMessage when Grafana is embedded in an iframe
+- **Usage:** Parent window can send `{type: 'navigate', path: '/some/path'}` to navigate Grafana
+- **Commit:** 63626370fa4 (from origin/iframe-nav branch)
+
 ## Branch Strategy
 - **v12.0.x:** Old stable fork (Intergral customizations on Grafana 12.0)
 - **exp_12.3.x-intergral-migration:** Current development (Grafana 12.3 base + Intergral features)
@@ -38,7 +44,8 @@ This is Intergral's fork of Grafana with custom features for OpsPilot integratio
 - **Remotes:** origin = intergral/grafana, grafana = grafana/grafana (upstream)
 
 ## Recent Forward-Port (Jan 2026)
-Cherry-picked from v12.0.x to exp_12.3.x-intergral-migration:
+Cherry-picked from v12.0.x and origin/iframe-nav to exp_12.3.x-intergral-migration:
+- ✅ ea3d6cc5538: Add iframe navigation support via postMessage (from iframe-nav branch)
 - ✅ e5a7f6af536: Enable alerting in navtree (GFN-45)
 - ✅ f1f93818a29: Add Docker Compose debug infrastructure for auth proxy testing
 - ✅ 554a5fce5a7: OrgName header support to auth proxy
