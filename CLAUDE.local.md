@@ -169,6 +169,8 @@ cd debug && docker-compose up -d
 - **John Hawksley** - Intergral
 - **Glen Dovey** - Intergral (glen.dovey@intergral.com)
 - **Dan Hodgson** - Intergral (danhodgson@hotmail.co.uk)
+- **Ben Donnelly** - Intergral (b.w.donnelly1@googlemail.com) - Build and explore features
+- **Sam Donnelly** - Intergral (samdonnelly123@gmail.com) - Co-author on various commits
 
 ## Last Updated
 2026-01-09 - After v12.0.x to exp_12.3.x-intergral-migration forward-port
