@@ -1,0 +1,28 @@
+services:
+  traefik:
+    image: "traefik:v2.11"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--providers.file.filename=/var/traefik.yml"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "./traefik.yml:/var/traefik.yml"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  nginx-auth:
+    image: nginx:alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx-auth.rule=Host(`grafana.localhost`) && PathPrefix(`/grafana/login`)"
+      - "traefik.http.routers.nginx-auth.entrypoints=web"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "3333:3333"
