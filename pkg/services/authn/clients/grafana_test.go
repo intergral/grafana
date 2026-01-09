@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/authn"
 	"github.com/grafana/grafana/pkg/services/login"
 	"github.com/grafana/grafana/pkg/services/org"
+	"github.com/grafana/grafana/pkg/services/org/orgtest"
 	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/services/user/usertest"
 	"github.com/grafana/grafana/pkg/setting"
@@ -98,7 +99,7 @@ func TestGrafana_AuthenticateProxy(t *testing.T) {
 			cfg := setting.NewCfg()
 			cfg.AuthProxy.AutoSignUp = true
 			cfg.AuthProxy.HeaderProperty = tt.proxyProperty
-			c := ProvideGrafana(cfg, usertest.NewUserServiceFake(), tracing.InitializeTracerForTest())
+			c := ProvideGrafana(cfg, usertest.NewUserServiceFake(), orgtest.NewOrgServiceFake(), tracing.InitializeTracerForTest())
 
 			identity, err := c.AuthenticateProxy(context.Background(), tt.req, tt.username, tt.additional)
 			assert.ErrorIs(t, err, tt.expectedErr)
@@ -176,7 +177,7 @@ func TestGrafana_AuthenticatePassword(t *testing.T) {
 				userService.ExpectedError = user.ErrUserNotFound
 			}
 
-			c := ProvideGrafana(setting.NewCfg(), userService, tracing.InitializeTracerForTest())
+			c := ProvideGrafana(setting.NewCfg(), userService, orgtest.NewOrgServiceFake(), tracing.InitializeTracerForTest())
 			identity, err := c.AuthenticatePassword(context.Background(), &authn.Request{OrgID: 1}, tt.username, tt.password)
 			assert.ErrorIs(t, err, tt.expectedErr)
 			assert.EqualValues(t, tt.expectedIdentity, identity)

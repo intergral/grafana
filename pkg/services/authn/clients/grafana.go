@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"net/mail"
 	"strconv"
 
@@ -21,13 +22,14 @@ import (
 var _ authn.ProxyClient = new(Grafana)
 var _ authn.PasswordClient = new(Grafana)
 
-func ProvideGrafana(cfg *setting.Cfg, userService user.Service, tracer trace.Tracer) *Grafana {
-	return &Grafana{cfg, userService, tracer}
+func ProvideGrafana(cfg *setting.Cfg, userService user.Service, orgService org.Service, tracer trace.Tracer) *Grafana {
+	return &Grafana{cfg, userService, orgService, tracer}
 }
 
 type Grafana struct {
 	cfg         *setting.Cfg
 	userService user.Service
+	orgService  org.Service
 	tracer      trace.Tracer
 }
 
@@ -76,6 +78,15 @@ func (c *Grafana) AuthenticateProxy(ctx context.Context, r *authn.Request, usern
 
 	if v, ok := additional[proxyFieldLogin]; ok {
 		identity.Login = v
+	}
+
+	if v, ok := additional[proxyFieldOrgName]; ok {
+		identity.OrgName = v
+		orgByName, err := c.orgService.GetByName(ctx, &org.GetOrgByNameQuery{Name: v})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get org by name: %w", err)
+		}
+		identity.OrgID = orgByName.ID
 	}
 
 	if v, ok := additional[proxyFieldRole]; ok {
