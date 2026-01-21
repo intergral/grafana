@@ -80,6 +80,20 @@ if [ ! -z "${GF_INSTALL_PLUGINS}" ]; then
   fi
 fi
 
+# ============================================================================
+# INTERGRAL CUSTOMIZATION: Extract custom plugins from zip files
+# ============================================================================
+if [ -d "/custom-plugins" ]; then
+  for zipfile in /custom-plugins/*.zip; do
+    if [ -f "$zipfile" ]; then
+      plugin_name=$(basename "$zipfile" .zip)
+      echo "Extracting custom plugin: $plugin_name"
+      unzip -q "$zipfile" -d "$GF_PATHS_PLUGINS/$plugin_name"
+    fi
+  done
+fi
+# ============================================================================
+
 exec grafana server                                         \
   --homepath="$GF_PATHS_HOME"                               \
   --config="$GF_PATHS_CONFIG"                               \
