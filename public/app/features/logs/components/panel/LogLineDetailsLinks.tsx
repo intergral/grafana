@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react';
 import { GrafanaTheme2 } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { DataLinkButton, Icon, Toggletip, useStyles2 } from '@grafana/ui';
+import { OpspilotDataLinkButton } from 'app/intergral/OpspilotDataLinkButton';
 
 import { FieldDef } from '../logParser';
 
@@ -103,18 +104,22 @@ export const LogLineDetailsField = ({ field, log }: LogLineDetailsFieldProps) =>
           }
           return (
             <span key={`${link.title}-${i}`} className={styles.link}>
-              <DataLinkButton
-                buttonProps={{
-                  // Show tooltip message if max number of pinned lines has been reached
-                  tooltip:
-                    typeof pinLineButtonTooltipTitle === 'object' && link.onClick
-                      ? pinLineButtonTooltipTitle
-                      : undefined,
-                  variant: 'secondary',
-                  fill: 'outline',
-                }}
-                link={link}
-              />
+              {link.title === 'OpsPilot AI' ? (
+                <OpspilotDataLinkButton link={link} />
+              ) : (
+                <DataLinkButton
+                  buttonProps={{
+                    // Show tooltip message if max number of pinned lines has been reached
+                    tooltip:
+                      typeof pinLineButtonTooltipTitle === 'object' && link.onClick
+                        ? pinLineButtonTooltipTitle
+                        : undefined,
+                    variant: 'secondary',
+                    fill: 'outline',
+                  }}
+                  link={link}
+                />
+              )}
             </span>
           );
         })}

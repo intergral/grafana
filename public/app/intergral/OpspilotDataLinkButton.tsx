@@ -33,8 +33,8 @@ export function OpspilotDataLinkButton({ link, buttonProps }: DataLinkButtonProp
   return (
     <Button
       icon={link.target === '_blank' ? 'external-link-alt' : undefined}
-      variant="primary"
-      size="sm"
+      variant="secondary"
+      fill="outline"
       onClick={handleClick}
       {...buttonProps}
     >
