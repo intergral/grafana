@@ -50,6 +50,7 @@ import { Trace, TraceViewPluginExtensionContext } from '../types/trace';
 import { formatDuration } from '../utils/date';
 
 import { SpanFilters } from './SpanFilters/SpanFilters';
+import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
 
 export type TracePageHeaderProps = {
   trace: Trace | null;
@@ -195,6 +196,7 @@ export const TracePageHeader = memo((props: TracePageHeaderProps) => {
         {/* Action buttons */}
         <div className={styles.actions}>
           {/* Plugin extension actions */}
+          <OpsPilotTraceButton trace={trace} />
           {extensionLinks.length > 0 && (
             <div className={styles.actions}>
               {extensionLinks.map((link) => (
