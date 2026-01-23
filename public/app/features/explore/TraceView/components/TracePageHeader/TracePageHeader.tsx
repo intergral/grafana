@@ -42,6 +42,7 @@ import {
   useTheme2,
 } from '@grafana/ui';
 import { useAppNotification } from 'app/core/copy/appNotification';
+import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
 
 import { config } from '../../../../../core/config';
 import { downloadTraceAsJson } from '../../../../inspector/utils/download';
@@ -50,7 +51,7 @@ import { Trace, TraceViewPluginExtensionContext } from '../types/trace';
 import { formatDuration } from '../utils/date';
 
 import { SpanFilters } from './SpanFilters/SpanFilters';
-import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
+
 
 export type TracePageHeaderProps = {
   trace: Trace | null;
