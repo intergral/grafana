@@ -107,7 +107,7 @@ func (c *Grafana) AuthenticateProxy(ctx context.Context, r *authn.Request, usern
 	identity.ClientParams.LookUpParams.Login = &identity.Login
 
 	// Log complete auth proxy identity for debugging
-	c.log.FromContext(ctx).Info("Auth proxy authentication completed",
+	c.log.FromContext(ctx).Debug("Auth proxy authentication completed",
 		"username", username,
 		"login", identity.Login,
 		"email", identity.Email,
