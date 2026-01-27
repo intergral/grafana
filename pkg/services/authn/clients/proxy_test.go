@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/grafana/pkg/infra/tracing"
 	"github.com/grafana/grafana/pkg/services/authn"
 	"github.com/grafana/grafana/pkg/services/authn/authntest"
+	"github.com/grafana/grafana/pkg/services/org/orgtest"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -114,7 +115,7 @@ func TestProxy_Authenticate(t *testing.T) {
 				calledAdditional = additional
 				return nil, nil
 			}}
-			c, err := ProvideProxy(cfg, &fakeCache{expectedErr: errors.New("")}, tracing.InitializeTracerForTest(), proxyClient)
+			c, err := ProvideProxy(cfg, &fakeCache{expectedErr: errors.New("")}, orgtest.NewOrgServiceFake(), tracing.InitializeTracerForTest(), proxyClient)
 			require.NoError(t, err)
 
 			_, err = c.Authenticate(context.Background(), tt.req)
@@ -170,7 +171,7 @@ func TestProxy_Test(t *testing.T) {
 			cfg := setting.NewCfg()
 			cfg.AuthProxy.HeaderName = "Proxy-Header"
 
-			c, _ := ProvideProxy(cfg, nil, tracing.InitializeTracerForTest(), nil)
+			c, _ := ProvideProxy(cfg, nil, orgtest.NewOrgServiceFake(), tracing.InitializeTracerForTest(), nil)
 			assert.Equal(t, tt.expectedOK, c.Test(context.Background(), tt.req))
 		})
 	}
@@ -209,7 +210,7 @@ func TestProxy_Hook(t *testing.T) {
 	withRole := func(role string) func(t *testing.T) {
 		cacheKey := fmt.Sprintf("users:johndoe-%s", role)
 		return func(t *testing.T) {
-			c, err := ProvideProxy(cfg, cache, tracing.InitializeTracerForTest(), authntest.MockProxyClient{})
+			c, err := ProvideProxy(cfg, cache, orgtest.NewOrgServiceFake(), tracing.InitializeTracerForTest(), authntest.MockProxyClient{})
 			require.NoError(t, err)
 			userIdentity := &authn.Identity{
 				ID:   "1",
