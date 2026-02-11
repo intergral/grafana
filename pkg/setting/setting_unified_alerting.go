@@ -153,6 +153,13 @@ type UnifiedAlertingSettings struct {
 	BacktestingMaxEvaluations int
 
 	IgnorePendingForNoDataAndError bool
+
+	// HASchedulerPartitioningEnabled enables partitioning of alert rule evaluation across HA peers.
+	// Each peer evaluates 1/N of rules. Requires ha_peers or ha_redis_address.
+	HASchedulerPartitioningEnabled bool
+	// HASchedulerMinClusterSize is the minimum cluster size required to enable partitioning.
+	// When the cluster is smaller than this, all rules are evaluated by all peers (safety fallback).
+	HASchedulerMinClusterSize int
 }
 
 type RecordingRuleSettings struct {
@@ -596,6 +603,9 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	if uaCfg.BacktestingMaxEvaluations < 0 {
 		uaCfg.BacktestingMaxEvaluations = 100
 	}
+
+	uaCfg.HASchedulerPartitioningEnabled = ua.Key("ha_scheduler_partitioning_enabled").MustBool(false)
+	uaCfg.HASchedulerMinClusterSize = ua.Key("ha_scheduler_min_cluster_size").MustInt(2)
 
 	cfg.UnifiedAlerting = uaCfg
 	return nil

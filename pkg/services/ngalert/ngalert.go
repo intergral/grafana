@@ -338,6 +338,17 @@ func (ng *AlertNG) init() error {
 	}
 	ng.RecordingWriter = recordingWriter
 
+	// Create partitioner if HA partitioning enabled
+	var partitioner schedule.RulePartitioner
+	if ng.Cfg.UnifiedAlerting.HASchedulerPartitioningEnabled {
+		if peer := moa.Peer(); peer != nil {
+			partitioner = schedule.NewPartitionFilter(peer, ng.Cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+			ng.Log.Info("HA scheduler partitioning enabled", "minClusterSize", ng.Cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+		} else {
+			ng.Log.Warn("HA scheduler partitioning requested but no HA cluster configured")
+		}
+	}
+
 	ng.schedCfg = schedule.SchedulerCfg{
 		RetryConfig: schedule.RetryConfig{
 			MaxAttempts:         ng.Cfg.UnifiedAlerting.MaxAttempts,
@@ -360,6 +371,7 @@ func (ng *AlertNG) init() error {
 		Log:                  log.New("ngalert.scheduler"),
 		RecordingWriter:      ng.RecordingWriter,
 		FeatureToggles:       ng.FeatureToggles,
+		Partitioner:          partitioner,
 	}
 
 	history, err := configureHistorianBackend(
