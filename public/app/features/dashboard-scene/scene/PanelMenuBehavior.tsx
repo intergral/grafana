@@ -607,3 +607,18 @@ export function toggleVizPanelLegend(vizPanel: VizPanel): void {
 function hasLegendOptions(optionsWithLegend: unknown): optionsWithLegend is OptionsWithLegend {
   return optionsWithLegend != null && typeof optionsWithLegend === 'object' && 'legend' in optionsWithLegend;
 }
+
+const onCreateAlert = async (panel: VizPanel) => {
+  try {
+    const formValues = await scenesPanelToRuleFormValues(panel);
+    const ruleFormUrl = urlUtil.renderUrl('/alerting/new', {
+      defaults: JSON.stringify(formValues),
+      returnTo: window.location.pathname + window.location.search,
+    });
+    locationService.push(ruleFormUrl);
+  } catch (err) {
+    const message = `Error getting rule values from the panel: ${getMessageFromError(err)}`;
+    dispatch(notifyApp(createErrorNotification(message)));
+    return;
+  }
+};
