@@ -18,7 +18,21 @@ func (sch *schedule) updateSchedulableAlertRules(ctx context.Context) (diff, err
 			time.Since(start).Seconds())
 	}()
 
-	if !sch.schedulableAlertRules.isEmpty() {
+	// Check if cluster topology has changed (for HA partitioning)
+	forceUpdate := false
+	if sch.partitioner != nil {
+		currentSize := sch.partitioner.ClusterSize()
+		if sch.lastClusterSize != currentSize {
+			sch.log.Info("Cluster size changed, forcing rule re-fetch",
+				"previousSize", sch.lastClusterSize,
+				"currentSize", currentSize,
+			)
+			sch.lastClusterSize = currentSize
+			forceUpdate = true
+		}
+	}
+
+	if !forceUpdate && !sch.schedulableAlertRules.isEmpty() {
 		keys, err := sch.ruleStore.GetAlertRulesKeysForScheduling(ctx)
 		if err != nil {
 			return diff{}, err
@@ -35,6 +49,12 @@ func (sch *schedule) updateSchedulableAlertRules(ctx context.Context) (diff, err
 	if err := sch.ruleStore.GetAlertRulesForScheduling(ctx, &q); err != nil {
 		return diff{}, fmt.Errorf("failed to get alert rules: %w", err)
 	}
+
+	// Apply partition filter if configured (for HA rule distribution)
+	if sch.partitioner != nil {
+		q.ResultRules = sch.partitioner.Filter(q.ResultRules)
+	}
+
 	d := sch.schedulableAlertRules.set(q.ResultRules, q.ResultFoldersTitles)
 	sch.log.Debug("Alert rules fetched", "rulesCount", len(q.ResultRules), "foldersCount", len(q.ResultFoldersTitles), "updatedRules", len(d.updated))
 	return d, nil
