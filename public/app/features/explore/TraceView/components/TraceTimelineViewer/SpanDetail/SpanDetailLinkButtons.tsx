@@ -227,7 +227,12 @@ const createLinkModel = (
           // if it's an absolute URL - open it in a new window
           if (!ABSOLUTE_LINK_PATTERN.test(link.href)) {
             // handle relative URLs by changing current URL:
-            locationService.push(link.href);
+            // Strip appSubUrl prefix if present, since locationService.push
+            // already operates relative to the app's base URL
+            const appSubUrl = config.appSubUrl ?? '';
+            const href =
+              appSubUrl && link.href.startsWith(appSubUrl) ? link.href.slice(appSubUrl.length) : link.href;
+            locationService.push(href);
           } else {
             window.open(link.href, '_blank', 'noopener,noreferrer');
           }
