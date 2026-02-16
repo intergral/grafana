@@ -87,10 +87,6 @@ if [ -d "/custom-plugins" ]; then
   for zipfile in /custom-plugins/*.zip; do
     if [ -f "$zipfile" ]; then
       plugin_name=$(basename "$zipfile" .zip)
-      if [ -d "$GF_PATHS_PLUGINS/$plugin_name" ]; then
-        echo "Removing existing installation of plugin $plugin_name"
-        rm -rf "$GF_PATHS_PLUGINS/$plugin_name"
-      fi
       echo "Extracting custom plugin: $plugin_name"
       unzip -q "$zipfile" -d "$GF_PATHS_PLUGINS/$plugin_name"
     fi
