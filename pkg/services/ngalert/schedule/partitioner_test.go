@@ -302,7 +302,6 @@ func TestPartitioner_MemberJoins(t *testing.T) {
 		p.setTopology(i, members3)
 	}
 	newPeer := &dynamicMockPeer{position: 2, members: members3}
-	peers = append(peers, newPeer)
 	partitioners = append(partitioners, NewPartitionFilter(newPeer, minClusterSize))
 
 	assertFullCoverageWithPeers(t, rules, partitioners, "3-member cluster after join")
