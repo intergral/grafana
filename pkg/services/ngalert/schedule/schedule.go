@@ -144,7 +144,7 @@ type SchedulerCfg struct {
 	RuleStopReasonProvider AlertRuleStopReasonProvider
 	FeatureToggles         featuremgmt.FeatureToggles
 	// Partitioner optionally filters which rules this instance evaluates (for HA partitioning)
-	Partitioner            RulePartitioner
+	Partitioner RulePartitioner
 }
 
 // NewScheduler returns a new scheduler.
