@@ -380,6 +380,12 @@ func (ng *AlertNG) init() error {
 
 	ng.InstanceStore, ng.StartupInstanceReader = initInstanceStore(ng.store.SQLStore, ng.Log, ng.FeatureToggles)
 
+	// Wire RuleFilter for remote state sync when partitioning is enabled
+	var ruleFilter state.RuleFilter
+	if partitioner != nil {
+		ruleFilter = partitioner
+	}
+
 	stateManagerCfg := state.ManagerCfg{
 		Metrics:                        ng.Metrics.GetStateMetrics(),
 		ExternalURL:                    appUrl,
@@ -396,6 +402,8 @@ func (ng *AlertNG) init() error {
 		Tracer:                         ng.tracer,
 		Log:                            log.New("ngalert.state.manager"),
 		ResolvedRetention:              ng.Cfg.UnifiedAlerting.ResolvedAlertRetention,
+		RuleFilter:                     ruleFilter,
+		RemoteStateSyncInterval:        ng.Cfg.UnifiedAlerting.HASchedulerRemoteStateSyncInterval,
 	}
 	statePersister := initStatePersister(ng.Cfg.UnifiedAlerting, stateManagerCfg, ng.FeatureToggles)
 	stateManager := state.NewManager(stateManagerCfg, statePersister)
