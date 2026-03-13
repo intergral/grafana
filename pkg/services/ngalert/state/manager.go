@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	ResendDelay                        = 30 * time.Second
-	defaultRemoteStateSyncInterval     = 30 * time.Second
+	ResendDelay                    = 30 * time.Second
+	defaultRemoteStateSyncInterval = 30 * time.Second
 )
 
 type takeImageFn func(reason string) *ngModels.Image
