@@ -160,6 +160,10 @@ type UnifiedAlertingSettings struct {
 	// HASchedulerMinClusterSize is the minimum cluster size required to enable partitioning.
 	// When the cluster is smaller than this, all rules are evaluated by all peers (safety fallback).
 	HASchedulerMinClusterSize int
+	// HASchedulerRemoteStateSyncInterval controls how often remote rule states are refreshed
+	// from the database when partitioning is enabled. This ensures the UI shows current state
+	// for rules evaluated by other instances. Default: 30s.
+	HASchedulerRemoteStateSyncInterval time.Duration
 }
 
 type RecordingRuleSettings struct {
@@ -606,6 +610,10 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 
 	uaCfg.HASchedulerPartitioningEnabled = ua.Key("ha_scheduler_partitioning_enabled").MustBool(false)
 	uaCfg.HASchedulerMinClusterSize = ua.Key("ha_scheduler_min_cluster_size").MustInt(2)
+	uaCfg.HASchedulerRemoteStateSyncInterval, err = gtime.ParseDuration(valueAsString(ua, "ha_scheduler_remote_state_sync_interval", (30 * time.Second).String()))
+	if err != nil {
+		return err
+	}
 
 	cfg.UnifiedAlerting = uaCfg
 	return nil
