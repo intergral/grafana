@@ -1,3 +1,4 @@
+// Package state manages alert rule state and caching for the unified alerting system.
 package state
 
 import (
