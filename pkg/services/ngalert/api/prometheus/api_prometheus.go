@@ -339,7 +339,7 @@ func (srv PrometheusSrv) RouteGetRuleStatuses(c *contextmodel.ReqContext) respon
 			Query:             c.Req.Form,
 			AllowedNamespaces: allowedNamespaces,
 		},
-		RuleStatusMutatorGenerator(srv.status),
+		RuleStatusMutatorGenerator(srv.status, srv.manager),
 		RuleAlertStateMutatorGenerator(srv.manager),
 		srv.provenanceStore,
 	)
@@ -353,14 +353,25 @@ type RuleStatusMutator func(ctx context.Context, source *ngmodels.AlertRule, toM
 // mutator function used to attach alert states to the rule and returns the totals and filtered totals
 type RuleAlertStateMutator func(ctx context.Context, source *ngmodels.AlertRule, toMutate *apimodels.AlertingRule, stateFilterSet map[eval.State]struct{}, matchers labels.Matchers, labelOptions []ngmodels.LabelOption, limitAlerts int64) (total map[string]int64, filteredTotal map[string]int64)
 
-func RuleStatusMutatorGenerator(statusReader StatusReader) RuleStatusMutator {
+func RuleStatusMutatorGenerator(statusReader StatusReader, stateManager ...state.AlertInstanceManager) RuleStatusMutator {
 	return func(ctx context.Context, source *ngmodels.AlertRule, toMutate *apimodels.AlertingRule) {
 		status, ok := statusReader.Status(ctx, source.GetKey())
 		// Grafana by design return "ok" health and default other fields for unscheduled rules.
 		// This differs from Prometheus.
 		if !ok {
-			status = ngmodels.RuleStatus{
-				Health: "ok",
+			// When HA partitioning is enabled, this instance may not schedule the rule
+			// but may still have cached state from remote sync. Derive status from that.
+			if len(stateManager) > 0 && stateManager[0] != nil {
+				states := stateManager[0].GetStatesForRuleUID(source.OrgID, source.UID)
+				if len(states) > 0 {
+					status = state.StatesToRuleStatus(states)
+					ok = true
+				}
+			}
+			if !ok {
+				status = ngmodels.RuleStatus{
+					Health: "ok",
+				}
 			}
 		}
 		toMutate.Health = status.Health
