@@ -111,7 +111,7 @@ func (p *partitioner) Filter(rules []*models.AlertRule) []*models.AlertRule {
 		}
 	}
 
-	p.logger.Info("HA partitioning applied",
+	p.logger.Debug("HA partitioning applied",
 		"totalRules", len(rules),
 		"assignedRules", len(filtered),
 		"memberCount", memberCount,
