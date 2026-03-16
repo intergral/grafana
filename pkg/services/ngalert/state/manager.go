@@ -204,6 +204,10 @@ func (st *Manager) refreshRemoteStates(ctx context.Context) {
 			continue
 		}
 
+		if len(alertRules) == 0 {
+			continue
+		}
+
 		// Determine which rules are local via the filter
 		localRules := st.ruleFilter.Filter(alertRules)
 		localRuleUIDs := make(map[string]struct{}, len(localRules))
