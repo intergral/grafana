@@ -596,7 +596,7 @@ export class DashboardScenePageStateManager extends DashboardScenePageStateManag
                 isAfterSave &&
                 attempt < maxAttempts - 1 &&
                 isFetchError(e) &&
-                (e.status === 404 || e.status === 403);
+                (e.status === 404 || e.status === 403 || e.status === 500);
               if (!isRetryable) {
                 throw e;
               }
