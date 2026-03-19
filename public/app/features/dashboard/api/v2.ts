@@ -42,7 +42,9 @@ export class K8sDashboardV2API
 
   async getDashboardDTO(uid: string) {
     try {
-      const dashboard = await this.client.subresource<DashboardWithAccessInfo<DashboardV2Spec>>(uid, 'dto');
+      const dashboard = await this.client.subresource<DashboardWithAccessInfo<DashboardV2Spec>>(
+        uid, 'dto', undefined, { showErrorAlert: false }
+      );
 
       // FOR /dto calls returning v2 spec we are ignoring the conversion status to avoid runtime errors caused by the status
       // being saved for v2 resources that's been client-side converted to v2 and then PUT to the API server.
