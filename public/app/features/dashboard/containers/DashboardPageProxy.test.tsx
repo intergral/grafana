@@ -169,6 +169,7 @@ describe('DashboardPageProxy', () => {
       });
 
       it('should not render DashboardScenePage if route is Normal and has uid', async () => {
+        jest.spyOn(console, 'error').mockImplementation();
         getDashboardScenePageStateManager().setDashboardCache('abc-def', dashMockEditable);
         act(() => {
           setup({
