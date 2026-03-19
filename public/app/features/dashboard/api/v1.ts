@@ -172,7 +172,7 @@ export class K8sDashboardAPI implements DashboardAPI<DashboardDTO, Dashboard> {
           result.meta.folderId = folder.id;
         } catch (e) {
           // If user has access to dashboard but not to folder, continue without folder info
-          if (getStatusFromError(e) !== 403) {
+          if (getStatusFromError(e) !== 403 && getStatusFromError(e) !== 500) {
             throw new Error('Failed to load folder');
           }
           // we still want to save the folder uid so that we can properly handle disabling the folder picker in Settings -> General

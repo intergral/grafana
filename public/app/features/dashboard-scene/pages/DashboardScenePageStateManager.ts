@@ -801,13 +801,44 @@ export class DashboardScenePageStateManagerV2 extends DashboardScenePageStateMan
         case DashboardRoutes.Public: {
           return await this.dashboardLoader.loadDashboard('public', '', uid);
         }
-        default:
-          rsp = await this.dashboardLoader.loadDashboard(type || 'db', slug || '', uid);
+        default: {
+          // In multi-instance deployments, a post-save redirect may land on an instance
+          // that hasn't propagated the new dashboard yet. Retry on 404/403/500 when afterSave is set.
+          const searchParams = new URLSearchParams(locationService.getLocation().search);
+          const isAfterSave = searchParams.has('afterSave');
+          const maxAttempts = isAfterSave ? 6 : 1;
+
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+              rsp = await this.dashboardLoader.loadDashboard(type || 'db', slug || '', uid);
+              break;
+            } catch (e) {
+              const isRetryable =
+                isAfterSave &&
+                attempt < maxAttempts - 1 &&
+                isFetchError(e) &&
+                (e.status === 404 || e.status === 403 || e.status === 500);
+              if (!isRetryable) {
+                throw e;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
+
+          // Strip afterSave param now that the dashboard loaded successfully
+          if (isAfterSave) {
+            searchParams.delete('afterSave');
+            locationService.replace({
+              ...locationService.getLocation(),
+              search: searchParams.toString(),
+            });
+          }
 
           if (route === DashboardRoutes.Embedded) {
             rsp.metadata.annotations = rsp.metadata.annotations || {};
             rsp.metadata.annotations[AnnoKeyEmbedded] = 'embedded';
           }
+        }
       }
       // Fix outdated URLs (e.g., old slugs from title changes) but skip during playlist navigation
       // Playlists manage their own URL generation and redirects would break the navigation flow
