@@ -9,7 +9,6 @@ import appEvents from 'app/core/app_events';
 import { useAppNotification } from 'app/core/copy/appNotification';
 import { updateDashboardName } from 'app/core/reducers/navBarTree';
 import { useSaveDashboardMutation } from 'app/features/browse-dashboards/api/browseDashboardsAPI';
-import { getDashboardAPI } from 'app/features/dashboard/api/dashboard_api';
 import { SaveDashboardAsOptions, SaveDashboardOptions } from 'app/features/dashboard/components/SaveDashboard/types';
 import { DashboardSavedEvent } from 'app/types/events';
 import { useDispatch } from 'app/types/store';
@@ -18,26 +17,6 @@ import { updateDashboardUidLastUsedDatasource } from '../../dashboard/utils/dash
 import { DashboardScene } from '../scene/DashboardScene';
 import { DashboardInteractions } from '../utils/interactions';
 import { trackDashboardSceneCreatedOrSaved } from '../utils/tracking';
-
-/**
- * Wait until the dashboard is accessible via the API before redirecting.
- * In multi-instance deployments, the instance serving the redirect may not
- * have the dashboard or its permissions available yet.
- */
-async function waitForDashboardReady(uid: string, maxAttempts = 8, intervalMs = 500): Promise<void> {
-  const api = getDashboardAPI();
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      await api.getDashboardDTO(uid);
-      return;
-    } catch {
-      if (attempt < maxAttempts - 1) {
-        await new Promise((resolve) => setTimeout(resolve, intervalMs));
-      }
-    }
-  }
-  // Proceed with redirect even if polling fails — worst case the user refreshes
-}
 
 export function useSaveDashboard(isCopy = false) {
   const dispatch = useDispatch();
@@ -112,15 +91,13 @@ export function useSaveDashboard(isCopy = false) {
         const newUrl = locationUtil.stripBaseFromUrl(resultData.url);
 
         if (newUrl !== currentLocation.pathname) {
-          // Wait until the dashboard is accessible before redirecting.
-          // In multi-instance deployments, the instance serving the redirect may not have
-          // the dashboard or its permissions propagated yet. This applies to new dashboards
-          // and save-as-copy, both of which create a new UID.
-          if (resultData.uid) {
-            await waitForDashboardReady(resultData.uid);
-          }
+          // Signal to the dashboard loader that this is a post-save redirect.
+          // In multi-instance deployments, the serving instance may not have the
+          // dashboard propagated yet — the loader will retry on 404/403.
+          const search = new URLSearchParams(currentLocation.search);
+          search.set('afterSave', '1');
           setTimeout(() => {
-            locationService.push({ pathname: newUrl, search: currentLocation.search });
+            locationService.push({ pathname: newUrl, search: search.toString() });
           });
         }
 
