@@ -88,6 +88,11 @@ func (s *Resolvers) GetScopeAttributeMutator(orgID int64) ScopeAttributeMutator 
 	}
 }
 
+// ClearCacheFor removes the cached scope resolution for a specific scope in an org.
+func (s *Resolvers) ClearCacheFor(orgID int64, scope string) {
+	s.cache.Delete(getScopeCacheKey(orgID, scope))
+}
+
 // getScopeCacheKey creates an identifier to fetch and store resolution of scopes in the cache
 func getScopeCacheKey(orgID int64, scope string) string {
 	return fmt.Sprintf("%s-%v", scope, orgID)

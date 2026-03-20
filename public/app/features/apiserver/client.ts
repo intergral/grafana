@@ -1,7 +1,7 @@
 import { Observable, from, retry, catchError, filter, map, mergeMap } from 'rxjs';
 
 import { isLiveChannelMessageEvent, LiveChannelScope } from '@grafana/data';
-import { config, getBackendSrv, getGrafanaLiveSrv } from '@grafana/runtime';
+import { BackendSrvRequest, config, getBackendSrv, getGrafanaLiveSrv } from '@grafana/runtime';
 import { contextSrv } from 'app/core/core';
 
 import { getAPINamespace } from '../../api/utils';
@@ -98,8 +98,13 @@ export class ScopedResourceClient<T = object, S = object, K = string> implements
       );
   }
 
-  public async subresource<S>(name: string, path: string, params?: Record<string, unknown>): Promise<S> {
-    return getBackendSrv().get<S>(`${this.url}/${name}/${path}`, params);
+  public async subresource<S>(
+    name: string,
+    path: string,
+    params?: Record<string, unknown>,
+    options?: Partial<BackendSrvRequest>
+  ): Promise<S> {
+    return getBackendSrv().get<S>(`${this.url}/${name}/${path}`, params, undefined, options);
   }
 
   public async list(opts?: ListOptions | undefined): Promise<ResourceList<T, S, K>> {
