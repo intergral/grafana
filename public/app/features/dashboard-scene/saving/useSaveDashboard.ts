@@ -92,8 +92,13 @@ export function useSaveDashboard(isCopy = false) {
         const newUrl = locationUtil.stripBaseFromUrl(resultData.url);
 
         if (newUrl !== currentLocation.pathname) {
+          // Signal to the dashboard loader that this is a post-save redirect.
+          // In multi-instance deployments, the serving instance may not have the
+          // dashboard propagated yet — the loader will retry on 404/403.
+          const search = new URLSearchParams(currentLocation.search);
+          search.set('afterSave', '1');
           setTimeout(() => {
-            locationService.push({ pathname: newUrl, search: currentLocation.search });
+            locationService.push({ pathname: newUrl, search: search.toString() });
           });
         }
 
