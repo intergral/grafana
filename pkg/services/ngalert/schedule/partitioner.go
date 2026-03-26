@@ -1,3 +1,4 @@
+// Package schedule implements the unified alerting evaluation scheduler.
 package schedule
 
 import (
