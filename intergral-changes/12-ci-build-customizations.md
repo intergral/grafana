@@ -31,7 +31,8 @@ All workflows trigger on pushes to `*-intergral` branches and PRs targeting them
 #### 3. Docker Build & Push (`.github/workflows/intergral-docker.yml`)
 
 - Builds and pushes to `intergral/grafana` Docker registry
-- Uses `docker/build-push-action` with `docker/setup-buildx-action`
+- Uses `docker/build-push-action` with `docker/setup-buildx-action` and `docker/setup-qemu-action` for arm64 cross-compilation
+- Builds **linux/arm64 only** -- the FusionReactor Cloud cluster runs arm64 exclusively. QEMU emulation is used since GitHub Actions runners are x86. This makes the build slower but avoids needing a self-hosted arm64 runner.
 - **BuildKit automatically parallelizes** the independent `js-builder` and `go-builder` Dockerfile stages -- no need to split into separate GHA jobs
 - **GHA layer caching** (`cache-from: type=gha` / `cache-to: type=gha,mode=max`) caches the `go mod download` and `yarn install` layers across builds
 - Supports **dev builds** via `workflow_dispatch` with a `go_build_dev` input -- when set to `dev`, passes `JS_NODE_ENV=dev`, `JS_YARN_BUILD_FLAG=dev`, and `GO_BUILD_DEV=dev` as build args
