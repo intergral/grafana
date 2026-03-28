@@ -16,6 +16,7 @@
       "bbb": true,
       "ccc": 1.234
     },
+    "readOnly": true,
     "title": "Hello testdata",
     "url": "http://something/",
     "withCredentials": true
