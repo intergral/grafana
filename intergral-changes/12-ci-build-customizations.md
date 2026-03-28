@@ -44,9 +44,9 @@ All workflows trigger on pushes to `*-intergral` branches and PRs targeting them
 - Passes it through to the build: `make build-go GO_BUILD_TAGS=${GO_BUILD_TAGS} WIRE_TAGS=${WIRE_TAGS} GO_BUILD_DEV=${GO_BUILD_DEV}`
 - This wires the dev build flag from the workflow through to the Makefile, which translates `GO_BUILD_DEV=dev` into `GO_BUILD_FLAGS += -dev`
 
-### Upstream workflow suppression
+### Upstream workflow removal
 
-Most upstream workflows already skip on forks because they check `github.repository == 'grafana/grafana'`. Push triggers only match `main` and `release-*.*.*`, which don't match `*-intergral` branches. Some bare `pull_request:` triggers may still fire for PRs but they detect no relevant changes and exit quickly. A future improvement would be adding `branches-ignore: ['*-intergral']` to those triggers.
+All upstream Grafana CI workflows (82 files) have been deleted from `.github/workflows/`. Only the three Intergral-specific workflows remain. This prevents upstream checks (linting, docs, i18n, e2e, code scanning, etc.) from running on Intergral branches and PRs where they are not relevant and would fail due to missing infrastructure (enterprise repos, secrets, large runners). The upstream workflows still exist on `main` if needed for reference.
 
 ## What's still needed
 
