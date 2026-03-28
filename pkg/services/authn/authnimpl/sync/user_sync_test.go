@@ -31,6 +31,29 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+// fakeUserProxy is a minimal mock of UserProxy for Intergral auth proxy tests.
+type fakeUserProxy struct {
+	getSignedInUser func(ctx context.Context, userID int64, orgID int64) (*user.SignedInUser, error)
+}
+
+func (f *fakeUserProxy) GetByUserAuth(_ context.Context, _ *login.UserAuth) (*user.User, error) {
+	return nil, nil
+}
+func (f *fakeUserProxy) GetByEmail(_ context.Context, _ string) (*user.User, error) {
+	return nil, nil
+}
+func (f *fakeUserProxy) GetByLogin(_ context.Context, _ string) (*user.User, error) {
+	return nil, nil
+}
+func (f *fakeUserProxy) GetSignedInUser(ctx context.Context, userID int64, orgID int64) (*user.SignedInUser, error) {
+	return f.getSignedInUser(ctx, userID, orgID)
+}
+func (f *fakeUserProxy) Create(_ context.Context, _ *user.CreateUserCommand) (*user.User, error) {
+	return nil, nil
+}
+func (f *fakeUserProxy) Update(_ context.Context, _ *user.UpdateUserCommand) error { return nil }
+func (f *fakeUserProxy) UpdateLastSeenAt(_ context.Context, _ int64, _ int64) error { return nil }
+
 func ptrString(s string) *string {
 	return &s
 }
@@ -965,15 +988,9 @@ func TestUserSync_FetchSyncedUserHook(t *testing.T) {
 	t.Run("should use identity.OrgID when r.OrgID is 0", func(t *testing.T) {
 		// Simulates auth proxy setting identity.OrgID from X-WEBAUTH-ORG header
 		var calledOrgID int64
-		userService := &usertest.FakeUserService{
-			ExpectedSignedInUser: &user.SignedInUser{
-				UserID:  1,
-				OrgID:   3,
-				OrgName: "ProxyOrg",
-				OrgRole: "Viewer",
-			},
-			GetSignedInUserFn: func(ctx context.Context, query *user.GetSignedInUserQuery) (*user.SignedInUser, error) {
-				calledOrgID = query.OrgID
+		userService := &fakeUserProxy{
+			getSignedInUser: func(ctx context.Context, userID int64, orgID int64) (*user.SignedInUser, error) {
+				calledOrgID = orgID
 				return &user.SignedInUser{
 					UserID:  1,
 					OrgID:   3,
@@ -1013,15 +1030,9 @@ func TestUserSync_FetchSyncedUserHook(t *testing.T) {
 	t.Run("should prefer r.OrgID when both r.OrgID and identity.OrgID are set", func(t *testing.T) {
 		// Simulates user explicitly switching orgs with X-Grafana-Org-Id
 		var calledOrgID int64
-		userService := &usertest.FakeUserService{
-			ExpectedSignedInUser: &user.SignedInUser{
-				UserID:  1,
-				OrgID:   5,
-				OrgName: "SwitchedOrg",
-				OrgRole: "Admin",
-			},
-			GetSignedInUserFn: func(ctx context.Context, query *user.GetSignedInUserQuery) (*user.SignedInUser, error) {
-				calledOrgID = query.OrgID
+		userService := &fakeUserProxy{
+			getSignedInUser: func(ctx context.Context, userID int64, orgID int64) (*user.SignedInUser, error) {
+				calledOrgID = orgID
 				return &user.SignedInUser{
 					UserID:  1,
 					OrgID:   5,

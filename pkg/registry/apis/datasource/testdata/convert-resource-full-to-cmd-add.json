@@ -9,6 +9,7 @@
   "basicAuthUser": "xxx",
   "withCredentials": true,
   "isDefault": true,
+  "readOnly": true,
   "jsonData": {
     "aaa": "bbb",
     "bbb": true,
