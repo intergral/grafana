@@ -464,8 +464,11 @@ func (moa *MultiOrgAlertmanager) StopAndWait() {
 }
 
 // Peer returns the cluster peer for this Alertmanager.
-// Returns nil if clustering is not configured.
+// Returns nil if clustering is not configured (NilPeer).
 func (moa *MultiOrgAlertmanager) Peer() alertingNotify.ClusterPeer {
+	if _, ok := moa.peer.(*NilPeer); ok {
+		return nil
+	}
 	return moa.peer
 }
 
@@ -635,15 +638,6 @@ func (moa *MultiOrgAlertmanager) updateSilenceState(ctx context.Context, orgAM A
 	fs := NewFileStore(orgID, moa.kvStore)
 	_, err = fs.SaveSilences(ctx, silences)
 	return err
-}
-
-// Peer returns the cluster peer used for HA coordination.
-// Returns nil if clustering is not configured.
-func (moa *MultiOrgAlertmanager) Peer() alertingNotify.ClusterPeer {
-	if _, ok := moa.peer.(*NilPeer); ok {
-		return nil
-	}
-	return moa.peer
 }
 
 // NilPeer and NilChannel implements the Alertmanager clustering interface.

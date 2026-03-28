@@ -2,6 +2,8 @@ import { TraceKeyValuePair } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { Button, Dropdown, Menu } from '@grafana/ui';
 
+import opsPilotIcon from './opspilot-icon.svg';
+
 import { TraceSpan } from '../features/explore/TraceView/components/types/trace';
 
 import { useOpsPilotBroadcast } from './OpsPilotBroadcastContext';
@@ -92,8 +94,11 @@ export default function OpsPilotSpanButton({ span }: OpsPilotSpanButtonProps) {
 
   return (
     <Dropdown overlay={menu}>
-      <Button variant="primary" size="sm" icon="ai">
-        {t('opspilot.span-button.ask-opspilot', 'Ask OpsPilot')}
+      <Button variant="primary" size="sm">
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+          <img src={opsPilotIcon} alt="" width={14} height={14} style={{ filter: 'brightness(0) invert(1)' }} />
+          {t('opspilot.span-button.ask-opspilot', 'Ask OpsPilot')}
+        </span>
       </Button>
     </Dropdown>
   );

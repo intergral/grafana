@@ -691,7 +691,7 @@ export class DashboardScenePageStateManager extends DashboardScenePageStateManag
       return cachedDashboard;
     }
 
-    let rsp: DashboardDTO;
+    let rsp!: DashboardDTO;
 
     try {
       switch (route) {
@@ -952,7 +952,7 @@ export class DashboardScenePageStateManagerV2 extends DashboardScenePageStateMan
       return cachedDashboard;
     }
 
-    let rsp: DashboardWithAccessInfo<DashboardV2Spec>;
+    let rsp!: DashboardWithAccessInfo<DashboardV2Spec>;
     try {
       switch (route) {
         case DashboardRoutes.New:

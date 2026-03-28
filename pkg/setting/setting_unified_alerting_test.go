@@ -419,3 +419,69 @@ func TestHARedisSentinelModeSettings(t *testing.T) {
 		})
 	}
 }
+
+func TestIntergralExternalURLSetting(t *testing.T) {
+	t.Run("should default to empty string", func(t *testing.T) {
+		f := ini.Empty()
+		cfg := NewCfg()
+		err := cfg.ReadUnifiedAlertingSettings(f)
+		require.NoError(t, err)
+		require.Equal(t, "", cfg.UnifiedAlerting.ExternalURL)
+	})
+
+	t.Run("should read external_url when set", func(t *testing.T) {
+		f := ini.Empty()
+		section, err := f.NewSection("unified_alerting")
+		require.NoError(t, err)
+		_, err = section.NewKey("external_url", "https://external.example.com/grafana")
+		require.NoError(t, err)
+
+		cfg := NewCfg()
+		err = cfg.ReadUnifiedAlertingSettings(f)
+		require.NoError(t, err)
+		require.Equal(t, "https://external.example.com/grafana", cfg.UnifiedAlerting.ExternalURL)
+	})
+}
+
+func TestIntergralHASchedulerPartitioningSettings(t *testing.T) {
+	t.Run("should default to disabled with min cluster size 2 and 30s sync interval", func(t *testing.T) {
+		f := ini.Empty()
+		cfg := NewCfg()
+		err := cfg.ReadUnifiedAlertingSettings(f)
+		require.NoError(t, err)
+		require.False(t, cfg.UnifiedAlerting.HASchedulerPartitioningEnabled)
+		require.Equal(t, 2, cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+		require.Equal(t, 30*time.Second, cfg.UnifiedAlerting.HASchedulerRemoteStateSyncInterval)
+	})
+
+	t.Run("should read custom values", func(t *testing.T) {
+		f := ini.Empty()
+		section, err := f.NewSection("unified_alerting")
+		require.NoError(t, err)
+		_, err = section.NewKey("ha_scheduler_partitioning_enabled", "true")
+		require.NoError(t, err)
+		_, err = section.NewKey("ha_scheduler_min_cluster_size", "3")
+		require.NoError(t, err)
+		_, err = section.NewKey("ha_scheduler_remote_state_sync_interval", "1m")
+		require.NoError(t, err)
+
+		cfg := NewCfg()
+		err = cfg.ReadUnifiedAlertingSettings(f)
+		require.NoError(t, err)
+		require.True(t, cfg.UnifiedAlerting.HASchedulerPartitioningEnabled)
+		require.Equal(t, 3, cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+		require.Equal(t, time.Minute, cfg.UnifiedAlerting.HASchedulerRemoteStateSyncInterval)
+	})
+
+	t.Run("should fail on invalid sync interval", func(t *testing.T) {
+		f := ini.Empty()
+		section, err := f.NewSection("unified_alerting")
+		require.NoError(t, err)
+		_, err = section.NewKey("ha_scheduler_remote_state_sync_interval", "not-a-duration")
+		require.NoError(t, err)
+
+		cfg := NewCfg()
+		err = cfg.ReadUnifiedAlertingSettings(f)
+		require.Error(t, err)
+	})
+}

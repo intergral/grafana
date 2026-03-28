@@ -125,17 +125,17 @@ export const getSpanDetailLinkButtons = (props: Props) => {
     if (links.length > MAX_LINKS) {
       content = (
         <>
-          <DropDownMenu links={links}></DropDownMenu>
           {shareButton}
+          <DropDownMenu links={links}></DropDownMenu>
         </>
       );
     } else if (links.length > 0) {
       content = (
         <>
+          {shareButton}
           {links.map((spanLinkModel, index) => (
             <SingleLinkButton spanLinkModel={spanLinkModel} key={index} />
           ))}
-          {shareButton}
         </>
       );
     }

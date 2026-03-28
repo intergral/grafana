@@ -521,13 +521,15 @@ export default function SpanDetail(props: SpanDetailProps) {
           <h6 className={styles.operationName} title={operationName}>
             {operationName}
           </h6>
-          {linksComponent}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            {linksComponent}
+            <OpsPilotSpanButton span={span} />
+          </div>
         </div>
         <div className={styles.listWrapper}>
           <LabeledList className={styles.list} divider={false} items={overviewItems} color={color} />
         </div>
       </div>
-      <OpsPilotSpanButton span={span} />
       <Divider spacing={1} />
       <div className={styles.content}>
         <CardsContainer listOfContentCards={listOfContentCards} mainContainerRef={mainContainerRef} />

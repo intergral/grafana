@@ -150,6 +150,11 @@ type UnifiedAlertingSettings struct {
 	// AlertmanagerMaxTemplateOutputSize specifies the maximum allowed size for rendered template output in bytes.
 	AlertmanagerMaxTemplateOutputSize int64
 
+	// ExternalURL overrides AppURL for alert notification links.
+	// When set, alert notifications will use this URL instead of root_url.
+	// Useful when Grafana is iframed and the root_url differs from the URL users should follow.
+	ExternalURL string
+
 	BacktestingMaxEvaluations int
 
 	IgnorePendingForNoDataAndError bool
@@ -355,6 +360,8 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	uaCfg.HARedisTLSConfig.CipherSuites = ua.Key("ha_redis_tls_cipher_suites").MustString("")
 	uaCfg.HARedisTLSConfig.MinVersion = ua.Key("ha_redis_tls_min_version").MustString("")
 	uaCfg.HASingleNodeEvaluation = ua.Key("ha_single_node_evaluation").MustBool(false)
+
+	uaCfg.ExternalURL = ua.Key("external_url").MustString("")
 
 	// TODO load from ini file
 	uaCfg.DefaultConfiguration = alertmanagerDefaultConfiguration

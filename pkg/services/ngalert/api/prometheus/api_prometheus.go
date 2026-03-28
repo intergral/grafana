@@ -362,7 +362,7 @@ func RuleStatusMutatorGenerator(statusReader StatusReader, stateManager ...state
 			// When HA partitioning is enabled, this instance may not schedule the rule
 			// but may still have cached state from remote sync. Derive status from that.
 			if len(stateManager) > 0 && stateManager[0] != nil {
-				states := stateManager[0].GetStatesForRuleUID(source.OrgID, source.UID)
+				states := stateManager[0].GetStatesForRuleUID(ctx, source.OrgID, source.UID)
 				if len(states) > 0 {
 					status = state.StatesToRuleStatus(states)
 					ok = true

@@ -3,7 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { AppEvents, NavModel, NavModelItem, PageLayoutType, store, UrlQueryValue } from '@grafana/data';
 import { t } from '@grafana/i18n';
-import { config, locationService, reportInteraction } from '@grafana/runtime';
+import { locationService, reportInteraction } from '@grafana/runtime';
 import { appEvents } from 'app/core/app_events';
 import { isShallowEqual } from 'app/core/utils/isShallowEqual';
 import { KioskMode } from 'app/types/dashboard';

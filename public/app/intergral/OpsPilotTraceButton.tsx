@@ -1,5 +1,5 @@
 import ActionButton from '../features/explore/TraceView/components/TracePageHeader/Actions/ActionButton';
-import { Trace } from '../features/explore/TraceView/components/types';
+import { Trace } from '../features/explore/TraceView/components/types/trace';
 
 import { useOpsPilotBroadcast } from './OpsPilotBroadcastContext';
 import { opsPilotStringify } from './opspilotStringify';
