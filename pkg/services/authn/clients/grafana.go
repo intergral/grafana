@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"net/mail"
 	"strconv"
 
 	"go.opentelemetry.io/otel/trace"
 
 	claims "github.com/grafana/authlib/types"
+	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/authn"
 	"github.com/grafana/grafana/pkg/services/login"
 	"github.com/grafana/grafana/pkg/services/org"
@@ -21,14 +23,16 @@ import (
 var _ authn.ProxyClient = new(Grafana)
 var _ authn.PasswordClient = new(Grafana)
 
-func ProvideGrafana(cfg *setting.Cfg, userService user.Service, tracer trace.Tracer) *Grafana {
-	return &Grafana{cfg, userService, tracer}
+func ProvideGrafana(cfg *setting.Cfg, userService user.Service, orgService org.Service, tracer trace.Tracer) *Grafana {
+	return &Grafana{cfg, userService, orgService, tracer, log.New("authn.grafana")}
 }
 
 type Grafana struct {
 	cfg         *setting.Cfg
 	userService user.Service
+	orgService  org.Service
 	tracer      trace.Tracer
+	log         log.Logger
 }
 
 func (c *Grafana) String() string {
@@ -78,6 +82,15 @@ func (c *Grafana) AuthenticateProxy(ctx context.Context, r *authn.Request, usern
 		identity.Login = v
 	}
 
+	if v, ok := additional[proxyFieldOrgName]; ok {
+		identity.OrgName = v
+		orgByName, err := c.orgService.GetByName(ctx, &org.GetOrgByNameQuery{Name: v})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get org by name: %w", err)
+		}
+		identity.OrgID = orgByName.ID
+	}
+
 	if v, ok := additional[proxyFieldRole]; ok {
 		orgRoles, isGrafanaAdmin, _ := getRoles(c.cfg, func() (org.RoleType, *bool, error) {
 			return org.RoleType(v), nil, nil
@@ -92,6 +105,22 @@ func (c *Grafana) AuthenticateProxy(ctx context.Context, r *authn.Request, usern
 
 	identity.ClientParams.LookUpParams.Email = &identity.Email
 	identity.ClientParams.LookUpParams.Login = &identity.Login
+
+	// Log complete auth proxy identity for debugging
+	c.log.FromContext(ctx).Debug("Auth proxy authentication completed",
+		"username", username,
+		"login", identity.Login,
+		"email", identity.Email,
+		"name", identity.Name,
+		"orgName", identity.OrgName,
+		"orgID", identity.OrgID,
+		"authID", identity.AuthID,
+		"orgRoles", identity.OrgRoles,
+		"isGrafanaAdmin", identity.IsGrafanaAdmin,
+		"groups", identity.Groups,
+		"additionalHeaders", additional,
+		"remoteAddr", r.HTTPRequest.RemoteAddr,
+	)
 
 	return identity, nil
 }

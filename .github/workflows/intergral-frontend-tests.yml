@@ -1,0 +1,58 @@
+name: "Intergral: Frontend Tests"
+
+on:
+  push:
+    branches: ["*-intergral"]
+  pull_request:
+    branches: ["*-intergral"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
+    name: "Frontend Tests (${{ matrix.shard }}/${{ matrix.total }})"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+      - name: Install dependencies
+        run: yarn install --immutable
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: true
+          CYPRESS_INSTALL_BINARY: 0
+      - name: Run tests
+        run: yarn run test:ci
+        env:
+          TEST_MAX_WORKERS: 2
+          TEST_SHARD: ${{ matrix.shard }}
+          TEST_SHARD_TOTAL: ${{ matrix.total }}
+
+  required-frontend-tests:
+    needs: frontend-unit-tests
+    if: always()
+    name: All frontend tests complete
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check test suites
+        env:
+          NEEDS: ${{ toJson(needs) }}
+        run: |
+          FAILURES="$(echo "$NEEDS" | jq 'with_entries(select(.value.result == "failure")) | map_values(.result)')"
+          echo "$FAILURES"
+          if [ "$(echo "$FAILURES" | jq '. | length')" != "0" ]; then
+            exit 1
+          fi
+          echo "All OK!"

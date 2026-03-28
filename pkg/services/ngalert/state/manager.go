@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,10 +21,19 @@ import (
 )
 
 var (
-	ResendDelay = 30 * time.Second
+	ResendDelay                    = 30 * time.Second
+	defaultRemoteStateSyncInterval = 30 * time.Second
 )
 
 type takeImageFn func(reason string) *ngModels.Image
+
+// RuleFilter returns the subset of rules owned by the local instance.
+// This is used by the remote state sync to determine which rules are local
+// and should be skipped during DB refresh. The schedule.RulePartitioner
+// satisfies this interface.
+type RuleFilter interface {
+	Filter(rules []*ngModels.AlertRule) []*ngModels.AlertRule
+}
 
 // AlertInstanceManager defines the interface for querying the current alert instances.
 type AlertInstanceManager interface {
@@ -59,6 +69,13 @@ type Manager struct {
 	persister StatePersister
 
 	ignorePendingForNoDataAndError bool
+
+	// Remote state sync fields (HA partitioning)
+	ruleFilter              RuleFilter
+	remoteStateSyncInterval time.Duration
+	orgReader               OrgReader
+	rulesReader             RuleReader
+	instanceReader          InstanceReader
 }
 
 type ManagerCfg struct {
@@ -89,6 +106,14 @@ type ManagerCfg struct {
 	Log    log.Logger
 
 	IgnorePendingForNoDataAndError bool // TODO: Remove
+
+	// RuleFilter is set when HA partitioning is enabled. It identifies which rules
+	// are local to this instance. When non-nil, the manager will periodically refresh
+	// cache state for remote (non-local) rules from the database.
+	RuleFilter RuleFilter
+	// RemoteStateSyncInterval controls how often remote rule states are refreshed from DB.
+	// Only used when RuleFilter is non-nil. Defaults to 30s.
+	RemoteStateSyncInterval time.Duration
 }
 
 func NewManager(cfg ManagerCfg, statePersister StatePersister) *Manager {
@@ -97,6 +122,11 @@ func NewManager(cfg ManagerCfg, statePersister StatePersister) *Manager {
 	// Only expose the metrics if this grafana server does execute alerts.
 	if cfg.Metrics != nil && !cfg.DisableExecution {
 		c.RegisterMetrics(cfg.Metrics.Registerer())
+	}
+
+	syncInterval := cfg.RemoteStateSyncInterval
+	if syncInterval == 0 {
+		syncInterval = defaultRemoteStateSyncInterval
 	}
 
 	m := &Manager{
@@ -115,6 +145,8 @@ func NewManager(cfg ManagerCfg, statePersister StatePersister) *Manager {
 		tracer:                 cfg.Tracer,
 
 		ignorePendingForNoDataAndError: cfg.IgnorePendingForNoDataAndError,
+		ruleFilter:                     cfg.RuleFilter,
+		remoteStateSyncInterval:        syncInterval,
 	}
 
 	return m
@@ -125,8 +157,159 @@ func (st *Manager) ClearCache() {
 }
 
 func (st *Manager) Run(ctx context.Context) error {
+	if st.ruleFilter != nil && st.orgReader != nil {
+		go st.runRemoteStateSync(ctx)
+	}
 	st.persister.Async(ctx, st.cache)
 	return nil
+}
+
+// runRemoteStateSync periodically refreshes cache state for rules not assigned to this instance.
+func (st *Manager) runRemoteStateSync(ctx context.Context) {
+	logger := st.log.FromContext(ctx)
+	logger.Info("Starting remote state sync loop", "interval", st.remoteStateSyncInterval)
+
+	ticker := st.clock.Ticker(st.remoteStateSyncInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Info("Stopping remote state sync loop")
+			return
+		case <-ticker.C:
+			st.refreshRemoteStates(ctx)
+		}
+	}
+}
+
+// refreshRemoteStates loads DB state for rules NOT assigned to this instance and upserts
+// them into the cache. This ensures the API returns current state for all rules, not just
+// those evaluated locally.
+func (st *Manager) refreshRemoteStates(ctx context.Context) {
+	logger := st.log.FromContext(ctx)
+
+	orgIds, err := st.orgReader.FetchOrgIds(ctx)
+	if err != nil {
+		logger.Error("Remote state sync: failed to fetch org IDs", "error", err)
+		return
+	}
+
+	var totalRefreshed, totalRemoved int
+	for _, orgId := range orgIds {
+		// Fetch all rules for this org
+		ruleCmd := ngModels.ListAlertRulesQuery{OrgID: orgId}
+		alertRules, err := st.rulesReader.ListAlertRules(ctx, &ruleCmd)
+		if err != nil {
+			logger.Error("Remote state sync: failed to list rules", "orgId", orgId, "error", err)
+			continue
+		}
+
+		if len(alertRules) == 0 {
+			continue
+		}
+
+		// Determine which rules are local via the filter
+		localRules := st.ruleFilter.Filter(alertRules)
+		localRuleUIDs := make(map[string]struct{}, len(localRules))
+		for _, r := range localRules {
+			localRuleUIDs[r.UID] = struct{}{}
+		}
+
+		// Build rule lookup for all rules
+		ruleByUID := make(map[string]*ngModels.AlertRule, len(alertRules))
+		for _, rule := range alertRules {
+			ruleByUID[rule.UID] = rule
+		}
+
+		// Fetch all instances from DB
+		instanceCmd := ngModels.ListAlertInstancesQuery{RuleOrgID: orgId}
+		alertInstances, err := st.instanceReader.ListAlertInstances(ctx, &instanceCmd)
+		if err != nil {
+			logger.Error("Remote state sync: failed to list instances", "orgId", orgId, "error", err)
+			continue
+		}
+
+		// Track which remote rule UIDs have DB instances (for cleanup)
+		remoteRuleInstanceUIDs := make(map[string]map[data.Fingerprint]struct{})
+
+		// Upsert remote instances into cache
+		for _, entry := range alertInstances {
+			// Skip instances for local rules — ProcessEvalResults handles those
+			if _, isLocal := localRuleUIDs[entry.RuleUID]; isLocal {
+				continue
+			}
+
+			ruleForEntry, ok := ruleByUID[entry.RuleUID]
+			if !ok {
+				continue
+			}
+
+			annotations := ruleForEntry.Annotations
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+
+			lbs := map[string]string(entry.Labels)
+			cacheID := entry.Labels.Fingerprint()
+			var resultFp data.Fingerprint
+			if entry.ResultFingerprint != "" {
+				fp, err := strconv.ParseUint(entry.ResultFingerprint, 16, 64)
+				if err != nil {
+					logger.Error("Remote state sync: failed to parse result fingerprint", "error", err, "rule_uid", entry.RuleUID)
+				}
+				resultFp = data.Fingerprint(fp)
+			}
+
+			s := &State{
+				AlertRuleUID:         entry.RuleUID,
+				OrgID:                entry.RuleOrgID,
+				CacheID:              cacheID,
+				Labels:               lbs,
+				State:                translateInstanceState(entry.CurrentState),
+				StateReason:          entry.CurrentReason,
+				LastEvaluationString: "",
+				StartsAt:             entry.CurrentStateSince,
+				EndsAt:               entry.CurrentStateEnd,
+				FiredAt:              entry.FiredAt,
+				LastEvaluationTime:   entry.LastEvalTime,
+				Annotations:          annotations,
+				ResultFingerprint:    resultFp,
+				ResolvedAt:           entry.ResolvedAt,
+				LastSentAt:           entry.LastSentAt,
+			}
+			st.cache.set(s)
+			totalRefreshed++
+
+			// Track this instance for cleanup
+			if _, ok := remoteRuleInstanceUIDs[entry.RuleUID]; !ok {
+				remoteRuleInstanceUIDs[entry.RuleUID] = make(map[data.Fingerprint]struct{})
+			}
+			remoteRuleInstanceUIDs[entry.RuleUID][cacheID] = struct{}{}
+		}
+
+		// Clean up cache entries for remote rules whose instances no longer exist in DB
+		for _, rule := range alertRules {
+			if _, isLocal := localRuleUIDs[rule.UID]; isLocal {
+				continue
+			}
+			dbInstances := remoteRuleInstanceUIDs[rule.UID]
+			ruleKey := ngModels.AlertRuleKey{OrgID: orgId, UID: rule.UID}
+			st.cache.deleteRuleStates(ruleKey, func(s *State) bool {
+				if dbInstances == nil {
+					totalRemoved++
+					return true // no DB instances at all — remove
+				}
+				if _, exists := dbInstances[s.CacheID]; !exists {
+					totalRemoved++
+					return true // this specific instance gone from DB
+				}
+				return false
+			})
+		}
+	}
+
+	logger.Debug("Refreshed remote rule states", "refreshed", totalRefreshed, "removed", totalRemoved)
 }
 
 func (st *Manager) Warm(ctx context.Context, orgReader OrgReader, rulesReader RuleReader, instanceReader InstanceReader) {
@@ -136,6 +319,11 @@ func (st *Manager) Warm(ctx context.Context, orgReader OrgReader, rulesReader Ru
 		logger.Error("Unable to warm state cache, missing required store readers")
 		return
 	}
+
+	// Store readers for remote state sync
+	st.orgReader = orgReader
+	st.rulesReader = rulesReader
+	st.instanceReader = instanceReader
 
 	startTime := time.Now()
 	logger.Info("Warming state cache for startup")

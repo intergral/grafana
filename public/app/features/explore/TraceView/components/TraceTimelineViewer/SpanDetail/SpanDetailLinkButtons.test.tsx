@@ -28,7 +28,7 @@ const timeRange = {
 } as unknown as TimeRange;
 
 function getContent(result: React.ReactElement) {
-  return result.props.children.props.children[0];
+  return result.props.children.props.children[1];
 }
 
 describe('getSpanDetailLinkButtons', () => {

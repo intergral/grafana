@@ -464,8 +464,11 @@ func (moa *MultiOrgAlertmanager) StopAndWait() {
 }
 
 // Peer returns the cluster peer for this Alertmanager.
-// Returns nil if clustering is not configured.
+// Returns nil if clustering is not configured (NilPeer).
 func (moa *MultiOrgAlertmanager) Peer() alertingNotify.ClusterPeer {
+	if _, ok := moa.peer.(*NilPeer); ok {
+		return nil
+	}
 	return moa.peer
 }
 

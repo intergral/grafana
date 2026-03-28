@@ -33,7 +33,8 @@ import { t } from '@grafana/i18n';
 import { TraceToProfilesOptions } from '@grafana/o11y-ds-frontend';
 import { usePluginLinks } from '@grafana/runtime';
 import { TimeZone } from '@grafana/schema';
-import { Icon, useStyles2 } from '@grafana/ui';
+import { Divider, Icon, useStyles2 } from '@grafana/ui';
+import OpsPilotSpanButton from 'app/intergral/OpsPilotSpanButton';
 
 import { pyroscopeProfileIdTagKey } from '../../../createSpanLink';
 import { autoColor } from '../../Theme';
@@ -520,12 +521,16 @@ export default function SpanDetail(props: SpanDetailProps) {
           <h6 className={styles.operationName} title={operationName}>
             {operationName}
           </h6>
-          {linksComponent}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            {linksComponent}
+            <OpsPilotSpanButton span={span} />
+          </div>
         </div>
         <div className={styles.listWrapper}>
           <LabeledList className={styles.list} divider={false} items={overviewItems} color={color} />
         </div>
       </div>
+      <Divider spacing={1} />
       <div className={styles.content}>
         <CardsContainer listOfContentCards={listOfContentCards} mainContainerRef={mainContainerRef} />
 

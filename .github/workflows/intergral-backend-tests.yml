@@ -1,0 +1,54 @@
+name: "Intergral: Backend Tests"
+
+on:
+  push:
+    branches: ["*-intergral"]
+  pull_request:
+    branches: ["*-intergral"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/4", "2/4", "3/4", "4/4"]
+    name: "Backend Tests (${{ matrix.shard }})"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run unit tests
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          readarray -t PACKAGES <<< "$(./scripts/ci/backend-tests/shard.sh -N"$SHARD")"
+          CGO_ENABLED=0 go test -short -timeout=30m "${PACKAGES[@]}"
+
+  required-backend-tests:
+    needs: backend-unit-tests
+    if: always()
+    name: All backend tests complete
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check test suites
+        env:
+          NEEDS: ${{ toJson(needs) }}
+        run: |
+          FAILURES="$(echo "$NEEDS" | jq 'with_entries(select(.value.result == "failure")) | map_values(.result)')"
+          echo "$FAILURES"
+          if [ "$(echo "$FAILURES" | jq '. | length')" != "0" ]; then
+            exit 1
+          fi
+          echo "All OK!"

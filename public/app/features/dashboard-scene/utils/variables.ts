@@ -52,6 +52,7 @@ export function createVariablesForSnapshot(oldModel: DashboardModel) {
       try {
         // for adhoc we are using the AdHocFiltersVariable from scenes becuase of its complexity
         if (v.type === 'adhoc') {
+          const resolvedDs = getDataSourceSrv().getInstanceSettings(v.datasource);
           return new AdHocFiltersVariable({
             name: v.name,
             label: v.label,
@@ -59,7 +60,7 @@ export function createVariablesForSnapshot(oldModel: DashboardModel) {
             description: v.description,
             skipUrlSync: v.skipUrlSync,
             hide: v.hide,
-            datasource: v.datasource,
+            datasource: resolvedDs ? { type: resolvedDs.type, uid: resolvedDs.uid } : v.datasource,
             applyMode: 'auto',
             filters: v.filters ?? [],
             baseFilters: v.baseFilters ?? [],
@@ -149,12 +150,18 @@ export function createSceneVariableFromVariableModel(variable: TypedVariableMode
     const filters: AdHocVariableFilter[] = [];
     variable.filters?.forEach((filter) => (filter.origin ? originFilters.push(filter) : filters.push(filter)));
 
+    // Resolve the datasource reference to its actual UID. Dashboard JSON may store the
+    // datasource name in the uid field (e.g. {"uid": "Logs"}). The scenes DrilldownDependenciesManager
+    // matches ad-hoc variables by resolved UID, so we must ensure the reference carries the real UID.
+    const resolvedDs = getDataSourceSrv().getInstanceSettings(variable.datasource);
+    const datasource = resolvedDs ? { type: resolvedDs.type, uid: resolvedDs.uid } : variable.datasource;
+
     return new AdHocFiltersVariable({
       ...commonProperties,
       description: variable.description,
       skipUrlSync: variable.skipUrlSync,
       hide: variable.hide,
-      datasource: variable.datasource,
+      datasource,
       applyMode: 'auto',
       originFilters,
       filters,

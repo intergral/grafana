@@ -312,13 +312,16 @@ function createSceneVariableFromVariableModel(variable: TypedVariableModelV2): S
       },
       variable.group
     );
+    // Resolve to the actual datasource UID (the v2 schema stores the name in the uid field)
+    const resolvedDs = getDataSourceSrv().getInstanceSettings(ds);
+    const datasource = resolvedDs ? { type: resolvedDs.type, uid: resolvedDs.uid } : ds;
     const adhocVariableState: AdHocFiltersVariable['state'] = {
       ...commonProperties,
       type: 'adhoc',
       description: variable.spec.description,
       skipUrlSync: variable.spec.skipUrlSync,
       hide: transformVariableHideToEnumV1(variable.spec.hide),
-      datasource: ds,
+      datasource,
       applyMode: 'auto',
       filters: variable.spec.filters ?? [],
       baseFilters: variable.spec.baseFilters ?? [],
@@ -532,6 +535,9 @@ export function createVariablesForSnapshot(dashboard: DashboardV2Spec): SceneVar
             },
             v.group
           );
+          // Resolve to the actual datasource UID
+          const resolvedDs = getDataSourceSrv().getInstanceSettings(ds);
+          const datasource = resolvedDs ? { type: resolvedDs.type, uid: resolvedDs.uid } : ds;
 
           return new AdHocFiltersVariable({
             name: v.spec.name,
@@ -540,7 +546,7 @@ export function createVariablesForSnapshot(dashboard: DashboardV2Spec): SceneVar
             description: v.spec.description,
             skipUrlSync: v.spec.skipUrlSync,
             hide: transformVariableHideToEnumV1(v.spec.hide),
-            datasource: ds,
+            datasource,
             applyMode: 'auto',
             filters: v.spec.filters ?? [],
             baseFilters: v.spec.baseFilters ?? [],

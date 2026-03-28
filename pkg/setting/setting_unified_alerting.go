@@ -150,9 +150,25 @@ type UnifiedAlertingSettings struct {
 	// AlertmanagerMaxTemplateOutputSize specifies the maximum allowed size for rendered template output in bytes.
 	AlertmanagerMaxTemplateOutputSize int64
 
+	// ExternalURL overrides AppURL for alert notification links.
+	// When set, alert notifications will use this URL instead of root_url.
+	// Useful when Grafana is iframed and the root_url differs from the URL users should follow.
+	ExternalURL string
+
 	BacktestingMaxEvaluations int
 
 	IgnorePendingForNoDataAndError bool
+
+	// HASchedulerPartitioningEnabled enables partitioning of alert rule evaluation across HA peers.
+	// Each peer evaluates 1/N of rules. Requires ha_peers or ha_redis_address.
+	HASchedulerPartitioningEnabled bool
+	// HASchedulerMinClusterSize is the minimum cluster size required to enable partitioning.
+	// When the cluster is smaller than this, all rules are evaluated by all peers (safety fallback).
+	HASchedulerMinClusterSize int
+	// HASchedulerRemoteStateSyncInterval controls how often remote rule states are refreshed
+	// from the database when partitioning is enabled. This ensures the UI shows current state
+	// for rules evaluated by other instances. Default: 30s.
+	HASchedulerRemoteStateSyncInterval time.Duration
 }
 
 type RecordingRuleSettings struct {
@@ -344,6 +360,8 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	uaCfg.HARedisTLSConfig.CipherSuites = ua.Key("ha_redis_tls_cipher_suites").MustString("")
 	uaCfg.HARedisTLSConfig.MinVersion = ua.Key("ha_redis_tls_min_version").MustString("")
 	uaCfg.HASingleNodeEvaluation = ua.Key("ha_single_node_evaluation").MustBool(false)
+
+	uaCfg.ExternalURL = ua.Key("external_url").MustString("")
 
 	// TODO load from ini file
 	uaCfg.DefaultConfiguration = alertmanagerDefaultConfiguration
@@ -595,6 +613,13 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	uaCfg.BacktestingMaxEvaluations = ua.Key("backtesting_max_evaluations").MustInt(100)
 	if uaCfg.BacktestingMaxEvaluations < 0 {
 		uaCfg.BacktestingMaxEvaluations = 100
+	}
+
+	uaCfg.HASchedulerPartitioningEnabled = ua.Key("ha_scheduler_partitioning_enabled").MustBool(false)
+	uaCfg.HASchedulerMinClusterSize = ua.Key("ha_scheduler_min_cluster_size").MustInt(2)
+	uaCfg.HASchedulerRemoteStateSyncInterval, err = gtime.ParseDuration(valueAsString(ua, "ha_scheduler_remote_state_sync_interval", (30 * time.Second).String()))
+	if err != nil {
+		return err
 	}
 
 	cfg.UnifiedAlerting = uaCfg

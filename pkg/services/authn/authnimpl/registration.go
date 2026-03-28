@@ -62,7 +62,7 @@ func ProvideRegistration(
 	passwordClients = append(passwordClients, ldap)
 
 	if !cfg.DisableLogin {
-		grafana := clients.ProvideGrafana(cfg, userService, tracer)
+		grafana := clients.ProvideGrafana(cfg, userService, orgService, tracer)
 		proxyClients = append(proxyClients, grafana)
 		passwordClients = append(passwordClients, grafana)
 	}
@@ -101,7 +101,7 @@ func ProvideRegistration(
 	}
 
 	if cfg.AuthProxy.Enabled && len(proxyClients) > 0 {
-		proxy, err := clients.ProvideProxy(cfg, cache, tracer, proxyClients...)
+		proxy, err := clients.ProvideProxy(cfg, cache, orgService, tracer, proxyClients...)
 		if err != nil {
 			logger.Error("Failed to configure auth proxy", "err", err)
 		} else {

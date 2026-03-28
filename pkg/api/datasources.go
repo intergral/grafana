@@ -171,7 +171,7 @@ func (hs *HTTPServer) DeleteDataSourceById(c *contextmodel.ReqContext) response.
 		return response.Error(http.StatusBadRequest, "Failed to delete datasource", nil)
 	}
 
-	if ds.ReadOnly {
+	if ds.ReadOnly && !c.SignedInUser.IsGrafanaAdmin {
 		return response.Error(http.StatusForbidden, "Cannot delete read-only data source", nil)
 	}
 
@@ -261,7 +261,7 @@ func (hs *HTTPServer) DeleteDataSourceByUID(c *contextmodel.ReqContext) response
 		return response.Error(http.StatusBadRequest, "Failed to delete datasource", nil)
 	}
 
-	if ds.ReadOnly {
+	if ds.ReadOnly && !c.SignedInUser.IsGrafanaAdmin {
 		return response.Error(http.StatusForbidden, "Cannot delete read-only data source", nil)
 	}
 
@@ -539,7 +539,7 @@ func (hs *HTTPServer) UpdateDataSourceByUID(c *contextmodel.ReqContext) response
 }
 
 func (hs *HTTPServer) updateDataSourceByID(c *contextmodel.ReqContext, ds *datasources.DataSource, cmd datasources.UpdateDataSourceCommand) response.Response {
-	if ds.ReadOnly {
+	if ds.ReadOnly && !c.SignedInUser.IsGrafanaAdmin {
 		return response.Error(http.StatusForbidden, "Cannot update read-only data source", nil)
 	}
 

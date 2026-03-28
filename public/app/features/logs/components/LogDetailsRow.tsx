@@ -25,6 +25,7 @@ import {
   Tooltip,
   withTheme2,
 } from '@grafana/ui';
+import { OpspilotDataLinkButton } from 'app/intergral/OpspilotDataLinkButton';
 
 import { logRowToSingleRowDataFrame } from '../logsModel';
 import { getLabelTypeFromRow } from '../utils';
@@ -389,6 +390,7 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
                   }
                   return (
                     <span key={`${link.title}-${i}`}>
+                     {link.title === "OpsPilot AI" ? <OpspilotDataLinkButton link={link} /> :
                       <DataLinkButton
                         buttonProps={{
                           // Show tooltip message if max number of pinned lines has been reached
@@ -401,7 +403,7 @@ class UnThemedLogDetailsRow extends PureComponent<Props, State> {
                           ...(link.icon && { icon: link.icon }),
                         }}
                         link={link}
-                      />
+                      />}
                     </span>
                   );
                 })}

@@ -224,12 +224,16 @@ func (ng *AlertNG) init() error {
 			DispatchTimer: notifier.GetDispatchTimer(ng.FeatureToggles).String(),
 		}
 
+		remoteExternalURL := ng.Cfg.AppURL
+		if ng.Cfg.UnifiedAlerting.ExternalURL != "" {
+			remoteExternalURL = ng.Cfg.UnifiedAlerting.ExternalURL
+		}
 		cfg := remote.AlertmanagerConfig{
 			BasicAuthPassword: ng.Cfg.UnifiedAlerting.RemoteAlertmanager.Password,
 			DefaultConfig:     ng.Cfg.UnifiedAlerting.DefaultConfiguration,
 			TenantID:          ng.Cfg.UnifiedAlerting.RemoteAlertmanager.TenantID,
 			URL:               ng.Cfg.UnifiedAlerting.RemoteAlertmanager.URL,
-			ExternalURL:       ng.Cfg.AppURL,
+			ExternalURL:       remoteExternalURL,
 			SmtpConfig:        smtpCfg,
 			Timeout:           ng.Cfg.UnifiedAlerting.RemoteAlertmanager.Timeout,
 			RuntimeConfig:     runtimeConfig,
@@ -310,7 +314,13 @@ func (ng *AlertNG) init() error {
 		return fmt.Errorf("failed to initialize alerting because multiorg alertmanager manager failed to warm up: %w", err)
 	}
 
-	appUrl, err := url.Parse(ng.Cfg.AppURL)
+	alertExternalURL := ng.Cfg.AppURL
+	if ng.Cfg.UnifiedAlerting.ExternalURL != "" {
+		alertExternalURL = ng.Cfg.UnifiedAlerting.ExternalURL
+		ng.Log.Info("Using custom external URL for alert notifications", "url", alertExternalURL)
+	}
+
+	appUrl, err := url.Parse(alertExternalURL)
 	if err != nil {
 		ng.Log.Error("Failed to parse application URL. Continue without it.", "error", err)
 		appUrl = nil
@@ -338,6 +348,17 @@ func (ng *AlertNG) init() error {
 	}
 	ng.RecordingWriter = recordingWriter
 
+	// Create partitioner if HA partitioning enabled
+	var partitioner schedule.RulePartitioner
+	if ng.Cfg.UnifiedAlerting.HASchedulerPartitioningEnabled {
+		if peer := moa.Peer(); peer != nil {
+			partitioner = schedule.NewPartitionFilter(peer, ng.Cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+			ng.Log.Info("HA scheduler partitioning enabled", "minClusterSize", ng.Cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+		} else {
+			ng.Log.Warn("HA scheduler partitioning requested but no HA cluster configured")
+		}
+	}
+
 	ng.schedCfg = schedule.SchedulerCfg{
 		RetryConfig: schedule.RetryConfig{
 			MaxAttempts:         ng.Cfg.UnifiedAlerting.MaxAttempts,
@@ -360,6 +381,7 @@ func (ng *AlertNG) init() error {
 		Log:                  log.New("ngalert.scheduler"),
 		RecordingWriter:      ng.RecordingWriter,
 		FeatureToggles:       ng.FeatureToggles,
+		Partitioner:          partitioner,
 	}
 
 	history, err := configureHistorianBackend(
@@ -385,6 +407,12 @@ func (ng *AlertNG) init() error {
 
 	ng.InstanceStore, ng.StartupInstanceReader = initInstanceStore(ng.store.SQLStore, ng.Log, ng.FeatureToggles)
 
+	// Wire RuleFilter for remote state sync when partitioning is enabled
+	var ruleFilter state.RuleFilter
+	if partitioner != nil {
+		ruleFilter = partitioner
+	}
+
 	stateManagerCfg := state.ManagerCfg{
 		Metrics:                        ng.Metrics.GetStateMetrics(),
 		ExternalURL:                    appUrl,
@@ -403,6 +431,8 @@ func (ng *AlertNG) init() error {
 		ResolvedRetention:              ng.Cfg.UnifiedAlerting.ResolvedAlertRetention,
 
 		IgnorePendingForNoDataAndError: ng.Cfg.IsFeatureToggleEnabled(featuremgmt.FlagAlertingIgnorePendingForNoDataAndError),
+		RuleFilter:                     ruleFilter,
+		RemoteStateSyncInterval:        ng.Cfg.UnifiedAlerting.HASchedulerRemoteStateSyncInterval,
 	}
 	statePersister := initStatePersister(ng.Cfg.UnifiedAlerting, stateManagerCfg, ng.FeatureToggles)
 	ng.stateManager = state.NewManager(stateManagerCfg, statePersister)

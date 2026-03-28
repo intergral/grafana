@@ -8,6 +8,7 @@ import { Dashboard } from '@grafana/schema';
 import { appEvents } from 'app/core/app_events';
 import { useAppNotification } from 'app/core/copy/appNotification';
 import { updateDashboardName } from 'app/core/reducers/navBarTree';
+import { contextSrv } from 'app/core/services/context_srv';
 import { useSaveDashboardMutation } from 'app/features/browse-dashboards/api/browseDashboardsAPI';
 import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
 import { DashboardInteractions } from 'app/features/dashboard-scene/utils/interactions';
@@ -78,6 +79,9 @@ export const useDashboardSave = (isCopy = false) => {
         const newUrl = locationUtil.stripBaseFromUrl(result.url);
 
         if (newUrl !== currentPath && result.url) {
+          // Refresh permissions before redirect to avoid "not allowed to view" on new dashboards.
+          // The save creates new permission entries that the cached user permissions don't include yet.
+          await contextSrv.fetchUserPermissions();
           setTimeout(() => locationService.replace(newUrl));
         }
         if (dashboard.meta.isStarred) {

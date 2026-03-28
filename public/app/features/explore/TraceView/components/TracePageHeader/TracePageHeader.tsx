@@ -58,6 +58,8 @@ import { getHeaderTags, getTraceName } from '../model/trace-viewer';
 import { Trace, TraceViewPluginExtensionContext } from '../types/trace';
 import { formatDuration } from '../utils/date';
 
+import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
+
 import TracePageSearchBar from './SearchBar/TracePageSearchBar';
 import SpanGraph from './SpanGraph';
 import { TraceFilterPills } from './TraceFilterPills';
@@ -219,6 +221,8 @@ export const TracePageHeader = memo((props: TracePageHeaderProps) => {
         {/* Action buttons */}
         {!hideHeaderDetails && (
           <div className={styles.actions}>
+            {/* OpsPilot trace analysis button */}
+            <OpsPilotTraceButton trace={trace} />
             {/* Plugin extension actions */}
             {extensionLinks.length > 0 && (
               <div className={styles.actions}>

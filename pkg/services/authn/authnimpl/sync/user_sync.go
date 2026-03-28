@@ -365,7 +365,16 @@ func (s *UserSync) FetchSyncedUserHook(ctx context.Context, id *authn.Identity, 
 		return nil
 	}
 
-	usr, err := s.userService.GetSignedInUser(ctx, userID, r.OrgID)
+	// Priority: r.OrgID (X-Grafana-Org-Id) > id.OrgID (auth proxy X-WEBAUTH-ORG) > user default
+	// When r.OrgID > 0, user explicitly requested org switch via X-Grafana-Org-Id header
+	// When r.OrgID == 0 but id.OrgID > 0, auth mechanism set org (e.g., auth proxy X-WEBAUTH-ORG)
+	// Otherwise, fall back to r.OrgID (0), which gets user's default org from database
+	orgID := r.OrgID
+	if orgID == 0 && id.OrgID > 0 {
+		orgID = id.OrgID
+	}
+
+	usr, err := s.userService.GetSignedInUser(ctx, userID, orgID)
 	if err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
 			return errFetchingSignedInUserNotFound.Errorf("%w", err)
