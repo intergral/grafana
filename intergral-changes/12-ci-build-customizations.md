@@ -36,7 +36,7 @@ All workflows trigger on pushes to `*-intergral` branches and PRs targeting them
 - **GHA layer caching** (`cache-from: type=gha` / `cache-to: type=gha,mode=max`) caches the `go mod download` and `yarn install` layers across builds
 - Supports **dev builds** via `workflow_dispatch` with a `go_build_dev` input -- when set to `dev`, passes `JS_NODE_ENV=dev`, `JS_YARN_BUILD_FLAG=dev`, and `GO_BUILD_DEV=dev` as build args
 - Tags images with branch name and SHA (e.g., `12.4.x-intergral`, `12.4.x-intergral-abc1234`)
-- Requires `DOCKER_USERNAME` and `DOCKER_PASSWORD` repository secrets
+- Requires `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets
 
 ### Dockerfile modification
 
