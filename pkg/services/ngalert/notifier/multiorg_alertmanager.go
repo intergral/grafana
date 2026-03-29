@@ -588,6 +588,15 @@ func (moa *MultiOrgAlertmanager) updateSilenceState(ctx context.Context, orgAM A
 	return err
 }
 
+// Peer returns the cluster peer used for HA coordination.
+// Returns nil if clustering is not configured.
+func (moa *MultiOrgAlertmanager) Peer() alertingNotify.ClusterPeer {
+	if _, ok := moa.peer.(*NilPeer); ok {
+		return nil
+	}
+	return moa.peer
+}
+
 // NilPeer and NilChannel implements the Alertmanager clustering interface.
 type NilPeer struct{}
 

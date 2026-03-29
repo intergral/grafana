@@ -1196,12 +1196,19 @@ func TestSchedule_deleteAlertRule(t *testing.T) {
 }
 
 type schedulerOpts struct {
-	clock clock.Clock
+	clock       clock.Clock
+	partitioner RulePartitioner
 }
 
 func withSchedulerClock(clock clock.Clock) func(opts *schedulerOpts) {
 	return func(opts *schedulerOpts) {
 		opts.clock = clock
+	}
+}
+
+func withPartitioner(p RulePartitioner) func(opts *schedulerOpts) {
+	return func(opts *schedulerOpts) {
+		opts.partitioner = p
 	}
 }
 
@@ -1298,6 +1305,7 @@ func setupScheduler(
 		FeatureToggles:         featuremgmt.WithFeatures(),
 		RecordingWriter:        fakeRecordingWriter,
 		RuleStopReasonProvider: ruleStopReasonProvider,
+		Partitioner:            opts.partitioner,
 	}
 	managerCfg := state.ManagerCfg{
 		Metrics:                 m.GetStateMetrics(),

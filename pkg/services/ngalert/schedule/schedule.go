@@ -107,6 +107,11 @@ type schedule struct {
 	tracer          tracing.Tracer
 	featureToggles  featuremgmt.FeatureToggles
 	recordingWriter RecordingWriter
+
+	// partitioner optionally filters rules for HA partitioning and tracks cluster size
+	partitioner RulePartitioner
+	// lastClusterSize tracks the cluster size to detect topology changes
+	lastClusterSize int
 }
 
 // RetryConfig configures the exponential backoff for alert rule and recording rule evaluations.
@@ -136,6 +141,8 @@ type SchedulerCfg struct {
 	RecordingWriter        RecordingWriter
 	RuleStopReasonProvider AlertRuleStopReasonProvider
 	FeatureToggles         featuremgmt.FeatureToggles
+	// Partitioner optionally filters which rules this instance evaluates (for HA partitioning)
+	Partitioner RulePartitioner
 }
 
 // NewScheduler returns a new scheduler.
@@ -167,6 +174,7 @@ func NewScheduler(cfg SchedulerCfg, stateManager *state.Manager) *schedule {
 		recordingWriter:        cfg.RecordingWriter,
 		ruleStopReasonProvider: cfg.RuleStopReasonProvider,
 		featureToggles:         cfg.FeatureToggles,
+		partitioner:            cfg.Partitioner,
 	}
 
 	return &sch
