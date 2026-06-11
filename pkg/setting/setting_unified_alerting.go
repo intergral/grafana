@@ -164,6 +164,11 @@ type UnifiedAlertingSettings struct {
 	// from the database when partitioning is enabled. This ensures the UI shows current state
 	// for rules evaluated by other instances. Default: 30s.
 	HASchedulerRemoteStateSyncInterval time.Duration
+
+	// ExternalURL overrides AppURL for alert notification links.
+	// When set, alert notifications will use this URL instead of root_url.
+	// Useful when Grafana is iframed and the root_url differs from the URL users should follow.
+	ExternalURL string
 }
 
 type RecordingRuleSettings struct {
@@ -600,6 +605,8 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	if err != nil {
 		return err
 	}
+
+	uaCfg.ExternalURL = ua.Key("external_url").MustString("")
 
 	cfg.UnifiedAlerting = uaCfg
 	return nil
