@@ -121,8 +121,12 @@ func NewAlertmanager(ctx context.Context, orgID int64, cfg *setting.Cfg, store A
 	}
 	l := log.New("ngalert.notifier")
 
+	externalURL := cfg.AppURL
+	if cfg.UnifiedAlerting.ExternalURL != "" {
+		externalURL = cfg.UnifiedAlerting.ExternalURL
+	}
 	opts := alertingNotify.GrafanaAlertmanagerOpts{
-		ExternalURL:        cfg.AppURL,
+		ExternalURL:        externalURL,
 		AlertStoreCallback: nil,
 		PeerTimeout:        cfg.UnifiedAlerting.HAPeerTimeout,
 		Silences:           silencesOptions,
