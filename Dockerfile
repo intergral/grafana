@@ -63,6 +63,7 @@ ARG COMMIT_SHA=""
 ARG BUILD_BRANCH=""
 ARG GO_BUILD_TAGS="oss"
 ARG WIRE_TAGS="oss"
+ARG GO_BUILD_DEV=""
 
 RUN if grep -i -q alpine /etc/issue; then \
   apk add --no-cache \
@@ -105,7 +106,7 @@ ENV BUILD_BRANCH=${BUILD_BRANCH}
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    make build-go GO_BUILD_TAGS=${GO_BUILD_TAGS} WIRE_TAGS=${WIRE_TAGS}
+    make build-go GO_BUILD_TAGS=${GO_BUILD_TAGS} WIRE_TAGS=${WIRE_TAGS} GO_BUILD_DEV=${GO_BUILD_DEV}
 
 RUN mkdir -p data/plugins-bundled
 

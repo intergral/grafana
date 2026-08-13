@@ -100,7 +100,14 @@ if [[ $n -gt $m ]]; then
     exit 1
 fi
 if [[ ${#dirs[@]} -eq 0 ]]; then
-    readarray -t dirs <<< "$(find . -type f -name 'go.mod' -exec dirname '{}' ';' | awk '{ print $1 "/..."; }')"
+    readarray -t dirs <<< "$(find . -type f -name 'go.mod' -exec dirname '{}' ';' | \
+        grep -v '^\./\.citools' | \
+        grep -v '^\./devenv/docker/blocks/prometheus_high_card' | \
+        grep -v '^\./devenv/docker/blocks/prometheus_utf8' | \
+        grep -v '^\./hack' | \
+        grep -v '^\./scripts/go-workspace' | \
+        grep -v '^\./scripts/modowners' | \
+        awk '{ print $1 "/..."; }')"
 fi
 # If dirs is just ("-"), read from stdin instead.
 if [[ ${#dirs[@]} -eq 1 && "${dirs[0]}" == "-" ]]; then
