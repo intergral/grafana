@@ -95,6 +95,12 @@ for OpsPilot integration, enterprise auth, and HA alerting. Base: upstream tag `
 - **Mega menu**: starts undocked (`AppChromeService.megaMenuDocked = false`), docks+opens
   itself via matchMedia ≥1200px in `MegaMenu.tsx`; `useResponsiveDockedMegaMenu` in
   `AppChrome.tsx` is a no-op.
+  ⚠️ **Latent since 12.3.x** (verified 2026-08-13): `MegaMenu` only mounts when the menu
+  is already open/docked, and the top-bar toggle is removed — so the ≥1200px dock effect
+  never runs and the menu is effectively unreachable. This is identical on the 12.3.x
+  branch, i.e. current production behaviour (the FR shell provides navigation). If the
+  docked menu is ever wanted, the dock-on-wide-screen decision must move out of
+  `MegaMenu.tsx` into `AppChrome`/`AppChromeService`.
 - **Nav tree** (`navtree.go`): Profile / Data connections / Org admin gated off via
   `intergralShowTrimmedNavSections` const; help links + support bundles removed;
   alerting kept visible (GFN-45).
