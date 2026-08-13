@@ -22,7 +22,6 @@ import (
 	pref "github.com/grafana/grafana/pkg/services/preference"
 	"github.com/grafana/grafana/pkg/services/sqlstore/searchstore"
 	"github.com/grafana/grafana/pkg/services/star"
-	"github.com/grafana/grafana/pkg/services/supportbundles/supportbundlesimpl"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -79,6 +78,11 @@ func ProvideService(cfg *setting.Cfg, accessControl ac.AccessControl, pluginStor
 
 	return service
 }
+
+// intergralShowTrimmedNavSections gates the upstream nav sections (Profile, Data
+// connections, Org admin) that are hidden in the Intergral fork. Kept as a constant so
+// the upstream call sites remain referenced and future upstream merges stay small.
+const intergralShowTrimmedNavSections = false
 
 //nolint:gocyclo
 func (s *ServiceImpl) GetNavTree(c *contextmodel.ReqContext, prefs *pref.Preference) (*navtree.NavTreeRoot, error) {
@@ -145,32 +149,31 @@ func (s *ServiceImpl) GetNavTree(c *contextmodel.ReqContext, prefs *pref.Prefere
 		})
 	}
 
-	if s.cfg.ProfileEnabled && c.IsSignedIn {
+	if s.cfg.ProfileEnabled && c.IsSignedIn && intergralShowTrimmedNavSections {
 		treeRoot.AddSection(s.getProfileNode(c))
 	}
 
 	_, uaIsDisabledForOrg := s.cfg.UnifiedAlerting.DisabledOrgs[c.GetOrgID()]
 	uaVisibleForOrg := s.cfg.UnifiedAlerting.IsEnabled() && !uaIsDisabledForOrg
 
+	// GFN-45 Allow alerting in the navtree
 	if uaVisibleForOrg {
 		if alertingSection := s.buildAlertNavLinks(c); alertingSection != nil {
 			treeRoot.AddSection(alertingSection)
 		}
 	}
 
-	if connectionsSection := s.buildDataConnectionsNavLink(c); connectionsSection != nil {
+	if connectionsSection := s.buildDataConnectionsNavLink(c); connectionsSection != nil && intergralShowTrimmedNavSections {
 		treeRoot.AddSection(connectionsSection)
 	}
 
 	orgAdminNode, err := s.getAdminNode(c)
 
-	if orgAdminNode != nil && len(orgAdminNode.Children) > 0 {
+	if orgAdminNode != nil && len(orgAdminNode.Children) > 0 && intergralShowTrimmedNavSections {
 		treeRoot.AddSection(orgAdminNode)
 	} else if err != nil {
 		return nil, err
 	}
-
-	s.addHelpLinks(treeRoot, c)
 
 	if err := s.addAppLinks(treeRoot, c); err != nil {
 		return nil, err
@@ -234,54 +237,6 @@ func (s *ServiceImpl) getHomeNode(c *contextmodel.ReqContext, prefs *pref.Prefer
 		}
 	}
 	return homeNode
-}
-
-func isSupportBundlesEnabled(s *ServiceImpl) bool {
-	return s.cfg.SectionWithEnvOverrides("support_bundles").Key("enabled").MustBool(true)
-}
-
-// addHelpLinks adds a help menu item to the navigation bar.
-func (s *ServiceImpl) addHelpLinks(treeRoot *navtree.NavTreeRoot, c *contextmodel.ReqContext) {
-	if s.cfg.HelpEnabled {
-		helpNode := &navtree.NavLink{
-			Text:       "Help",
-			Id:         "help",
-			Url:        "#",
-			Icon:       "question-circle",
-			SortWeight: navtree.WeightHelp,
-			Children:   []*navtree.NavLink{},
-		}
-
-		treeRoot.AddSection(helpNode)
-
-		ctx := c.Req.Context()
-		// The interactive learning plugin ID is transitioning from grafana-grafanadocsplugin-app to grafana-pathfinder-app.
-		// Support both until that migration is complete.
-		_, oldInteractiveLearningPluginInstalled := s.pluginStore.Plugin(ctx, "grafana-grafanadocsplugin-app")
-		_, newInteractiveLearningPluginInstalled := s.pluginStore.Plugin(ctx, "grafana-pathfinder-app")
-		if oldInteractiveLearningPluginInstalled || newInteractiveLearningPluginInstalled {
-			// Add a custom property to indicate this should open the interactive learning plugin if available.
-			helpNode.HideFromTabs = true
-		}
-
-		hasAccess := ac.HasAccess(s.accessControl, c)
-		supportBundleAccess := ac.EvalAny(
-			ac.EvalPermission(supportbundlesimpl.ActionRead),
-			ac.EvalPermission(supportbundlesimpl.ActionCreate),
-		)
-
-		if isSupportBundlesEnabled(s) && hasAccess(supportBundleAccess) {
-			supportBundleNode := &navtree.NavLink{
-				Text:       "Support bundles",
-				Id:         "support-bundles",
-				Url:        s.cfg.AppSubURL + "/support-bundles",
-				Icon:       "wrench",
-				SortWeight: navtree.WeightHelp,
-			}
-
-			helpNode.Children = append(helpNode.Children, supportBundleNode)
-		}
-	}
 }
 
 func (s *ServiceImpl) getProfileNode(c *contextmodel.ReqContext) *navtree.NavLink {
