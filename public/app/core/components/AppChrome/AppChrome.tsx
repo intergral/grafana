@@ -11,6 +11,7 @@ import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryMinWidth } from 'app/core/hooks/useMediaQueryMinWidth';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards } from 'app/features/scopes/dashboards/ScopesDashboards';
+import { OpsPilotBroadcastProvider } from 'app/intergral/OpsPilotBroadcastContext';
 
 import { AppChromeMenu } from './AppChromeMenu';
 import { AppChromeService, DOCKED_LOCAL_STORAGE_KEY } from './AppChromeService';
@@ -84,87 +85,89 @@ export function AppChrome({ children }: Props) {
   // We check chromeless twice here instead of having a separate path so {children}
   // doesn't get re-mounted when chromeless goes from true to false.
   return (
-    <div
-      id={floatingUtils.BOUNDARY_ELEMENT_ID}
-      className={classNames('main-view', {
-        'main-view--chrome-hidden': state.chromeless,
-      })}
-    >
-      {!state.chromeless && (
-        <>
-          <LinkButton
-            className={styles.skipLink}
-            href="#pageContent"
-            onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('pageContent')?.focus();
-            }}
-          >
-            <Trans i18nKey="app-chrome.skip-content-button">Skip to main content</Trans>
-          </LinkButton>
-          {menuDockedAndOpen && (
-            <MegaMenu className={styles.dockedMegaMenu} onClose={() => chrome.setMegaMenuOpen(false)} />
-          )}
-          <header className={cx(styles.topNav, menuDockedAndOpen && styles.topNavMenuDocked)}>
-            <SingleTopBar
-              sectionNav={state.sectionNav.node}
-              pageNav={state.pageNav}
-              onToggleMegaMenu={handleMegaMenu}
-              onToggleKioskMode={chrome.onToggleKioskMode}
-              actions={state.actions}
-              breadcrumbActions={state.breadcrumbActions}
-              scopes={scopes}
-              showToolbarLevel={headerLevels === 2}
-            />
-          </header>
-        </>
-      )}
-      <div className={contentClass}>
-        <div className={cx(styles.panes, { [styles.panesWithSidebar]: isExtensionSidebarOpen })}>
-          {!state.chromeless && (
-            <div
-              className={cx(styles.scopesDashboardsContainer, {
-                [styles.scopesDashboardsContainerDocked]: menuDockedAndOpen,
+    <OpsPilotBroadcastProvider>
+      <div
+        id={floatingUtils.BOUNDARY_ELEMENT_ID}
+        className={classNames('main-view', {
+          'main-view--chrome-hidden': state.chromeless,
+        })}
+      >
+        {!state.chromeless && (
+          <>
+            <LinkButton
+              className={styles.skipLink}
+              href="#pageContent"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('pageContent')?.focus();
+              }}
+            >
+              <Trans i18nKey="app-chrome.skip-content-button">Skip to main content</Trans>
+            </LinkButton>
+            {menuDockedAndOpen && (
+              <MegaMenu className={styles.dockedMegaMenu} onClose={() => chrome.setMegaMenuOpen(false)} />
+            )}
+            <header className={cx(styles.topNav, menuDockedAndOpen && styles.topNavMenuDocked)}>
+              <SingleTopBar
+                sectionNav={state.sectionNav.node}
+                pageNav={state.pageNav}
+                onToggleMegaMenu={handleMegaMenu}
+                onToggleKioskMode={chrome.onToggleKioskMode}
+                actions={state.actions}
+                breadcrumbActions={state.breadcrumbActions}
+                scopes={scopes}
+                showToolbarLevel={headerLevels === 2}
+              />
+            </header>
+          </>
+        )}
+        <div className={contentClass}>
+          <div className={cx(styles.panes, { [styles.panesWithSidebar]: isExtensionSidebarOpen })}>
+            {!state.chromeless && (
+              <div
+                className={cx(styles.scopesDashboardsContainer, {
+                  [styles.scopesDashboardsContainerDocked]: menuDockedAndOpen,
+                })}
+              >
+                <ErrorBoundaryAlert boundaryName="scopes-dashboards">
+                  <ScopesDashboards />
+                </ErrorBoundaryAlert>
+              </div>
+            )}
+            <main
+              className={cx(styles.pageContainer, {
+                [styles.pageContainerMenuDocked]: menuDockedAndOpen || isScopesDashboardsOpen,
+                [styles.pageContainerMenuDockedScopes]: menuDockedAndOpen && isScopesDashboardsOpen,
+                [styles.pageContainerWithSidebar]: !state.chromeless && isExtensionSidebarOpen,
+                [contentSizeStyles.contentWidth]: !state.chromeless && isExtensionSidebarOpen,
               })}
+              id="pageContent"
+              tabIndex={-1}
             >
-              <ErrorBoundaryAlert boundaryName="scopes-dashboards">
-                <ScopesDashboards />
-              </ErrorBoundaryAlert>
-            </div>
-          )}
-          <main
-            className={cx(styles.pageContainer, {
-              [styles.pageContainerMenuDocked]: menuDockedAndOpen || isScopesDashboardsOpen,
-              [styles.pageContainerMenuDockedScopes]: menuDockedAndOpen && isScopesDashboardsOpen,
-              [styles.pageContainerWithSidebar]: !state.chromeless && isExtensionSidebarOpen,
-              [contentSizeStyles.contentWidth]: !state.chromeless && isExtensionSidebarOpen,
-            })}
-            id="pageContent"
-            tabIndex={-1}
-          >
-            {children}
-          </main>
-          {!state.chromeless && isExtensionSidebarOpen && (
-            <Resizable
-              className={styles.sidebarContainer}
-              defaultSize={{ width: extensionSidebarWidth }}
-              enable={{ left: true }}
-              onResize={(_evt, _direction, ref) => setExtensionSidebarWidth(ref.getBoundingClientRect().width)}
-              handleClasses={{ left: dragStyles.dragHandleBaseVertical }}
-              minWidth={MIN_EXTENSION_SIDEBAR_WIDTH}
-              maxWidth={MAX_EXTENSION_SIDEBAR_WIDTH}
-            >
-              <ExtensionSidebar />
-            </Resizable>
-          )}
+              {children}
+            </main>
+            {!state.chromeless && isExtensionSidebarOpen && (
+              <Resizable
+                className={styles.sidebarContainer}
+                defaultSize={{ width: extensionSidebarWidth }}
+                enable={{ left: true }}
+                onResize={(_evt, _direction, ref) => setExtensionSidebarWidth(ref.getBoundingClientRect().width)}
+                handleClasses={{ left: dragStyles.dragHandleBaseVertical }}
+                minWidth={MIN_EXTENSION_SIDEBAR_WIDTH}
+                maxWidth={MAX_EXTENSION_SIDEBAR_WIDTH}
+              >
+                <ExtensionSidebar />
+              </Resizable>
+            )}
+          </div>
         </div>
+        {!state.chromeless && !state.megaMenuDocked && <AppChromeMenu />}
+        {!state.chromeless && <CommandPalette />}
+        {shouldShowReturnToPrevious && state.returnToPrevious && (
+          <ReturnToPrevious href={state.returnToPrevious.href} title={state.returnToPrevious.title} />
+        )}
       </div>
-      {!state.chromeless && !state.megaMenuDocked && <AppChromeMenu />}
-      {!state.chromeless && <CommandPalette />}
-      {shouldShowReturnToPrevious && state.returnToPrevious && (
-        <ReturnToPrevious href={state.returnToPrevious.href} title={state.returnToPrevious.title} />
-      )}
-    </div>
+    </OpsPilotBroadcastProvider>
   );
 }
 

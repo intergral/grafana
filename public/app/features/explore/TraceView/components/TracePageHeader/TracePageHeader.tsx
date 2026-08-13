@@ -51,6 +51,7 @@ import {
   useTheme2,
 } from '@grafana/ui';
 import { useAppNotification } from 'app/core/copy/appNotification';
+import OpsPilotTraceButton from 'app/intergral/OpsPilotTraceButton';
 
 import { downloadTraceAsJson } from '../../../../inspector/utils/download';
 import { ViewRangeTimeUpdate, TUpdateViewRangeTimeFunction, ViewRange } from '../TraceTimelineViewer/types';
@@ -220,6 +221,7 @@ export const TracePageHeader = memo((props: TracePageHeaderProps) => {
         {!hideHeaderDetails && (
           <div className={styles.actions}>
             {/* Plugin extension actions */}
+            <OpsPilotTraceButton trace={trace} />
             {extensionLinks.length > 0 && (
               <div className={styles.actions}>
                 {extensionLinks.map((link) => (
