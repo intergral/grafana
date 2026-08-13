@@ -96,7 +96,10 @@ describe('AppChrome', () => {
     const skipLink = await screen.findByRole('link', { name: 'Skip to main content' });
     expect(skipLink).toHaveFocus();
     await userEvent.keyboard('{tab}');
-    expect(await screen.findByRole('button', { name: 'Main menu' })).toHaveFocus();
+    // Intergral: the mega menu toggle is removed from the top bar, so the home link is
+    // the next focusable element after the skip link.
+    const homeLink = screen.getAllByTestId('data-testid Home breadcrumb')[0];
+    expect(homeLink).toHaveFocus();
   });
 
   it('should move focus to main content on every skip link activation', async () => {

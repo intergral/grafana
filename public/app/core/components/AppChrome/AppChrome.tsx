@@ -3,18 +3,17 @@ import classNames from 'classnames';
 import { Resizable } from 're-resizable';
 import { PropsWithChildren, useEffect } from 'react';
 
-import { GrafanaTheme2, store } from '@grafana/data';
+import { GrafanaTheme2 } from '@grafana/data';
 import { Trans } from '@grafana/i18n';
 import { locationSearchToObject, locationService, useScopes } from '@grafana/runtime';
 import { ErrorBoundaryAlert, floatingUtils, getDragStyles, LinkButton, useStyles2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
-import { useMediaQueryMinWidth } from 'app/core/hooks/useMediaQueryMinWidth';
 import { CommandPalette } from 'app/features/commandPalette/CommandPalette';
 import { ScopesDashboards } from 'app/features/scopes/dashboards/ScopesDashboards';
 import { OpsPilotBroadcastProvider } from 'app/intergral/OpsPilotBroadcastContext';
 
 import { AppChromeMenu } from './AppChromeMenu';
-import { AppChromeService, DOCKED_LOCAL_STORAGE_KEY } from './AppChromeService';
+import { AppChromeService } from './AppChromeService';
 import {
   ExtensionSidebar,
   MAX_EXTENSION_SIDEBAR_WIDTH,
@@ -174,26 +173,10 @@ export function AppChrome({ children }: Props) {
 /**
  * When having docked mega menu we automatically undock it on smaller screens
  */
-function useResponsiveDockedMegaMenu(chrome: AppChromeService) {
-  const dockedMenuLocalStorageState = store.getBool(DOCKED_LOCAL_STORAGE_KEY, true);
-  const isLargeScreen = useMediaQueryMinWidth('xl');
-
-  useEffect(() => {
-    // if undocked we do not need to do anything
-    if (!dockedMenuLocalStorageState) {
-      return;
-    }
-
-    const state = chrome.state.getValue();
-    if (isLargeScreen && !state.megaMenuDocked) {
-      chrome.setMegaMenuDocked(true, false);
-      chrome.setMegaMenuOpen(true);
-    } else if (!isLargeScreen && state.megaMenuDocked) {
-      chrome.setMegaMenuDocked(false, false);
-      chrome.setMegaMenuOpen(false);
-    }
-  }, [isLargeScreen, chrome, dockedMenuLocalStorageState]);
-}
+// Intergral: mega menu docking is driven from MegaMenu itself (docked + open on wide
+// screens), so the upstream responsive docking hook is a no-op in this fork.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function useResponsiveDockedMegaMenu(_chrome: AppChromeService) {}
 
 const getStyles = (theme: GrafanaTheme2, headerLevels: number, headerHeight: number) => {
   return {

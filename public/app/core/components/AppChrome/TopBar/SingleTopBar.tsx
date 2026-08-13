@@ -3,28 +3,18 @@ import React, { memo } from 'react';
 
 import { GrafanaTheme2, NavModelItem } from '@grafana/data';
 import { Components } from '@grafana/e2e-selectors';
-import { t } from '@grafana/i18n';
 import { ScopesContextValue } from '@grafana/runtime';
-import { Icon, Stack, ToolbarButton, useStyles2 } from '@grafana/ui';
-import { MEGA_MENU_TOGGLE_ID } from 'app/core/constants';
+import { Stack, useStyles2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { useMediaQueryMinWidth } from 'app/core/hooks/useMediaQueryMinWidth';
 import { HOME_NAV_ID } from 'app/core/reducers/navModel';
-import { contextSrv } from 'app/core/services/context_srv';
 import { ScopesSelector } from 'app/features/scopes/selector/ScopesSelector';
 import { useSelector } from 'app/types/store';
 
 import { HomeLink } from '../../Branding/Branding';
 import { Breadcrumbs } from '../../Breadcrumbs/Breadcrumbs';
 import { buildBreadcrumbs } from '../../Breadcrumbs/utils';
-import { ExtensionToolbarItem } from '../ExtensionSidebar/ExtensionToolbarItem';
-import { NavToolbarSeparator } from '../NavToolbar/NavToolbarSeparator';
-import { QuickAdd } from '../QuickAdd/QuickAdd';
 
-import { HelpTopBarButton } from './HelpTopBarButton';
-import { InviteUserButton } from './InviteUserButton';
-import { ProfileButton } from './ProfileButton';
-import { SignInLink } from './SignInLink';
 import { SingleTopBarActions } from './SingleTopBarActions';
 import { TopBarExtensionPoint } from './TopBarExtensionPoint';
 import { TopSearchBarCommandPaletteTrigger } from './TopSearchBarCommandPaletteTrigger';
@@ -41,9 +31,10 @@ interface Props {
   showToolbarLevel: boolean;
 }
 
+// Intergral: the top bar is stripped down to breadcrumbs plus the command palette
+// trigger. The mega menu toggle, quick add, help, extension toolbar, sign-in, invite and
+// profile items are removed — the surrounding FusionReactor Cloud shell provides them.
 export const SingleTopBar = memo(function SingleTopBar({
-  onToggleMegaMenu,
-  onToggleKioskMode,
   pageNav,
   sectionNav,
   scopes,
@@ -55,10 +46,8 @@ export const SingleTopBar = memo(function SingleTopBar({
   const state = chrome.useState();
   const menuDockedAndOpen = !state.chromeless && state.megaMenuDocked && state.megaMenuOpen;
   const styles = useStyles2(getStyles, menuDockedAndOpen);
-  const profileNode = useSelector((state) => state.navIndex['profile']);
   const homeNav = useSelector((state) => state.navIndex)[HOME_NAV_ID];
   const breadcrumbs = buildBreadcrumbs(sectionNav, pageNav, homeNav);
-  const isSmallScreen = !useMediaQueryMinWidth('sm');
   const isLargeScreen = useMediaQueryMinWidth('lg');
   const topLevelScopes = !showToolbarLevel && isLargeScreen && scopes?.state.enabled;
 
@@ -66,19 +55,6 @@ export const SingleTopBar = memo(function SingleTopBar({
     <>
       <div className={styles.layout}>
         <Stack minWidth={0} gap={0.5} alignItems="center" flex={{ xs: 2, lg: 1 }}>
-          {!menuDockedAndOpen && (
-            <ToolbarButton
-              narrow
-              id={MEGA_MENU_TOGGLE_ID}
-              onClick={onToggleMegaMenu}
-              tooltip={t('navigation.megamenu.open', 'Main menu')}
-              aria-expanded={state.megaMenuOpen}
-            >
-              <Stack gap={0} alignItems="center">
-                <Icon name="bars" size="xl" />
-              </Stack>
-            </ToolbarButton>
-          )}
           {!menuDockedAndOpen && <HomeLink homeNav={homeNav} />}
           {topLevelScopes ? <ScopesSelector /> : undefined}
           <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
@@ -94,14 +70,6 @@ export const SingleTopBar = memo(function SingleTopBar({
         >
           <TopBarExtensionPoint />
           <TopSearchBarCommandPaletteTrigger />
-          {!isSmallScreen && <QuickAdd />}
-          <HelpTopBarButton isSmallScreen={isSmallScreen} />
-          <NavToolbarSeparator />
-          {!isSmallScreen && <ExtensionToolbarItem compact={isSmallScreen} />}
-          {!showToolbarLevel && actions}
-          {!contextSrv.user.isSignedIn && <SignInLink />}
-          <InviteUserButton />
-          {profileNode && <ProfileButton profileNode={profileNode} onToggleKioskMode={onToggleKioskMode} />}
         </Stack>
       </div>
       {showToolbarLevel && (
