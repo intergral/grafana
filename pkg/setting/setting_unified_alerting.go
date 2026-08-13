@@ -153,6 +153,11 @@ type UnifiedAlertingSettings struct {
 	BacktestingMaxEvaluations int
 
 	IgnorePendingForNoDataAndError bool
+
+	// ExternalURL overrides AppURL for alert notification links.
+	// When set, alert notifications will use this URL instead of root_url.
+	// Useful when Grafana is iframed and the root_url differs from the URL users should follow.
+	ExternalURL string
 }
 
 type RecordingRuleSettings struct {
@@ -596,6 +601,8 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	if uaCfg.BacktestingMaxEvaluations < 0 {
 		uaCfg.BacktestingMaxEvaluations = 100
 	}
+
+	uaCfg.ExternalURL = ua.Key("external_url").MustString("")
 
 	cfg.UnifiedAlerting = uaCfg
 	return nil
