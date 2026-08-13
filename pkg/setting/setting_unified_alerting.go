@@ -100,6 +100,8 @@ type UnifiedAlertingSettings struct {
 	HARedisTLSEnabled               bool
 	HARedisTLSConfig                dstls.ClientConfig
 	HASingleNodeEvaluation          bool
+	HASchedulerPartitioningEnabled  bool
+	HASchedulerMinClusterSize       int
 	InitializationTimeout           time.Duration
 	MaxAttempts                     int64
 	InitialRetryDelay               time.Duration
@@ -349,6 +351,8 @@ func (cfg *Cfg) ReadUnifiedAlertingSettings(iniFile *ini.File) error {
 	uaCfg.HARedisTLSConfig.CipherSuites = ua.Key("ha_redis_tls_cipher_suites").MustString("")
 	uaCfg.HARedisTLSConfig.MinVersion = ua.Key("ha_redis_tls_min_version").MustString("")
 	uaCfg.HASingleNodeEvaluation = ua.Key("ha_single_node_evaluation").MustBool(false)
+	uaCfg.HASchedulerPartitioningEnabled = ua.Key("ha_scheduler_partitioning_enabled").MustBool(false)
+	uaCfg.HASchedulerMinClusterSize = ua.Key("ha_scheduler_min_cluster_size").MustInt(2)
 
 	// TODO load from ini file
 	uaCfg.DefaultConfiguration = alertmanagerDefaultConfiguration

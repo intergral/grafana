@@ -184,14 +184,19 @@ func TestLexerClose(t *testing.T) {
 	// Close the lexer explicitly
 	lexer.Close()
 
-	// Verify the lexer's channel closes
-	select {
-	case _, ok := <-lexer.items:
-		if ok {
-			t.Fatal("lexer.items channel should be closed after lexer.Close()")
+	// Drain any in-flight items, then verify the channel closes.
+	// After Close(), the goroutine's emit select may still deliver a
+	// pending item before noticing done, so we drain until closed.
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case _, ok := <-lexer.items:
+			if !ok {
+				return // success — channel closed
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for lexer.items channel to close")
 		}
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("timed out waiting for lexer.items channel to close")
 	}
 }
 

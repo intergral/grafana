@@ -18,10 +18,34 @@ func (sch *schedule) updateSchedulableAlertRules(ctx context.Context) (diff, err
 			time.Since(start).Seconds())
 	}()
 
-	if !sch.schedulableAlertRules.isEmpty() {
+	// Cluster topology changes redistribute rule ownership even when no rule changed,
+	// so force a re-fetch when the member count moves.
+	forceUpdate := false
+	if sch.partitioner != nil {
+		if currentSize := sch.partitioner.ClusterSize(); sch.lastClusterSize != currentSize {
+			sch.log.Info("Cluster size changed, forcing rule re-fetch",
+				"previousSize", sch.lastClusterSize, "currentSize", currentSize)
+			sch.lastClusterSize = currentSize
+			forceUpdate = true
+		}
+	}
+
+	if !forceUpdate && !sch.schedulableAlertRules.isEmpty() {
 		keys, err := sch.ruleStore.GetAlertRulesKeysForScheduling(ctx)
 		if err != nil {
 			return diff{}, err
+		}
+		// schedulableAlertRules only holds this peer's share, so the key set must be
+		// narrowed the same way or needsUpdate() always reports a length mismatch and
+		// the cheap-keys fast path never fires.
+		if sch.partitioner != nil {
+			local := make([]models.AlertRuleKeyWithVersion, 0, len(keys))
+			for _, k := range keys {
+				if sch.partitioner.Owns(k.OrgID, k.UID) {
+					local = append(local, k)
+				}
+			}
+			keys = local
 		}
 		if !sch.schedulableAlertRules.needsUpdate(keys) {
 			sch.log.Debug("No changes detected. Skip updating")
@@ -34,6 +58,9 @@ func (sch *schedule) updateSchedulableAlertRules(ctx context.Context) (diff, err
 	}
 	if err := sch.ruleStore.GetAlertRulesForScheduling(ctx, &q); err != nil {
 		return diff{}, fmt.Errorf("failed to get alert rules: %w", err)
+	}
+	if sch.partitioner != nil {
+		q.ResultRules = sch.partitioner.Filter(q.ResultRules)
 	}
 	d := sch.schedulableAlertRules.set(q.ResultRules, q.ResultFoldersTitles)
 	sch.log.Debug("Alert rules fetched", "rulesCount", len(q.ResultRules), "foldersCount", len(q.ResultFoldersTitles), "updatedRules", len(d.updated))

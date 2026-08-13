@@ -2,6 +2,7 @@ package ngalert
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -348,6 +349,27 @@ func (ng *AlertNG) init() error {
 	}
 	ng.RecordingWriter = recordingWriter
 
+	// HA scheduler partitioning: each peer evaluates a hash-determined 1/N of rules.
+	var partitioner schedule.RulePartitioner
+	if ng.Cfg.UnifiedAlerting.HASchedulerPartitioningEnabled {
+		if ng.Cfg.UnifiedAlerting.HASingleNodeEvaluation {
+			return errors.New("ha_scheduler_partitioning_enabled and ha_single_node_evaluation are mutually exclusive: " +
+				"single-node evaluation restricts evaluation to peer position 0, and partitioning would then leave " +
+				"the other shards unevaluated")
+		}
+		if ng.FeatureToggles.IsEnabledGlobally(featuremgmt.FlagAlertingSaveStatePeriodic) {
+			return errors.New("ha_scheduler_partitioning_enabled is incompatible with the alertingSaveStatePeriodic " +
+				"feature toggle: the periodic persister rewrites the whole alert instance table from the local cache, " +
+				"so each partitioned peer would erase the other peers' state")
+		}
+		partitioner = schedule.NewPartitionFilter(ng.MultiOrgAlertmanager.Peer(), ng.Cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+		if partitioner == nil {
+			ng.Log.Warn("HA scheduler partitioning requested but no HA cluster is configured (set ha_peers or ha_redis_address); partitioning disabled")
+		} else {
+			ng.Log.Info("HA scheduler partitioning enabled", "minClusterSize", ng.Cfg.UnifiedAlerting.HASchedulerMinClusterSize)
+		}
+	}
+
 	ng.schedCfg = schedule.SchedulerCfg{
 		RetryConfig: schedule.RetryConfig{
 			MaxAttempts:         ng.Cfg.UnifiedAlerting.MaxAttempts,
@@ -370,6 +392,10 @@ func (ng *AlertNG) init() error {
 		Log:                  log.New("ngalert.scheduler"),
 		RecordingWriter:      ng.RecordingWriter,
 		FeatureToggles:       ng.FeatureToggles,
+		Partitioner:          partitioner,
+	}
+	if partitioner != nil {
+		ng.schedCfg.RuleStopReasonProvider = schedule.NewPartitionStopReasonProvider(partitioner)
 	}
 
 	history, err := configureHistorianBackend(
@@ -448,6 +474,15 @@ func (ng *AlertNG) init() error {
 		apiStateManager = ng.stateManager
 		ng.schedule = schedule.NewScheduler(ng.schedCfg, ng.stateManager)
 		apiStatusReader = ng.schedule
+
+		if partitioner != nil {
+			// Under HA partitioning this peer schedules and holds in-memory state for only
+			// its own share of rules, so serve the API from the shared database instead.
+			// This is the same substitution made for HASingleNodeEvaluation above.
+			storeStateReader := state.NewStoreStateReader(ng.InstanceStore, ng.Log)
+			apiStateManager = storeStateReader
+			apiStatusReader = storeStateReader
+		}
 	}
 
 	configStore := legacy_storage.NewAlertmanagerConfigStore(ng.store, notifier.NewExtraConfigsCrypto(ng.SecretsService), ng.FeatureToggles)
