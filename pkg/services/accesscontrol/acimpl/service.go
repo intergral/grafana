@@ -440,6 +440,11 @@ func (s *Service) getCachedTeamsPermissions(ctx context.Context, user identity.R
 
 func (s *Service) ClearUserPermissionCache(user identity.Requester) {
 	s.cache.Delete(accesscontrol.GetUserDirectPermissionCacheKey(user))
+	// Also clear basic role caches so managed role permissions for newly created
+	// resources are picked up on the next request.
+	for _, role := range accesscontrol.GetOrgRoles(user) {
+		s.cache.Delete(accesscontrol.GetBasicRolePermissionCacheKey(role, user.GetOrgID()))
+	}
 }
 
 func (s *Service) DeleteUserPermissions(ctx context.Context, orgID int64, userID int64) error {

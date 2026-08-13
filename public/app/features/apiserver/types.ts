@@ -10,6 +10,8 @@
 
 import { Observable } from 'rxjs';
 
+import { BackendSrvRequest } from '@grafana/runtime';
+
 /** The object type and version */
 export interface TypeMeta<K = string> {
   apiVersion: string;
@@ -261,7 +263,12 @@ export interface ResourceClient<T = object, S = object, K = string> {
   update(obj: ResourceForCreate<T, K>, params?: ResourceClientWriteParams): Promise<Resource<T, S, K>>;
   delete(name: string, showSuccessAlert?: boolean): Promise<MetaStatus>;
   list(opts?: ListOptions): Promise<ResourceList<T, S, K>>;
-  subresource<S>(name: string, path: string, params?: Record<string, unknown>): Promise<S>;
+  subresource<S>(
+    name: string,
+    path: string,
+    params?: Record<string, unknown>,
+    options?: Partial<BackendSrvRequest>
+  ): Promise<S>;
   watch(opts?: WatchOptions): Observable<ResourceEvent<T, S, K>>;
 }
 

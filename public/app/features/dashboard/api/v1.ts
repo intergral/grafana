@@ -134,7 +134,9 @@ export class K8sDashboardAPI implements DashboardAPI<DashboardDTO, Dashboard> {
 
   async getDashboardDTO(uid: string, params?: UrlQueryMap) {
     try {
-      const dash = await this.client.subresource<DashboardWithAccessInfo<DashboardDataDTO>>(uid, 'dto', params);
+      const dash = await this.client.subresource<DashboardWithAccessInfo<DashboardDataDTO>>(uid, 'dto', params, {
+        showErrorAlert: false,
+      });
 
       // This could come as conversion error from v0 or v2 to V1.
       if (dash.status?.conversion?.failed && isV2StoredVersion(dash.status.conversion.storedVersion)) {
@@ -204,7 +206,7 @@ export class K8sDashboardAPI implements DashboardAPI<DashboardDTO, Dashboard> {
           result.meta.folderId = folder.id;
         } catch (e) {
           // If user has access to dashboard but not to folder, continue without folder info
-          if (getStatusFromError(e) !== 403) {
+          if (getStatusFromError(e) !== 403 && getStatusFromError(e) !== 500) {
             throw new Error('Failed to load folder');
           }
           // we still want to save the folder uid so that we can properly handle disabling the folder picker in Settings -> General
