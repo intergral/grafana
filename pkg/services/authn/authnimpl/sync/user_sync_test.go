@@ -961,6 +961,90 @@ func TestUserSync_FetchSyncedUserHook(t *testing.T) {
 			require.ErrorIs(t, err, tt.expectedErr)
 		})
 	}
+
+	t.Run("should use identity.OrgID when r.OrgID is 0", func(t *testing.T) {
+		// Simulates auth proxy setting identity.OrgID from X-WEBAUTH-ORG header
+		var calledOrgID int64
+		userService := &usertest.FakeUserService{
+			GetSignedInUserFn: func(ctx context.Context, query *user.GetSignedInUserQuery) (*user.SignedInUser, error) {
+				calledOrgID = query.OrgID
+				return &user.SignedInUser{
+					UserID:  1,
+					OrgID:   3,
+					OrgName: "ProxyOrg",
+					OrgRole: "Viewer",
+				}, nil
+			},
+		}
+
+		s := UserSync{
+			userService: NewLegacyUserProxy(userService),
+			tracer:      tracing.InitializeTracerForTest(),
+			log:         log.New("test"),
+		}
+
+		identity := &authn.Identity{
+			ID:    "1",
+			Type:  claims.TypeUser,
+			OrgID: 3, // Set by auth proxy from X-WEBAUTH-ORG
+			ClientParams: authn.ClientParams{
+				FetchSyncedUser: true,
+			},
+		}
+
+		req := &authn.Request{
+			OrgID: 0, // No explicit org switch via X-Grafana-Org-Id
+		}
+
+		err := s.FetchSyncedUserHook(context.Background(), identity, req)
+		require.NoError(t, err)
+
+		// Verify GetSignedInUser was called with identity.OrgID (3), not r.OrgID (0)
+		assert.Equal(t, int64(3), calledOrgID)
+		assert.Equal(t, int64(3), identity.OrgID)
+	})
+
+	t.Run("should prefer r.OrgID when both r.OrgID and identity.OrgID are set", func(t *testing.T) {
+		// Simulates user explicitly switching orgs with X-Grafana-Org-Id
+		var calledOrgID int64
+		userService := &usertest.FakeUserService{
+			GetSignedInUserFn: func(ctx context.Context, query *user.GetSignedInUserQuery) (*user.SignedInUser, error) {
+				calledOrgID = query.OrgID
+				return &user.SignedInUser{
+					UserID:  1,
+					OrgID:   5,
+					OrgName: "SwitchedOrg",
+					OrgRole: "Admin",
+				}, nil
+			},
+		}
+
+		s := UserSync{
+			userService: NewLegacyUserProxy(userService),
+			tracer:      tracing.InitializeTracerForTest(),
+			log:         log.New("test"),
+		}
+
+		identity := &authn.Identity{
+			ID:    "1",
+			Type:  claims.TypeUser,
+			OrgID: 3, // Set by auth proxy from X-WEBAUTH-ORG
+			ClientParams: authn.ClientParams{
+				FetchSyncedUser: true,
+			},
+		}
+
+		req := &authn.Request{
+			OrgID: 5, // Explicit org switch via X-Grafana-Org-Id
+		}
+
+		err := s.FetchSyncedUserHook(context.Background(), identity, req)
+		require.NoError(t, err)
+
+		// Verify GetSignedInUser was called with r.OrgID (5), not identity.OrgID (3)
+		assert.Equal(t, int64(5), calledOrgID)
+		assert.Equal(t, int64(5), identity.OrgID)
+	})
 }
 
 func TestUserSync_CatalogLoginHook(t *testing.T) {

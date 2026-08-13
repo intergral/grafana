@@ -19,20 +19,22 @@ import (
 	"github.com/grafana/grafana/pkg/infra/remotecache"
 	"github.com/grafana/grafana/pkg/services/authn"
 	"github.com/grafana/grafana/pkg/services/login"
+	"github.com/grafana/grafana/pkg/services/org"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/util"
 )
 
 const (
-	proxyFieldName   = "Name"
-	proxyFieldEmail  = "Email"
-	proxyFieldLogin  = "Login"
-	proxyFieldRole   = "Role"
-	proxyFieldGroups = "Groups"
-	proxyCachePrefix = "authn-proxy-sync-ttl"
+	proxyFieldName    = "Name"
+	proxyFieldEmail   = "Email"
+	proxyFieldLogin   = "Login"
+	proxyFieldRole    = "Role"
+	proxyFieldGroups  = "Groups"
+	proxyFieldOrgName = "OrgName"
+	proxyCachePrefix  = "authn-proxy-sync-ttl"
 )
 
-var proxyFields = [...]string{proxyFieldName, proxyFieldEmail, proxyFieldLogin, proxyFieldRole, proxyFieldGroups}
+var proxyFields = [...]string{proxyFieldName, proxyFieldEmail, proxyFieldLogin, proxyFieldRole, proxyFieldGroups, proxyFieldOrgName}
 
 var (
 	errNotAcceptedIP      = errutil.Unauthorized("auth-proxy.invalid-ip")
@@ -45,12 +47,20 @@ var (
 	_ authn.ContextAwareClient = new(Proxy)
 )
 
-func ProvideProxy(cfg *setting.Cfg, cache proxyCache, tracer trace.Tracer, clients ...authn.ProxyClient) (*Proxy, error) {
+func ProvideProxy(cfg *setting.Cfg, cache proxyCache, orgService org.Service, tracer trace.Tracer, clients ...authn.ProxyClient) (*Proxy, error) {
 	list, err := parseAcceptList(cfg.AuthProxy.Whitelist)
 	if err != nil {
 		return nil, err
 	}
-	return &Proxy{log.New(authn.ClientProxy), cfg, cache, clients, list, tracer}, nil
+	return &Proxy{
+		log:         log.New(authn.ClientProxy),
+		cfg:         cfg,
+		cache:       cache,
+		orgService:  orgService,
+		clients:     clients,
+		acceptedIPs: list,
+		tracer:      tracer,
+	}, nil
 }
 
 type proxyCache interface {
@@ -63,6 +73,7 @@ type Proxy struct {
 	log         log.Logger
 	cfg         *setting.Cfg
 	cache       proxyCache
+	orgService  org.Service
 	clients     []authn.ProxyClient
 	acceptedIPs []*net.IPNet
 	tracer      trace.Tracer
@@ -130,7 +141,7 @@ func (c *Proxy) retrieveIDFromCache(ctx context.Context, cacheKey string, r *aut
 		return nil, fmt.Errorf("failed to parse user id from cache: %w - entry: %s", err, string(entry))
 	}
 
-	return &authn.Identity{
+	identity := &authn.Identity{
 		ID:    string(entry),
 		Type:  claims.TypeUser,
 		OrgID: r.OrgID,
@@ -141,7 +152,21 @@ func (c *Proxy) retrieveIDFromCache(ctx context.Context, cacheKey string, r *aut
 			FetchSyncedUser: true,
 			SyncPermissions: true,
 		},
-	}, nil
+	}
+
+	// Look up org ID from X-WEBAUTH-ORG header if present
+	// This ensures cache hits respect the OrgName header just like the full auth path
+	additional := getAdditionalProxyHeaders(r, c.cfg)
+	if orgName, ok := additional[proxyFieldOrgName]; ok {
+		orgByName, err := c.orgService.GetByName(ctx, &org.GetOrgByNameQuery{Name: orgName})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get org by name: %w", err)
+		}
+		identity.OrgID = orgByName.ID
+		identity.OrgName = orgName
+	}
+
+	return identity, nil
 }
 
 func (c *Proxy) Test(ctx context.Context, r *authn.Request) bool {
