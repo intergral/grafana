@@ -152,6 +152,18 @@ func TestSmtpDialer(t *testing.T) {
 	})
 }
 
+// waitForMessages polls until the mock SMTP server has received the expected number of
+// messages, then purges and returns them. This replaces the fixed 1ms sleep workaround
+// for https://github.com/mocktools/go-smtp-mock/issues/181, which loses the race on
+// loaded CI runners.
+func waitForMessages(t *testing.T, srv *smtpmock.Server, expected int) []smtpmock.Message {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		return len(srv.Messages()) >= expected
+	}, 5*time.Second, 10*time.Millisecond)
+	return srv.MessagesAndPurge()
+}
+
 func TestSmtpSend(t *testing.T) {
 	srv := smtpmock.New(smtpmock.ConfigurationAttr{
 		MultipleRcptto: true,
@@ -185,9 +197,7 @@ func TestSmtpSend(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 
-		// workaround for https://github.com/mocktools/go-smtp-mock/issues/181
-		time.Sleep(1 * time.Millisecond)
-		messages := srv.MessagesAndPurge()
+		messages := waitForMessages(t, srv, 1)
 		require.Len(t, messages, 1)
 		sentMsg := messages[0]
 
@@ -237,9 +247,7 @@ func TestSmtpSend(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 
-		// workaround for https://github.com/mocktools/go-smtp-mock/issues/181
-		time.Sleep(1 * time.Millisecond)
-		messages := srv.MessagesAndPurge()
+		messages := waitForMessages(t, srv, 1)
 		require.Len(t, messages, 1)
 		sentMsg := messages[0]
 
@@ -298,9 +306,7 @@ func TestSmtpSend(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 3, count)
 
-		// workaround for https://github.com/mocktools/go-smtp-mock/issues/181
-		time.Sleep(1 * time.Millisecond)
-		messages := srv.MessagesAndPurge()
+		messages := waitForMessages(t, srv, 3)
 		assert.Len(t, messages, 3)
 
 		// sort for test consistency
