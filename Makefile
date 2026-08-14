@@ -503,7 +503,12 @@ test-go: test-go-unit test-go-integration
 .PHONY: test-go-unit
 test-go-unit: ## Run unit tests for backend with flags.
 	@echo "backend unit tests ($(SHARD)/$(SHARDS))"
+	# Intergral: TestSearchGetOrCreateIndexWithCancellation races a 1ms context deadline
+	# against index enqueueing and flakes on CI (run 31774352695, shard 6). Upstream main
+	# has already rewritten it deterministically; drop this skip when that lands in a
+	# release we rebase onto.
 	$(GO) test $(GO_RACE_FLAG) $(GO_TEST_FLAGS) -v -short -timeout=30m \
+		-skip "TestSearchGetOrCreateIndexWithCancellation" \
 		$(shell ./scripts/ci/backend-tests/shard.sh -n$(SHARD) -m$(SHARDS) -s)
 
 .PHONY: test-go-unit-pretty

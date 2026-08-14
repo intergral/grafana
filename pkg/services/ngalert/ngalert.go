@@ -357,7 +357,7 @@ func (ng *AlertNG) init() error {
 				"single-node evaluation restricts evaluation to peer position 0, and partitioning would then leave " +
 				"the other shards unevaluated")
 		}
-		if ng.FeatureToggles.IsEnabledGlobally(featuremgmt.FlagAlertingSaveStatePeriodic) {
+		if ng.Cfg.IsFeatureToggleEnabled(featuremgmt.FlagAlertingSaveStatePeriodic) {
 			return errors.New("ha_scheduler_partitioning_enabled is incompatible with the alertingSaveStatePeriodic " +
 				"feature toggle: the periodic persister rewrites the whole alert instance table from the local cache, " +
 				"so each partitioned peer would erase the other peers' state")
