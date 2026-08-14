@@ -31,7 +31,12 @@ jobs:
           yarn install --immutable
 
       - name: Test
-        run: yarn test:coverage
+        # test:ci instead of test:coverage: nothing consumes the coverage report, and
+        # coverage instrumentation at default worker count OOMs the runner's node heap
+        # (run 31776603020). Two workers fit comfortably in a standard runner.
+        run: yarn test:ci
+        env:
+          TEST_MAX_WORKERS: 2
 
   build:
     name: Build
