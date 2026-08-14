@@ -1,5 +1,4 @@
 //go:build wireinject && oss
-// +build wireinject,oss
 
 // This file should contain wiresets which contain OSS-specific implementations.
 package server

@@ -1,5 +1,4 @@
 //go:build wireinject
-// +build wireinject
 
 // This file should contain wire sets used by both OSS and Enterprise builds.
 // Use wireext_oss.go and wireext_enterprise.go for sets that are specific to
