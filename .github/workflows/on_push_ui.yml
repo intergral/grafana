@@ -13,8 +13,12 @@ concurrency:
 
 jobs:
   test:
-    name: Test
+    name: Test (Shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     steps:
 
@@ -32,11 +36,14 @@ jobs:
 
       - name: Test
         # test:ci instead of test:coverage: nothing consumes the coverage report, and
-        # coverage instrumentation at default worker count OOMs the runner's node heap
-        # (run 31776603020). Two workers fit comfortably in a standard runner.
-        run: yarn test:ci
+        # coverage instrumentation OOMs the runner's node heap (run 31776603020).
+        # Sharding plus workerIdleMemoryLimit keeps leak accumulation in long-lived jest
+        # workers under the ~4GB per-process heap cap (run 31782161380).
+        run: yarn test:ci --workerIdleMemoryLimit=1792MB
         env:
           TEST_MAX_WORKERS: 2
+          TEST_SHARD: ${{ matrix.shard }}
+          TEST_SHARD_TOTAL: 4
 
   build:
     name: Build
