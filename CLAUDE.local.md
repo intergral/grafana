@@ -157,6 +157,11 @@ All reproduced on a pristine v12.4.8 worktree on this machine (2026-08-13):
   `formats.test.ts`, `rangeutil.test.ts` (grafana-data), `TimeRangePicker/mapper.test.ts`.
 - `HelpWizard.test.tsx` `SupportSnapshot › Can render` is order-dependent — fails when
   batched with certain suites, passes in isolation.
+- CI-observed flakes (skips carry run-ID evidence in the Makefile): the
+  `TestIntegrationProvisioning` family (SQLite "database is locked" in the secure-value
+  store) and `TestSearchGetOrCreateIndexWithCancellation` (1ms-deadline race; upstream
+  main already rewrote it — drop the skip on the next rebase). `TestSmtpSend`'s 1ms-sleep
+  race was fixed properly in smtp_test.go rather than skipped.
 Full-suite results for the port itself: Go unit suite (short mode) zero failures;
 jest 18,538 passed with only the above pre-existing/environmental failures.
 
