@@ -2,7 +2,7 @@ name: Build & Test Go
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ "**" ]
 
 
 concurrency:

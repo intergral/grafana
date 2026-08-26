@@ -3,7 +3,7 @@ name: docker
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ "**" ]
 
 permissions:
   contents: write

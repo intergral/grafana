@@ -331,7 +331,12 @@ func (ng *AlertNG) init() error {
 
 	alertsRouter := sender.NewAlertsRouter(ng.MultiOrgAlertmanager, ng.store, clk, appUrl, ng.Cfg.UnifiedAlerting.DisabledOrgs,
 		ng.Cfg.UnifiedAlerting.AdminConfigPollInterval, ng.DataSourceService, ng.SecretsService, ng.FeatureToggles,
-		ng.Cfg.UnifiedAlerting.HASingleNodeEvaluation)
+		// Also broadcast under HA scheduler partitioning: a peer's Alertmanager only sees
+		// alerts its own scheduler evaluates, so a reassigned rule leaves the previous owner
+		// holding a copy nothing refreshes, which expires into a false resolved notification.
+		// Mitigates but does not eliminate this (5 -> 1 per topology change on 5 nodes) —
+		// gossip is best effort. Duplicates are deduped by the gossiped notification log.
+		ng.Cfg.UnifiedAlerting.HASingleNodeEvaluation || ng.Cfg.UnifiedAlerting.HASchedulerPartitioningEnabled)
 
 	// Make sure we sync at least once as Grafana starts to get the router up and running before we start sending any alerts.
 	if err := alertsRouter.SyncAndApplyConfigFromDatabase(initCtx); err != nil {
