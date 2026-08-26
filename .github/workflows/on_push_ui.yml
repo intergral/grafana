@@ -2,7 +2,7 @@ name: Build & Test UI
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ "**" ]
 
 
 concurrency:
