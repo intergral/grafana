@@ -40,6 +40,9 @@ jobs:
           build-args: |
             BINGO=false
             COMMIT_SHA=${{ github.sha }}
-            BUILD_BRANCH=main
+            BUILD_BRANCH=${{ github.ref_name }}
           push: true
-          tags: intergral/grafana:latest,intergral/grafana:${{ github.ref_name }}
+          # Only a -REL tag moves `latest`; pre-release tags publish their own tag only.
+          tags: |
+            intergral/grafana:${{ github.ref_name }}
+            ${{ endsWith(github.ref_name, '-REL') && 'intergral/grafana:latest' || '' }}
