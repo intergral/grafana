@@ -333,8 +333,6 @@ func (proxy *DataSourceProxy) validateRequest() error {
 
 	// Trailing validation below this point for routes that were not matched
 	if proxy.ds.Type == datasources.DS_PROMETHEUS || proxy.ds.Type == datasources.DS_AMAZON_PROMETHEUS || proxy.ds.Type == datasources.DS_AZURE_PROMETHEUS || proxy.ds.Type == datasources.DS_LOKI {
-		ctxLogger := logger.FromContext(proxy.ctx.Req.Context())
-		ctxLogger.Error("plugin route is not covered by RBAC and disabled default falling back to 403", "route", proxy.ctx.Req.URL.Path, "method", proxy.ctx.Req.Method, "datasource", proxy.ds.Type)
 		if proxy.ctx.Req.Method == "DELETE" {
 			return errors.New("non allow-listed DELETEs not allowed on proxied Prometheus or Loki datasource")
 		}
