@@ -150,6 +150,13 @@ var (
 				{Action: accesscontrol.ActionAlertingReceiversUpdate, Scope: models.ScopeReceiversAll},
 				{Action: accesscontrol.ActionAlertingReceiversDelete, Scope: models.ScopeReceiversAll},
 				{Action: accesscontrol.ActionAlertingReceiversTestCreate, Scope: models.ScopeReceiversAll},
+				// Protected fields (every integration's destination URL) are gated on this action,
+				// which upstream grants only to fixed:alerting:admin. We run OSS and never make a
+				// customer an org Admin, so without this an Editor can never change the URL of a
+				// contact point someone else created — the creator gets per-receiver Admin, nobody
+				// else does. Granting it here rather than widening the per-receiver Edit action set
+				// keeps secrets:read and permissions:write with Admin, where upstream put them.
+				{Action: accesscontrol.ActionAlertingReceiversUpdateProtected, Scope: models.ScopeReceiversAll},
 			}),
 		},
 	}
