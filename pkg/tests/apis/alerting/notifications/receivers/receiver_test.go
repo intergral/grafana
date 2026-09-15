@@ -144,6 +144,12 @@ func TestIntegrationResourcePermissions(t *testing.T) {
 	require.NoError(t, err)
 
 	writeACMetadata := []string{"canWrite", "canDelete", "canTest"}
+	// Intergral: an org Editor additionally holds protected-field write, which upstream
+	// reserves for Admin — see receiversWriterRole in pkg/services/ngalert/accesscontrol.go.
+	// Only the basic role gained it: the resource-level Edit grants below (noneUser, viewer)
+	// map to ReceiversEditActions, which we deliberately left alone, so they keep
+	// writeACMetadata.
+	editorACMetadata := []string{"canWrite", "canDelete", "canTest", "canModifyProtected"}
 	allACMetadata := []string{"canWrite", "canDelete", "canReadSecrets", "canAdmin", "canModifyProtected", "canTest"}
 
 	mustID := func(user apis.User) int64 {
@@ -196,7 +202,7 @@ func TestIntegrationResourcePermissions(t *testing.T) {
 			name:          "Admin creates, editor has write metadata and access",
 			creatingUser:  admin,
 			testUser:      editor,
-			expACMetadata: writeACMetadata,
+			expACMetadata: editorACMetadata,
 			expRead:       true,
 		},
 		// User-based assignments.
@@ -504,12 +510,15 @@ func TestIntegrationAccessControl(t *testing.T) {
 			canTest:            true,
 		},
 		{
-			user:      org1.Editor,
-			canRead:   true,
-			canUpdate: true,
-			canCreate: true,
-			canDelete: true,
-			canTest:   true,
+			// Intergral: canUpdateProtected is true here and false upstream — the fork
+			// grants protected-field write to the Editor basic role.
+			user:               org1.Editor,
+			canRead:            true,
+			canUpdate:          true,
+			canUpdateProtected: true,
+			canCreate:          true,
+			canDelete:          true,
+			canTest:            true,
 		},
 		{
 			user:    org1.Viewer,
