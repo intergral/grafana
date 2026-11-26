@@ -59,7 +59,8 @@ jobs:
 
   lint:
     name: Lint & Format
-    runs-on: ubuntu-latest
+    # golangci-lint needs 10-15+ min on ubuntu-latest and hits the 15m timeout in .golangci.yml.
+    runs-on: 8CoreUbuntu
     steps:
       - name: Check out code
         uses: actions/checkout@v4
